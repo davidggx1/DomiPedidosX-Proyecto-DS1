@@ -17,6 +17,11 @@ class TipoDocumento(models.TextChoices):
     RC = "RC", "Registro civil"
     PPT = "PPT", "Permiso por Protección Temporal (PPT)"
 
+#La reutilizamos en factura y en pedido
+class MetodoPago(models.TextChoices):
+    EFECTIVO = "efectivo", "Efectivo"
+    TARJETA = "tarjeta", "Tarjeta"
+    TRANSFERENCIA = "transferencia", "Transferencia"
 
 
 #AbstractUser ya proporciona contraseña con hash, estado de activación,
@@ -447,6 +452,11 @@ class CategoriaMenu(models.Model):
 
 
 class Producto(models.Model):
+    class TipoControlStock(models.TextChoices):
+        PRODUCTO = "PRODUCTO", "Producto terminado"
+        INSUMOS = "INSUMOS", "Por insumos"
+        NINGUNO = "NINGUNO", "Sin control"
+
     idProducto = models.AutoField(primary_key=True)
     categoria = models.ForeignKey(
         CategoriaMenu,
@@ -455,8 +465,21 @@ class Producto(models.Model):
     )
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
+    imagenUrl = models.URLField(
+        max_length=500,
+        blank=True,
+    )
     precioBase = models.DecimalField(max_digits=10, decimal_places=2)
+    tiempoPreparacion = models.PositiveIntegerField()
     activo = models.BooleanField(default=True)
+
+
+
+    tipoControlStock = models.CharField(
+        max_length=10,
+        choices=TipoControlStock.choices,
+        default=TipoControlStock.NINGUNO,
+    )
 
 #El precio base puede ser cero si existen productos promocionales gratuitos.
     class Meta:
@@ -504,8 +527,17 @@ class ProductoTamano(models.Model):
 
 class Adicion(models.Model):
     idAdicion = models.AutoField(primary_key=True)
+    idInsumo = models.ForeignKey(
+        Insumo,
+        on_delete=models.PROTECT,
+        related_name="insumos"
+        )
     nombre = models.CharField(max_length=80)
     descripcion = models.TextField(blank=True)
+    imagenUrl = models.URLField(
+        max_length=500,
+        blank=True,
+    )
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     activa = models.BooleanField(default=True)
 
@@ -533,6 +565,7 @@ class ProductoAdicion(models.Model):
         on_delete=models.PROTECT,
         related_name="productos"
     )
+    maxCantidad = models.PositiveIntegerField(default=1)
 
 #No se registra dos veces la misma adicion para un mismo producto
     class Meta:
@@ -540,6 +573,10 @@ class ProductoAdicion(models.Model):
             models.UniqueConstraint(
                 fields=["producto", "adicion"],
                 name="producto_adicion_unica",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(maxCantidad__gte=1),
+                name="producto_adicion_max_cantidad_positiva",
             ),
         ]
 
@@ -549,9 +586,13 @@ class ProductoAdicion(models.Model):
 class Combo(models.Model):
     idCombo = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
+    condicion = models.TextField(blank=True)
     descripcion = models.TextField(blank=True)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
     activo = models.BooleanField(default=True)
+    fechaInicio = models.DateField()
+    fechaVencimiento = models.DateField()
+    
 
     class Meta:
         constraints = [
@@ -644,13 +685,29 @@ class InventarioProducto(models.Model):
         on_delete=models.PROTECT,
         related_name="inventarios",
     )
-    cantidadDisponible = models.PositiveIntegerField(default=0)
+    stockActual = models.PositiveIntegerField(default=0)
+    stockMinimo = models.PositiveIntegerField(default=0)
+    disponible = models.BooleanField(default=True)
+    demandaDiaria = models.PositiveIntegerField(default=0)
+    fechaActualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["sede", "producto"],
                 name="inventario_producto_sede_unico",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(stockActual__gte=0),
+                name="inventario_producto_stock_actual_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(stockMinimo__gte=0),
+                name="inventario_producto_stock_minimo_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(demandaDiaria__gte=0),
+                name="inventario_producto_demanda_no_negativa",
             ),
         ]
 
@@ -700,11 +757,13 @@ class InventarioInsumo(models.Model):
         on_delete=models.PROTECT,
         related_name="inventarios",
     )
-    cantidadDisponible = models.DecimalField(
-        max_digits=12,
-        decimal_places=3,
-        default=0,
-    )
+
+    stockActual = models.PositiveIntegerField(default=0)
+    stockMinimo = models.PositiveIntegerField(default=0)
+    disponible = models.BooleanField(default=True)
+    demandaDiaria = models.PositiveIntegerField(default=0)
+    fechaActualizacion = models.DateTimeField(auto_now=True)
+
 
     class Meta:
         constraints = [
@@ -713,10 +772,20 @@ class InventarioInsumo(models.Model):
                 name="inventario_insumo_sede_unico",
             ),
             models.CheckConstraint(
-                condition=Q(cantidadDisponible__gte=0),
-                name="inventario_insumo_cantidad_no_negativa",
+                condition=models.Q(stockActual__gte=0),
+                name="inventario_insumo_stock_actual_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(stockMinimo__gte=0),
+                name="inventario_insumo_stock_minimo_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(demandaDiaria__gte=0),
+                name="inventario_insumo_demanda_no_negativa",
             ),
         ]
+
+
 
     def __str__(self):
         return f"{self.insumo.nombre} - {self.sede.nombre}"
@@ -765,7 +834,8 @@ class Repartidor(models.Model):
         related_name="perfil_repartidor",
     )
     disponible = models.BooleanField(default=True)
-    activo = models.BooleanField(default=True)
+    latitud = models.FloatField()
+    longitud = models.FloatField()
 
     def __str__(self):
         return f"Repartidor: {self.empleado.nombres} {self.empleado.apellidos}"
@@ -781,11 +851,18 @@ class Factura(models.Model):
     numero = models.CharField(max_length=30, unique=True)
     fechaEmision = models.DateTimeField(auto_now_add=True)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
-    impuestos = models.DecimalField(
-        max_digits=12, 
-        decimal_places=2, 
-        default=0)
+    iva = models.DecimalField(max_digits=12, decimal_places=2)
+    costoDomicilio = models.DecimalField(max_digits=12, decimal_places=2)
+    valorDescuento = models.DecimalField(max_digits=12, decimal_places=2)    
     total = models.DecimalField(max_digits=12, decimal_places=2)
+
+
+    metodoPago = models.CharField(
+        max_length=20,
+        choices=MetodoPago.choices,
+    )
+
+    estadoFactura = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -794,25 +871,27 @@ class Factura(models.Model):
                 name="factura_subtotal_no_negativo",
             ),
             models.CheckConstraint(
-                condition=Q(impuestos__gte=0),
-                name="factura_impuestos_no_negativos",
+                condition=Q(iva__gte=0),
+                name="factura_iva_no_negativos",
             ),
             models.CheckConstraint(
                 condition=Q(total__gte=0),
                 name="factura_total_no_negativo",
             ),
+            models.CheckConstraint(
+                condition=Q(costoDomicilio__gte=0),
+                name="factura_costo_domicilio_no_negativos",
+            ),
+            models.CheckConstraint(
+                condition=Q(valorDescuento__gte=0),
+                name="factura_valor_descuento_no_negativo",
+            ),
         ]
 
     def __str__(self):
         return self.numero
+
     
-
-"""
-Ojo: esta definición es una base provisional para que avancemos. 
-No confirmes migraciones todavía; debemos contrastar las relaciones y atributos con el diagrama ER,
-especialmente la relación con Factura y el conjunto exacto de estados.
-"""
-
 class Pedido(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "pendiente", "Pendiente"
@@ -823,12 +902,11 @@ class Pedido(models.Model):
         ENTREGADO = "entregado", "Entregado"
         CANCELADO = "cancelado", "Cancelado"
 
-    class MetodoPago(models.TextChoices):
-        EFECTIVO = "efectivo", "Efectivo"
-        TARJETA = "tarjeta", "Tarjeta"
-        TRANSFERENCIA = "transferencia", "Transferencia"
-
     idPedido = models.AutoField(primary_key=True)
+    numeroPedido = models.CharField(
+    max_length=20,
+    unique=True,
+    )
     cliente = models.ForeignKey(
         Cliente,
         on_delete=models.PROTECT,
@@ -869,7 +947,14 @@ class Pedido(models.Model):
         default=0,
         )
     total = models.DecimalField(max_digits=12, decimal_places=2)
-    observaciones = models.TextField(blank=True)
+
+    tiempoEstimadoEntrega = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    motivoCancelacion = models.TextField(blank=True)
+    descripcion = models.CharField(max_length=200)
 
     class Meta:
         constraints = [
@@ -934,6 +1019,9 @@ class DetallePedido(models.Model):
         max_digits=12,
         decimal_places=2,
     )
+
+    observaciones = models.CharField(max_length=300)
+
 
     class Meta:
         constraints = [
@@ -1009,6 +1097,12 @@ class DetallePedidoAdicion(models.Model):
         decimal_places=2,
     )
 
+    precioUnitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -1047,7 +1141,7 @@ class ConsumoCupoCombo(models.Model):
         related_name="consumos_cupo_combo",
     )
 
-    cantidad = models.PositiveIntegerField(default=1)
+    cantidadUsada = models.PositiveIntegerField(default=1)
     fechaConsumo = models.DateTimeField(auto_now_add=True)
 
     class Meta:
