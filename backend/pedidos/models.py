@@ -528,9 +528,9 @@ class ProductoTamano(models.Model):
 class Adicion(models.Model):
     idAdicion = models.AutoField(primary_key=True)
     idInsumo = models.ForeignKey(
-        Insumo,
+        "Insumo",
         on_delete=models.PROTECT,
-        related_name="insumos"
+        related_name="adiciones"
         )
     nombre = models.CharField(max_length=80)
     descripcion = models.TextField(blank=True)
