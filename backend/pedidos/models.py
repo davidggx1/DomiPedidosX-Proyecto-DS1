@@ -1147,8 +1147,8 @@ class ConsumoCupoCombo(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=Q(cantidad__gt=0),
-                name="consumo_cupo_cantidad_positiva",
+                condition=Q(cantidadUsada__gt=0),
+                name="consumo_cupo_combo_cantidad_usada_positiva",
             ),
         ]
 
