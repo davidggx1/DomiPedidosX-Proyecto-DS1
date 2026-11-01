@@ -1,3 +1,11 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Pedido, DetallePedido, DetallePedidoAdicion, HistorialEstadoPedido, Factura, ConsumoCupoCombo, Notificacion
+
+admin.site.register(Pedido)
+admin.site.register(DetallePedido)
+admin.site.register(DetallePedidoAdicion)
+admin.site.register(HistorialEstadoPedido)
+admin.site.register(Factura)
+admin.site.register(ConsumoCupoCombo)
+admin.site.register(Notificacion)
