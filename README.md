@@ -5,11 +5,13 @@ Aplicación web para la gestión de pedidos de restaurantes, desarrollada como p
 El proyecto utiliza una arquitectura con frontend y backend separados:
 
 - **Frontend:** React, Vite, Axios y Tailwind CSS.
-- **Backend:** Python y Django.
-- **Base de datos prevista:** PostgreSQL mediante Supabase.
+- **Backend:** Python, Django, Django REST Framework y autenticación con JWT (SimpleJWT).
+- **Base de datos:** PostgreSQL local para desarrollo y Supabase para producción.
 - **Control de versiones:** Git y GitHub.
 
-> **Estado actual:** la estructura inicial de Django y React está creada. La configuración de PostgreSQL/Supabase y el desarrollo de las funcionalidades del sistema se realizarán progresivamente durante los sprints.
+> **Estado actual:** el backend tiene los 30 modelos del diseño repartidos en 6 apps de Django (`sedes`, `usuarios`, `menu`, `inventario`, `promociones` y `pedidos`), con sus migraciones, pruebas y CI. El frontend tiene su estructura inicial. Las funcionalidades del sistema se desarrollan durante los sprints.
+
+Documentación técnica del backend: [`docs/README.md`](docs/README.md). Normas de contribución: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
@@ -24,6 +26,7 @@ Antes de comenzar, instala las siguientes herramientas.
 | pip | Instalar las dependencias de Python. |
 | Node.js 22 LTS (22.12 o posterior) | Ejecutar las herramientas del frontend. |
 | npm | Instalar las dependencias de JavaScript. |
+| PostgreSQL 16 o posterior | Base de datos local para desarrollo y pruebas. |
 | Editor de código | Se recomienda Visual Studio Code, aunque puedes utilizar otro. |
 
 ### 1.1. Instalar las herramientas en Linux
@@ -102,6 +105,7 @@ python --version
 python3 --version
 node --version
 npm --version
+psql --version
 ```
 
 En Windows también puedes comprobar Python con:
@@ -197,15 +201,65 @@ python -m pip install --upgrade pip
 python -m pip install -r backend/requirements.txt
 ```
 
-### 3.4. Verificar Django
+### 3.4. Configurar la base de datos local
 
-Comprueba que Django está instalado:
+Cada integrante usa **su propia base PostgreSQL local**. Nunca se trabaja ni se corren pruebas contra Supabase.
+
+Instala PostgreSQL con las instrucciones oficiales de tu sistema (https://www.postgresql.org/download/) y crea un rol y una base. Cambia el nombre y la clave por los que prefieras:
 
 ```bash
-python -m django --version
+sudo -u postgres psql -c "CREATE ROLE domipedidosx LOGIN PASSWORD 'cambia-esta-clave' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE domipedidosx OWNER domipedidosx;"
 ```
 
-Después, ejecuta el servidor de desarrollo desde la raíz:
+En Windows, ejecuta las mismas dos sentencias SQL desde `psql` o pgAdmin.
+
+El permiso `CREATEDB` es necesario: `pytest` crea una base temporal llamada `test_<nombre>` en cada ejecución y la borra al terminar.
+
+### 3.5. Configurar las variables de entorno
+
+El proyecto lee su configuración (clave secreta, datos de la base de datos, etc.) desde un archivo `.env`. Ese archivo es personal y **nunca se sube a GitHub**.
+
+Copia la plantilla y edítala con tus datos locales:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+En Windows (PowerShell): `Copy-Item backend\.env.example backend\.env`
+
+Abre `backend/.env` y completa cada variable. La plantilla `.env.example` lista todas las que el proyecto necesita. Los datos de la base deben coincidir con el rol y la base que creaste en el paso anterior, y el host debe ser `localhost`.
+
+> **Importante:** confirma que el `.env` apunta a tu base local y no a Supabase antes de migrar.
+
+### 3.6. Crear las tablas
+
+Con el entorno virtual activo, desde la raíz del repositorio:
+
+```bash
+python backend/manage.py check
+python backend/manage.py migrate
+```
+
+Al terminar, tu base debe tener 39 tablas: 9 de Django y 30 propias del proyecto.
+
+Si cambias un modelo, la migración va en el mismo Pull Request. Las reglas de migraciones están en [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### 3.7. Ejecutar las pruebas
+
+Las pruebas se ejecutan desde la carpeta `backend/`:
+
+```bash
+cd backend
+pytest
+cd ..
+```
+
+Deben pasar antes de abrir un Pull Request. GitHub Actions las ejecuta de nuevo automáticamente en cada PR.
+
+### 3.8. Ejecutar el servidor de desarrollo
+
+Desde la raíz del repositorio:
 
 ```bash
 python backend/manage.py runserver
@@ -215,9 +269,13 @@ El backend estará disponible normalmente en:
 
 http://127.0.0.1:8000/
 
-Para detenerlo, presiona `Ctrl + C`.
+La documentación interactiva de la API (Swagger) está en http://127.0.0.1:8000/api/docs/ y el panel de administración en http://127.0.0.1:8000/admin/. Para crear un usuario administrador:
 
-> **Base de datos:** PostgreSQL/Supabase todavía debe configurarse en Django. No ejecutes migraciones hasta que el equipo complete esa configuración. La base SQLite local existente no forma parte del flujo de trabajo previsto.
+```bash
+python backend/manage.py createsuperuser
+```
+
+El inicio de sesión del sistema usa el **correo electrónico** como identificador. Para detener el servidor, presiona `Ctrl + C`.
 
 ---
 
@@ -288,21 +346,35 @@ El frontend y el backend todavía deben conectarse mediante Axios cuando se impl
 
 ```text
 DomiPedidosX-Proyecto-DS1/
+├── .github/
+│   ├── workflows/ci.yml          # Integración continua (GitHub Actions)
+│   ├── ISSUE_TEMPLATE/bug.md
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── backend/
-│   ├── config/
+│   ├── config/                   # Configuración del proyecto Django
+│   ├── sedes/
+│   ├── usuarios/
+│   ├── menu/
+│   ├── inventario/
+│   ├── promociones/
+│   ├── pedidos/
 │   ├── manage.py
-│   └── requirements.txt
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   └── .env.example
 ├── frontend/
 │   ├── public/
 │   ├── src/
 │   ├── package.json
 │   ├── package-lock.json
 │   └── vite.config.js
+├── docs/
 ├── .gitignore
+├── CONTRIBUTING.md
 └── README.md
 ```
 
-La estructura evolucionará conforme se incorporen las aplicaciones Django, los componentes React, las pruebas y la documentación.
+La estructura evolucionará conforme se incorporen los componentes React, los endpoints de la API y la documentación.
 
 ---
 
@@ -310,9 +382,11 @@ La estructura evolucionará conforme se incorporen las aplicaciones Django, los 
 
 El equipo utiliza las siguientes ramas:
 
-- `main`: versiones estables del proyecto.
+- `main`: versiones estables del proyecto (entregas).
 - `develop`: integración del trabajo del equipo.
-- `feature/*`: desarrollo de funcionalidades o tareas concretas.
+- `feature/HU-nn-tema`: desarrollo de una historia de usuario concreta.
+
+`main` y `develop` están protegidas: no se sube directamente a ellas. Todo cambio entra mediante Pull Request.
 
 ### Flujo de trabajo recomendado
 
@@ -321,14 +395,17 @@ El equipo utiliza las siguientes ramas:
 3. Implementar una tarea concreta y realizar commits pequeños.
 4. Subir la rama a GitHub.
 5. Abrir un Pull Request hacia `develop`.
-6. Revisar y probar los cambios antes de integrarlos.
+6. Esperar a que el CI termine en verde y obtener 1 aprobación de un compañero.
+7. Integrar con **squash merge** y borrar la rama.
+
+El detalle completo del flujo, los mensajes de commit y las reglas de migraciones está en [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ### Ejemplo de flujo
 
 ```bash
 git switch develop
 git pull origin develop
-git switch -c feature/nombre-de-la-funcionalidad
+git switch -c feature/HU-12-nombre-de-la-funcionalidad
 ```
 
 Después de realizar los cambios:
@@ -336,7 +413,7 @@ Después de realizar los cambios:
 ```bash
 git add .
 git commit -m "feat(scope): describe the change"
-git push -u origin feature/nombre-de-la-funcionalidad
+git push -u origin feature/HU-12-nombre-de-la-funcionalidad
 ```
 
 Luego, abre un Pull Request en GitHub con destino a `develop`.
@@ -373,7 +450,7 @@ No deben versionarse:
 - Archivos `.env` con credenciales o secretos.
 - Bases de datos locales y archivos generados que no formen parte del código fuente.
 
-Los archivos `requirements.txt`, `package.json` y `package-lock.json` sí deben versionarse.
+Los archivos `requirements.txt`, `package.json`, `package-lock.json` y `.env.example` sí deben versionarse. El `.env.example` solo contiene nombres de variables y valores de ejemplo, nunca datos reales.
 
 **Nunca compartas contraseñas, claves privadas ni credenciales de Supabase mediante commits o Pull Requests.**
 
@@ -410,6 +487,24 @@ Entra en `frontend/` y ejecuta:
 npm ci
 ```
 
+### `KeyError` al iniciar Django (por ejemplo `DJANGO_SECRET_KEY`)
+
+Falta una variable de entorno. Comprueba que existe `backend/.env` (copiado de `backend/.env.example`) y que tiene todas las variables completas.
+
+### Error de conexión con la base de datos
+
+Verifica que PostgreSQL está en ejecución y que los datos de `backend/.env` coinciden con el rol y la base que creaste (sección 3.4).
+
+### `pytest` falla con "permission denied to create database"
+
+El rol de PostgreSQL necesita el permiso `CREATEDB`:
+
+```bash
+sudo -u postgres psql -c "ALTER ROLE domipedidosx CREATEDB;"
+```
+
+Usa el nombre de tu rol.
+
 ### El puerto ya está ocupado
 
 Revisa si existe otro proceso ejecutando el backend o el frontend. Si es necesario, detén el proceso anterior antes de iniciar otro.
@@ -426,8 +521,7 @@ Si la política de ejecución de PowerShell impide activar el entorno, puedes ut
 
 ## 10. Próximos pasos
 
-- Configurar PostgreSQL/Supabase en Django.
-- Definir las aplicaciones y modelos del backend a partir del diseño aprobado.
-- Implementar los endpoints de la API.
+- Implementar los endpoints de la API por historia de usuario.
 - Conectar React con Django mediante Axios.
-- Incorporar pruebas y documentación conforme avance cada sprint.
+- Ampliar las pruebas conforme avance cada sprint.
+- Configurar el despliegue (Supabase, Vercel y el servicio de hosting del backend).
