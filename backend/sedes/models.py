@@ -29,7 +29,7 @@ class Sede(models.Model):
         on_delete=models.PROTECT,
         related_name="sedes",
     )
-    nombre = models.CharField(max_length=50)
+    nombre = models.CharField(max_length=50, unique=True)
     direccion = models.CharField(max_length=255)
     activa = models.BooleanField(default=True)
     latitud = models.FloatField()
