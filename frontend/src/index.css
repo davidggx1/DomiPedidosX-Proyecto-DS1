@@ -1,2 +1,57 @@
-
 @import "tailwindcss";
+
+/*
+ * Tema de DomiPedidosX (basado en el prototipo de baja fidelidad).
+ * Cada color define una utilidad de Tailwind: bg-marca, text-texto-suave,
+ * border-borde, etc. Los contrastes cumplen WCAG AA sobre el fondo oscuro.
+ */
+@theme {
+  --color-fondo: #161616;
+  --color-superficie: #222222;
+  --color-superficie-alta: #2d2d2d;
+  --color-borde: #3d3d3d;
+  --color-texto: #f2f2f2;
+  --color-texto-suave: #b8b8b8;
+
+  --color-marca: #b30000;
+  --color-marca-oscura: #8a0000;
+  --color-marca-clara: #ff6b6b;
+
+  --color-error: #ff8a80;
+  --color-exito: #4ade80;
+  --color-aviso: #fbbf24;
+  --color-foco: #ffd166;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-fondo font-sans text-texto antialiased;
+  }
+
+  /* Foco visible al navegar con teclado, en cualquier elemento interactivo. */
+  :focus-visible {
+    outline: 3px solid var(--color-foco);
+    outline-offset: 2px;
+  }
+
+  /* El contenedor principal recibe foco desde "Saltar al contenido"; no necesita borde. */
+  main:focus {
+    outline: none;
+  }
+}
+
+/* Respeta a quien pide menos animaciones en su sistema operativo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
