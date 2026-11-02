@@ -1,122 +1,54 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Route, Routes } from 'react-router-dom'
+import { ROLES } from './auth/roles.js'
+import RutaProtegida from './auth/RutaProtegida.jsx'
+import Layout from './components/layout/Layout.jsx'
+import EnConstruccion from './pages/EnConstruccion.jsx'
+import GuiaEstilo from './pages/GuiaEstilo.jsx'
+import Inicio from './pages/Inicio.jsx'
+import Login from './pages/Login.jsx'
+import NoAutorizado from './pages/NoAutorizado.jsx'
+import NoEncontrada from './pages/NoEncontrada.jsx'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+// Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
+// Al implementar una HU, reemplaza <EnConstruccion> por la página real.
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Inicio />} />
+        <Route path="login" element={<Login />} />
+        <Route path="guia-estilo" element={<GuiaEstilo />} />
+        <Route path="no-autorizado" element={<NoAutorizado />} />
 
-      <div className="ticks"></div>
+        <Route element={<RutaProtegida roles={[ROLES.CLIENTE]} />}>
+          <Route path="menu" element={<EnConstruccion titulo="Menú" historias="HU-18, HU-19, HU-20, HU-21" />} />
+          <Route path="mis-pedidos" element={<EnConstruccion titulo="Mis pedidos" historias="HU-26, HU-47" />} />
+          <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-06, HU-07" />} />
+        </Route>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
+          <Route path="operador" element={<EnConstruccion titulo="Pedidos entrantes" historias="HU-27, HU-28" />} />
+          <Route path="operador/menu" element={<EnConstruccion titulo="Menú e inventario" historias="HU-10, HU-11, HU-13, HU-75, HU-76, HU-77" />} />
+          <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
+        </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
+          <Route path="cocina" element={<EnConstruccion titulo="Tablero de cocina" historias="HU-29, HU-30, HU-31" />} />
+        </Route>
+
+        <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
+          <Route path="repartidor" element={<EnConstruccion titulo="Mis entregas" historias="HU-41, HU-42, HU-43, HU-45" />} />
+        </Route>
+
+        <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
+          <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
+          <Route path="admin/pedidos" element={<EnConstruccion titulo="Pedidos del día" historias="HU-67" />} />
+          <Route path="admin/sedes" element={<EnConstruccion titulo="Sedes" historias="HU-81, HU-82" />} />
+          <Route path="admin/personal" element={<EnConstruccion titulo="Personal" historias="HU-08" />} />
+        </Route>
+
+        <Route path="*" element={<NoEncontrada />} />
+      </Route>
+    </Routes>
   )
 }
-
-export default App
