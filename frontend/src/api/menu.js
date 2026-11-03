@@ -83,3 +83,16 @@ export async function actualizarIngrediente(productoId, vinculoId, datos) {
 export async function quitarIngrediente(productoId, vinculoId) {
   await api.delete(`/menu/productos/${productoId}/ingredientes/${vinculoId}/`)
 }
+
+// --- Menú del cliente (HU-18). Rutas públicas: no requieren sesión. ---
+
+export async function listarSedesMenu() {
+  const { data } = await api.get('/menu/sedes/')
+  return data
+}
+
+// Devuelve { sede, categorias: [{ id, nombre, productos: [...] }] }.
+export async function obtenerMenuSede(sedeId) {
+  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`)
+  return data
+}

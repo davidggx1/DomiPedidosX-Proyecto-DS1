@@ -11,6 +11,7 @@ import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
+import Menu from './pages/cliente/Menu.jsx'
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -24,7 +25,7 @@ export default function App() {
         <Route path="no-autorizado" element={<NoAutorizado />} />
 
         <Route element={<RutaProtegida roles={[ROLES.CLIENTE]} />}>
-          <Route path="menu" element={<EnConstruccion titulo="Menú" historias="HU-18, HU-19, HU-20, HU-21" />} />
+          <Route path="menu" element={<Menu />} />
           <Route path="mis-pedidos" element={<EnConstruccion titulo="Mis pedidos" historias="HU-26, HU-47" />} />
           <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-06, HU-07" />} />
         </Route>
