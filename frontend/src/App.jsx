@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { ROLES } from './auth/roles.js'
 import RutaProtegida from './auth/RutaProtegida.jsx'
 import Layout from './components/layout/Layout.jsx'
+import CategoriasMenu from './pages/CategoriasMenu.jsx'
 import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
 import Inicio from './pages/Inicio.jsx'
@@ -28,7 +29,7 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
           <Route path="operador" element={<EnConstruccion titulo="Pedidos entrantes" historias="HU-27, HU-28" />} />
-          <Route path="operador/menu" element={<EnConstruccion titulo="Menú e inventario" historias="HU-10, HU-11, HU-13, HU-75, HU-76, HU-77" />} />
+          <Route path="operador/menu" element={<CategoriasMenu />} />
           <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
         </Route>
 

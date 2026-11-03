@@ -1,9 +1,11 @@
-from rest_framework import generics, permissions, status
+from django.db.models import Count
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Producto
-from .serializers import ProductoImagenSerializer
+from .models import CategoriaMenu, Producto
+from .permissions import EsPersonalDeMenu
+from .serializers import CategoriaMenuSerializer, ProductoImagenSerializer
 
 
 class ProductoImagenView(generics.GenericAPIView):
@@ -33,3 +35,21 @@ class ProductoImagenView(generics.GenericAPIView):
         if producto.imagen:
             producto.imagen.delete(save=True)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CategoriaMenuViewSet(
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Lists, creates and edits menu categories (no delete on purpose)"""
+
+    serializer_class = CategoriaMenuSerializer
+    permission_classes = [EsPersonalDeMenu]
+
+    def get_queryset(self):
+        return CategoriaMenu.objects.annotate(
+            total_productos=Count("productos")
+        ).order_by("nombre")
