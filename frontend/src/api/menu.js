@@ -46,6 +46,31 @@ export async function eliminarInsumo(id) {
   await api.delete(`/menu/insumos/${id}/`)
 }
 
+// --- Productos del menú (HU-11) ---
+
+// categoria: id para filtrar (opcional).
+export async function listarProductos({ categoria } = {}) {
+  const params = categoria ? { categoria } : {}
+  const { data } = await api.get('/menu/productos/', { params })
+  return data
+}
+
+// `datos` es un FormData: así viaja la imagen junto con el resto de campos.
+export async function crearProducto(datos) {
+  const { data } = await api.post('/menu/productos/', datos)
+  return data
+}
+
+export async function actualizarProducto(id, datos) {
+  const { data } = await api.patch(`/menu/productos/${id}/`, datos)
+  return data
+}
+
+export async function listarCategorias() {
+  const { data } = await api.get('/menu/categorias/')
+  return data
+}
+
 export async function listarProductosOpciones() {
   const { data } = await api.get('/menu/productos-opciones/')
   return data
@@ -82,4 +107,17 @@ export async function actualizarIngrediente(productoId, vinculoId, datos) {
 
 export async function quitarIngrediente(productoId, vinculoId) {
   await api.delete(`/menu/productos/${productoId}/ingredientes/${vinculoId}/`)
+}
+
+// --- Menú del cliente (HU-18). Rutas públicas: no requieren sesión. ---
+
+export async function listarSedesMenu() {
+  const { data } = await api.get('/menu/sedes/')
+  return data
+}
+
+// Devuelve { sede, categorias: [{ id, nombre, productos: [...] }] }.
+export async function obtenerMenuSede(sedeId) {
+  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`)
+  return data
 }

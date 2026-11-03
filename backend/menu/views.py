@@ -2,7 +2,7 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, status, viewsets
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from .models import Producto
 from .serializers import ProductoDetalleSerializer
@@ -17,7 +17,52 @@ from .serializers import (
     ProductoImagenSerializer,
     ProductoInsumoSerializer,
     ProductoOpcionSerializer,
+    ProductoSerializer,
 )
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter("categoria", int, description="Id de categoría para filtrar."),
+            OpenApiParameter(
+                "activo",
+                str,
+                description="true: solo activos · false: solo inactivos · sin valor: todos.",
+            ),
+        ]
+    )
+)
+class ProductoViewSet(
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    HU-11: listar, crear y editar productos del menú (sin borrar a propósito:
+    los pedidos los referencian; para retirarlo se marca activo=false).
+    """
+
+    serializer_class = ProductoSerializer
+    permission_classes = [EsPersonalDeMenu]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        productos = (
+            Producto.objects.select_related("categoria")
+            .prefetch_related("inventarios")
+            .order_by("categoria__nombre", "nombre")
+        )
+        if self.action == "list":
+            categoria = self.request.query_params.get("categoria")
+            if categoria and categoria.isdigit():
+                productos = productos.filter(categoria_id=int(categoria))
+            activo = self.request.query_params.get("activo")
+            if activo is not None:
+                productos = productos.filter(activo=activo.lower() in ("true", "1"))
+        return productos
 
 
 class ProductoImagenView(generics.GenericAPIView):

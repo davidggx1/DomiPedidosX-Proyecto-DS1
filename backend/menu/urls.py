@@ -1,5 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
+from .catalogo import MenuSedeView, SedesMenuView
 
 from .views import (
     AdicionViewSet,
@@ -10,10 +11,12 @@ from .views import (
     ProductoInsumoViewSet,
     ProductoOpcionesView,
     ProductoDetalleView,
+    ProductoViewSet,
 )
 
 router = SimpleRouter()
 router.register("categorias", CategoriaMenuViewSet, basename="categoria")
+router.register("productos", ProductoViewSet, basename="producto")
 router.register("adiciones", AdicionViewSet, basename="adicion")
 router.register("insumos", InsumoViewSet, basename="insumo")
 
@@ -29,6 +32,8 @@ producto_ingrediente_detalle = ProductoInsumoViewSet.as_view(
 urlpatterns = [
     path("productos/<int:pk>/imagen/", ProductoImagenView.as_view(), name="producto-imagen"),
     path("productos-opciones/", ProductoOpcionesView.as_view(), name="producto-opciones"),
+    path("sedes/", SedesMenuView.as_view(), name="menu-sedes"),
+    path("sedes/<int:sede_pk>/menu/", MenuSedeView.as_view(), name="menu-sede"),
     path(
         "productos/<int:producto_pk>/adiciones/",
         producto_adiciones,

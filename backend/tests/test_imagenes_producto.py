@@ -52,12 +52,18 @@ class TestImagenProducto:
         assert self.producto.imagen.storage.exists(self.producto.imagen.name)
         assert respuesta.data["imagen"].endswith(self.producto.imagen.name)
 
-    def test_acepta_jpg_y_webp(self):
+    def test_acepta_jpg(self):
         self.client.force_authenticate(user=self.admin)
-        for formato, nombre, tipo in [("JPEG", "a.jpg", "image/jpeg"), ("WEBP", "a.webp", "image/webp")]:
-            archivo = crear_archivo(formato, nombre, tipo)
-            respuesta = self.client.post(self.url, {"imagen": archivo}, format="multipart")
-            assert respuesta.status_code == status.HTTP_200_OK
+        archivo = crear_archivo("JPEG", "a.jpg", "image/jpeg")
+        respuesta = self.client.post(self.url, {"imagen": archivo}, format="multipart")
+        assert respuesta.status_code == status.HTTP_200_OK
+
+    def test_rechaza_webp(self):
+        # HU-11 limits product images to JPG or PNG
+        self.client.force_authenticate(user=self.admin)
+        archivo = crear_archivo("WEBP", "a.webp", "image/webp")
+        respuesta = self.client.post(self.url, {"imagen": archivo}, format="multipart")
+        assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_cliente_no_puede_subir(self):
         self.client.force_authenticate(user=self.cliente)
