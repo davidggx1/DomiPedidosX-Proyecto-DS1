@@ -1,16 +1,16 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
-from .catalogo import MenuSedeView, SedesMenuView
 
+from .catalogo import MenuSedeView, SedesMenuView
 from .views import (
     AdicionViewSet,
     CategoriaMenuViewSet,
     InsumoViewSet,
     ProductoAdicionViewSet,
+    ProductoDetalleView,
     ProductoImagenView,
     ProductoInsumoViewSet,
     ProductoOpcionesView,
-    ProductoDetalleView,
     ProductoViewSet,
 )
 
@@ -30,10 +30,18 @@ producto_ingrediente_detalle = ProductoInsumoViewSet.as_view(
 )
 
 urlpatterns = [
+    # 1. Ruta pública del detalle del producto (debe ir antes del router para sobreescribir /productos/<pk>/)
+    path("productos/<int:pk>/", ProductoDetalleView.as_view(), name="producto-detalle"),
+    
+    # 2. Rutas específicas de productos
     path("productos/<int:pk>/imagen/", ProductoImagenView.as_view(), name="producto-imagen"),
     path("productos-opciones/", ProductoOpcionesView.as_view(), name="producto-opciones"),
+    
+    # 3. Catálogo y Sedes
     path("sedes/", SedesMenuView.as_view(), name="menu-sedes"),
     path("sedes/<int:sede_pk>/menu/", MenuSedeView.as_view(), name="menu-sede"),
+    
+    # 4. Adiciones e Ingredientes por producto
     path(
         "productos/<int:producto_pk>/adiciones/",
         producto_adiciones,
@@ -54,6 +62,7 @@ urlpatterns = [
         producto_ingrediente_detalle,
         name="producto-ingrediente-detalle",
     ),
+    
+    # 5. Inclusión de las rutas automáticas del router (al final)
     path("", include(router.urls)),
-    path("productos/<int:pk>/", ProductoDetalleView.as_view(), name="producto-detalle"),
 ]
