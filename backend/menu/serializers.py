@@ -452,6 +452,47 @@ class ProductoInsumoSerializer(serializers.ModelSerializer):
             )
         return attrs
 
+class ProductoTamanoSerializer(serializers.ModelSerializer):
+    """HU-75: tamaños de un producto. El precio es un adicional al precio base."""
+
+    nombre = serializers.CharField(
+        max_length=30,
+        error_messages={
+            "required": "El nombre del tamaño es obligatorio.",
+            "blank": "El nombre del tamaño es obligatorio.",
+            "null": "El nombre del tamaño es obligatorio.",
+        },
+    )
+    precio_adicional = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        error_messages={
+            "required": "El precio es obligatorio.",
+            "invalid": "Escribe un precio válido.",
+            "min_value": "El precio no puede ser negativo.",
+            "max_decimal_places": "Usa máximo 2 decimales.",
+        },
+    )
+
+    class Meta:
+        model = ProductoTamano
+        fields = ["id", "nombre", "precio_adicional", "activo"]
+        read_only_fields = ["id", "activo"]
+
+    def validate_nombre(self, value):
+        nombre = " ".join(value.split())
+        if not nombre:
+            raise serializers.ValidationError("El nombre del tamaño es obligatorio.")
+        producto = self.context["producto"]
+        repetidos = ProductoTamano.objects.filter(producto=producto, nombre__iexact=nombre)
+        if self.instance is not None:
+            repetidos = repetidos.exclude(pk=self.instance.pk)
+        if repetidos.exists():
+            raise serializers.ValidationError("Este producto ya tiene un tamaño con ese nombre.")
+        return nombre
+
+
 class ProductoTamanoDetalleSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductoTamano

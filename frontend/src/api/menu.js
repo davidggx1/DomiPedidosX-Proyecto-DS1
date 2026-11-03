@@ -109,6 +109,31 @@ export async function quitarIngrediente(productoId, vinculoId) {
   await api.delete(`/menu/productos/${productoId}/ingredientes/${vinculoId}/`)
 }
 
+
+// --- Tamaños de producto (HU-75) ---
+
+export async function listarTamanosProducto(productoId, { activo = true } = {}) {
+  const { data } = await api.get(`/menu/productos/${productoId}/tamanos/`, {
+    params: { activo },
+  })
+  return data
+}
+
+export async function crearTamanoProducto(productoId, datos) {
+  const { data } = await api.post(`/menu/productos/${productoId}/tamanos/`, datos)
+  return data
+}
+
+export async function actualizarTamanoProducto(productoId, tamanoId, datos) {
+  const { data } = await api.patch(`/menu/productos/${productoId}/tamanos/${tamanoId}/`, datos)
+  return data
+}
+
+// El DELETE es lógico: el tamaño queda inactivo y no se pierde su referencia histórica.
+export async function eliminarTamanoProducto(productoId, tamanoId) {
+  await api.delete(`/menu/productos/${productoId}/tamanos/${tamanoId}/`)
+}
+
 // --- Menú del cliente (HU-18). Rutas públicas: no requieren sesión. ---
 
 export async function listarSedesMenu() {
