@@ -121,3 +121,28 @@ export async function obtenerMenuSede(sedeId) {
   const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`)
   return data
 }
+
+// --- Disponibilidad por sede (HU-13) ---
+
+// Devuelve [{ sede, sede_nombre, disponible, editable }].
+export async function obtenerDisponibilidad(productoId) {
+  const { data } = await api.get(`/menu/productos/${productoId}/disponibilidad/`)
+  return data
+}
+
+// Cambia el producto solo en esa sede y devuelve el estado actualizado de todas.
+export async function cambiarDisponibilidad(productoId, sedeId, disponible) {
+  const { data } = await api.patch(`/menu/productos/${productoId}/disponibilidad/`, {
+    sede: sedeId,
+    disponible,
+  })
+  return data
+}
+
+// Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }] }.
+export async function validarCarrito(sedeId, productoIds) {
+  const { data } = await api.post(`/menu/sedes/${sedeId}/validar-carrito/`, {
+    productos: productoIds,
+  })
+  return data
+}
