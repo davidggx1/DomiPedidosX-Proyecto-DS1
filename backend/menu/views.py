@@ -4,6 +4,8 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from .models import Producto
+from .serializers import ProductoDetalleSerializer
 
 from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo
 from .permissions import EsPersonalDeMenu
@@ -193,3 +195,14 @@ class ProductoInsumoViewSet(DelProductoMixin, viewsets.ModelViewSet):
             .select_related("insumo")
             .order_by("insumo__nombre")
         )
+
+class ProductoDetalleView(generics.RetrieveAPIView):
+    """HU-20: Detalle público de un producto con ingredientes, tamaños y adiciones."""
+
+    queryset = Producto.objects.select_related("categoria").prefetch_related(
+        "tamanos",
+        "insumos_requeridos__insumo",
+        "adiciones_disponibles__adicion",
+    )
+    serializer_class = ProductoDetalleSerializer
+    permission_classes = [permissions.AllowAny]

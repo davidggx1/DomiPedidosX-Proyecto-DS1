@@ -9,6 +9,7 @@ from .views import (
     ProductoImagenView,
     ProductoInsumoViewSet,
     ProductoOpcionesView,
+    ProductoDetalleView,
 )
 
 router = SimpleRouter()
@@ -49,4 +50,5 @@ urlpatterns = [
         name="producto-ingrediente-detalle",
     ),
     path("", include(router.urls)),
+    path("productos/<int:pk>/", ProductoDetalleView.as_view(), name="producto-detalle"),
 ]
