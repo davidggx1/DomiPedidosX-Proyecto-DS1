@@ -250,4 +250,9 @@ class ProductoDetalleView(generics.RetrieveAPIView):
         "adiciones_disponibles__adicion",
     )
     serializer_class = ProductoDetalleSerializer
+    
+    # 1. Permitir acceso anónimo
     permission_classes = [permissions.AllowAny]
+    
+    # 2. Desactivar validación de autenticación global para este endpoint de catálogo público
+    authentication_classes = []
