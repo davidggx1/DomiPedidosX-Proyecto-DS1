@@ -1,6 +1,7 @@
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
+from usuarios.models import Usuario
 from menu.models import (
     CategoriaMenu,
     Insumo,
@@ -15,7 +16,8 @@ class TestHU20DetalleProducto:
     @pytest.fixture(autouse=True)
     def setup(self):
         self.client = APIClient()
-
+        self.user = Usuario.objects.create_user(username="testuser", email="test@test.com", password="password")
+        self.client.force_authenticate(user=self.user)
         self.categoria = CategoriaMenu.objects.create(nombre="Hamburguesas")
 
         # Producto Disponible (activo=True)
