@@ -2,8 +2,17 @@
 Catálogo: categorías, productos, tamaños, insumos, adiciones y recetas.
 No depende de otras apps del proyecto.
 """
+import os
+import uuid
+
 from django.db import models
 from django.db.models import Q
+
+
+def ruta_imagen_producto(instance, filename):
+    """Gives the image a random name so two files never overwrite each other"""
+    extension = os.path.splitext(filename)[1].lower()
+    return f"productos/{uuid.uuid4().hex}{extension}"
 
 
 class CategoriaMenu(models.Model):
@@ -38,6 +47,7 @@ class Producto(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     imagen_url = models.URLField(max_length=500, blank=True)
+    imagen = models.ImageField(upload_to=ruta_imagen_producto, blank=True)
     precio_base = models.DecimalField(max_digits=10, decimal_places=2)
     tiempo_preparacion = models.PositiveIntegerField()
     activo = models.BooleanField(default=True)

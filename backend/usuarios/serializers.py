@@ -1,3 +1,7 @@
+import re
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers
@@ -12,13 +16,30 @@ class RegistroClienteSerializer(serializers.Serializer):
     num_documento = serializers.CharField(max_length=12)
     nombres = serializers.CharField(max_length=100)
     apellidos = serializers.CharField(max_length=100)
-    celular = serializers.CharField(max_length=15)
+    celular = serializers.CharField(max_length=10)
     fecha_nacimiento = serializers.DateField()
 
     def validate_email(self, value):
         value = value.lower()
         if Usuario.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Ya existe una cuenta con este correo.")
+        return value
+
+    def validate_celular(self, value):
+        if not value:
+            raise serializers.ValidationError("El teléfono celular es obligatorio.")
+
+        # Validación de 10 dígitos numéricos
+        if not re.match(r"^\d{10}$", value):
+            raise serializers.ValidationError(
+                "El número de teléfono debe contener exactamente 10 dígitos numéricos."
+            )
+
+        # Validación de unicidad
+        if Cliente.objects.filter(celular=value).exists():
+            raise serializers.ValidationError(
+                "Este número de teléfono ya está registrado en otra cuenta."
+            )
         return value
 
     def validate_password(self, value):
@@ -45,3 +66,21 @@ class RegistroClienteSerializer(serializers.Serializer):
             username=email, email=email, password=password
         )
         return Cliente.objects.create(usuario=usuario, **validated_data)
+
+
+class LoginSerializer(TokenObtainPairSerializer):
+    # Mensaje genérico: no revela si falló el correo o la contraseña.
+    default_error_messages = {"no_active_account": "Credenciales inválidas."}
+
+    def validate(self, attrs):
+        Usuario = get_user_model()
+        email = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+        usuario = Usuario.objects.filter(email__iexact=email).first()
+        # Solo se avisa "inactiva" si la contraseña es correcta, para no
+        # revelar a un extraño qué correos existen.
+        if usuario and not usuario.is_active and usuario.check_password(password):
+            raise AuthenticationFailed("La cuenta está inactiva.", "cuenta_inactiva")
+        return super().validate(attrs)
+
+        

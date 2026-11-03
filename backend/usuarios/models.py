@@ -4,9 +4,15 @@ y direcciones de entrega.
 Depende de: sedes.
 """
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 
+# Validador de 10 dígitos numéricos exactos para HU-02
+validator_telefono = RegexValidator(
+    regex=r"^\d{10}$",
+    message="El número de teléfono celular debe contener exactamente 10 dígitos numéricos.",
+)
 
 class TipoDocumento(models.TextChoices):
     CC = "CC", "Cédula de ciudadanía (C.C.)"
@@ -46,7 +52,12 @@ class Cliente(models.Model):
     num_documento = models.CharField(max_length=12)
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
-    celular = models.CharField(max_length=15)
+    celular = models.CharField(
+        max_length=10,
+        unique=True,
+        validators=[validator_telefono],
+        help_text="Número celular de 10 dígitos numéricos.",
+    )
     fecha_nacimiento = models.DateField()
 
     class Meta:
