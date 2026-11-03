@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listarSedesMenu, obtenerMenuSede } from '../../api/menu.js'
+import { listarSedesMenu, obtenerMenuSede, validarCarrito } from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
 import TarjetaProducto from '../../components/menu/TarjetaProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
@@ -36,6 +36,7 @@ export default function Menu() {
   const [categoriaId, setCategoriaId] = useState(TODAS)
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
+  const [recargaMenu, setRecargaMenu] = useState(0)
 
   // Sedes activas. Si la sede guardada ya no está activa, se descarta.
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function Menu() {
     return () => {
       vigente = false
     }
-  }, [sedeId, sedesCargadas])
+  }, [sedeId, sedesCargadas, recargaMenu])
 
   function cambiarSede(evento) {
     const nueva = evento.target.value
@@ -84,8 +85,27 @@ export default function Menu() {
     if (nueva) guardarSede(nueva)
   }
 
-  function agregar(producto) {
-    setAviso(`Elegiste "${producto.nombre}". Muy pronto podrás agregarlo a tu carrito.`)
+  // Hook del carrito (HU-13): antes de agregar se confirma que el producto siga
+  // disponible en la sede. HU-23 repetirá esta validación al confirmar el pedido.
+  async function agregar(producto) {
+    setAviso(null)
+    try {
+      const { valido } = await validarCarrito(sedeId, [producto.id])
+      if (!valido) {
+        setAviso({
+          tipo: 'aviso',
+          texto: `"${producto.nombre}" acaba de quedar no disponible en esta sede y no se puede agregar.`,
+        })
+        setRecargaMenu((valor) => valor + 1)
+        return
+      }
+      setAviso({
+        tipo: 'info',
+        texto: `Elegiste "${producto.nombre}". Muy pronto podrás agregarlo a tu carrito.`,
+      })
+    } catch (err) {
+      setAviso({ tipo: 'error', texto: interpretarError(err).general })
+    }
   }
 
   const opcionesSede = sedes.map((sede) => ({
@@ -124,7 +144,7 @@ export default function Menu() {
 
       {error && <Alerta tipo="error" titulo={error} />}
       {actual?.error && <Alerta tipo="error" titulo={actual.error} />}
-      {aviso && <Alerta tipo="info">{aviso}</Alerta>}
+      {aviso && <Alerta tipo={aviso.tipo}>{aviso.texto}</Alerta>}
 
       {sedesCargadas && sedes.length === 0 && !error && (
         <Alerta tipo="aviso" titulo="Por ahora no hay sedes disponibles." />
