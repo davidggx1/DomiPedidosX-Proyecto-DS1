@@ -241,18 +241,33 @@ class ProductoInsumoViewSet(DelProductoMixin, viewsets.ModelViewSet):
             .order_by("insumo__nombre")
         )
 
-class ProductoDetalleView(generics.RetrieveAPIView):
-    """HU-20: Detalle público de un producto con ingredientes, tamaños y adiciones."""
+class ProductoDetalleView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    HU-20 / HU-11: Detalle de producto.
+    - GET: Público para cualquier usuario (AllowAny).
+    - PUT/PATCH/DELETE: Requiere permisos de personal de administración/menú.
+    """
 
     queryset = Producto.objects.select_related("categoria").prefetch_related(
         "tamanos",
         "insumos_requeridos__insumo",
         "adiciones_disponibles__adicion",
     )
-    serializer_class = ProductoDetalleSerializer
-    
-    # 1. Permitir acceso anónimo
-    permission_classes = [permissions.AllowAny]
-    
-    # 2. Desactivar validación de autenticación global para este endpoint de catálogo público
-    authentication_classes = []
+
+    def get_serializer_class(self):
+        # Usar el serializador detallado para GET y el serializador estándar/edición para peticiones de modificación
+        if self.request.method == "GET":
+            return ProductoDetalleSerializer
+        return ProductoSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        # Importa el permiso correspondiente a tu proyecto para edición de productos (ej. EsPersonalDeMenu)
+        from .permissions import EsPersonalDeMenu
+        return [EsPersonalDeMenu()]
+
+    def get_authenticators(self):
+        if self.request.method == "GET":
+            return []
+        return super().get_authenticators()
