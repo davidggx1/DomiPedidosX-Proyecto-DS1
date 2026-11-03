@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion
+from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo
 
 # Rules for the product image
 TAMANO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
@@ -68,10 +68,46 @@ class CategoriaMenuSerializer(serializers.ModelSerializer):
         return nombre
 
 
-class InsumoOpcionSerializer(serializers.ModelSerializer):
+class InsumoSerializer(serializers.ModelSerializer):
+    """HU-77: catálogo de ingredientes (insumos) del restaurante."""
+
     class Meta:
         model = Insumo
-        fields = ["id", "nombre", "unidad_medida"]
+        fields = ["id", "nombre", "unidad_medida", "activo"]
+        extra_kwargs = {
+            "nombre": {
+                # La unicidad se valida abajo, con un mensaje en español.
+                "validators": [],
+                "error_messages": {
+                    "required": "El nombre del ingrediente es obligatorio.",
+                    "blank": "El nombre del ingrediente es obligatorio.",
+                    "max_length": "El nombre no puede superar los 100 caracteres.",
+                },
+            },
+            "unidad_medida": {
+                "error_messages": {
+                    "required": "Selecciona la unidad de medida.",
+                    "invalid_choice": "Unidad de medida no válida.",
+                }
+            },
+        }
+
+    def validate_nombre(self, value):
+        nombre = " ".join(value.split())
+        if not nombre:
+            raise serializers.ValidationError("El nombre del ingrediente es obligatorio.")
+
+        repetido = Insumo.objects.filter(nombre__iexact=nombre)
+        if self.instance is not None:
+            repetido = repetido.exclude(pk=self.instance.pk)
+        repetido = repetido.first()
+        if repetido is not None:
+            if repetido.activo:
+                raise serializers.ValidationError("Ya existe un ingrediente con este nombre.")
+            raise serializers.ValidationError(
+                "Ya existe un ingrediente eliminado con este nombre. Restáuralo en lugar de crear uno nuevo."
+            )
+        return nombre
 
 
 class ProductoOpcionSerializer(serializers.ModelSerializer):
@@ -196,5 +232,62 @@ class ProductoAdicionSerializer(serializers.ModelSerializer):
         if repetidas.exists():
             raise serializers.ValidationError(
                 {"adicion": "Esta adición ya está asignada al producto."}
+            )
+        return attrs
+
+
+class ProductoInsumoSerializer(serializers.ModelSerializer):
+    """HU-77: ingredientes de un producto y si el cliente puede quitarlos."""
+
+    insumo_nombre = serializers.CharField(source="insumo.nombre", read_only=True)
+    unidad_medida = serializers.CharField(source="insumo.unidad_medida", read_only=True)
+    insumo_activo = serializers.BooleanField(source="insumo.activo", read_only=True)
+    cantidad_necesaria = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+        error_messages={
+            "required": "La cantidad es obligatoria.",
+            "invalid": "Escribe una cantidad válida.",
+            "min_value": "La cantidad debe ser mayor que 0.",
+            "max_decimal_places": "Usa máximo 3 decimales.",
+        },
+    )
+
+    class Meta:
+        model = ProductoInsumo
+        fields = [
+            "id",
+            "insumo",
+            "insumo_nombre",
+            "unidad_medida",
+            "insumo_activo",
+            "cantidad_necesaria",
+            "es_excluible",
+        ]
+        extra_kwargs = {
+            "insumo": {
+                "error_messages": {
+                    "required": "Selecciona un ingrediente.",
+                    "null": "Selecciona un ingrediente.",
+                    "does_not_exist": "El ingrediente seleccionado no existe.",
+                }
+            },
+        }
+
+    def validate_insumo(self, insumo):
+        if not insumo.activo:
+            raise serializers.ValidationError("No se puede usar un ingrediente eliminado.")
+        return insumo
+
+    def validate(self, attrs):
+        producto = self.context["producto"]
+        insumo = attrs.get("insumo", getattr(self.instance, "insumo", None))
+        repetidos = ProductoInsumo.objects.filter(producto=producto, insumo=insumo)
+        if self.instance is not None:
+            repetidos = repetidos.exclude(pk=self.instance.pk)
+        if repetidos.exists():
+            raise serializers.ValidationError(
+                {"insumo": "Este ingrediente ya está en el producto."}
             )
         return attrs

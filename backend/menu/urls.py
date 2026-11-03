@@ -7,6 +7,7 @@ from .views import (
     InsumoViewSet,
     ProductoAdicionViewSet,
     ProductoImagenView,
+    ProductoInsumoViewSet,
     ProductoOpcionesView,
 )
 
@@ -17,6 +18,10 @@ router.register("insumos", InsumoViewSet, basename="insumo")
 
 producto_adiciones = ProductoAdicionViewSet.as_view({"get": "list", "post": "create"})
 producto_adicion_detalle = ProductoAdicionViewSet.as_view(
+    {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
+)
+producto_ingredientes = ProductoInsumoViewSet.as_view({"get": "list", "post": "create"})
+producto_ingrediente_detalle = ProductoInsumoViewSet.as_view(
     {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
 )
 
@@ -32,6 +37,16 @@ urlpatterns = [
         "productos/<int:producto_pk>/adiciones/<int:pk>/",
         producto_adicion_detalle,
         name="producto-adicion-detalle",
+    ),
+    path(
+        "productos/<int:producto_pk>/ingredientes/",
+        producto_ingredientes,
+        name="producto-ingredientes",
+    ),
+    path(
+        "productos/<int:producto_pk>/ingredientes/<int:pk>/",
+        producto_ingrediente_detalle,
+        name="producto-ingrediente-detalle",
     ),
     path("", include(router.urls)),
 ]

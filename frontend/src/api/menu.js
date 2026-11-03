@@ -1,6 +1,6 @@
 import api from './cliente.js'
 
-// Peticiones de la gestión del menú (HU-76). Cada función devuelve los datos de la respuesta.
+// Peticiones de la gestión del menú (HU-76 y HU-77). Cada función devuelve los datos de la respuesta.
 
 // activa: true (solo activas), false (solo eliminadas) o undefined (todas).
 export async function listarAdiciones({ activa } = {}) {
@@ -24,9 +24,26 @@ export async function eliminarAdicion(id) {
   await api.delete(`/menu/adiciones/${id}/`)
 }
 
-export async function listarInsumos() {
-  const { data } = await api.get('/menu/insumos/')
+// activo: true (solo activos, por defecto), false (solo eliminados) o 'todos'.
+export async function listarInsumos({ activo } = {}) {
+  const params = activo === undefined ? {} : { activo }
+  const { data } = await api.get('/menu/insumos/', { params })
   return data
+}
+
+export async function crearInsumo(datos) {
+  const { data } = await api.post('/menu/insumos/', datos)
+  return data
+}
+
+export async function actualizarInsumo(id, datos) {
+  const { data } = await api.patch(`/menu/insumos/${id}/`, datos)
+  return data
+}
+
+// Borrado lógico: el ingrediente queda inactivo y se puede restaurar.
+export async function eliminarInsumo(id) {
+  await api.delete(`/menu/insumos/${id}/`)
 }
 
 export async function listarProductosOpciones() {
@@ -46,4 +63,23 @@ export async function asignarAdicion(productoId, datos) {
 
 export async function quitarAdicionProducto(productoId, vinculoId) {
   await api.delete(`/menu/productos/${productoId}/adiciones/${vinculoId}/`)
+}
+
+export async function listarIngredientesProducto(productoId) {
+  const { data } = await api.get(`/menu/productos/${productoId}/ingredientes/`)
+  return data
+}
+
+export async function agregarIngrediente(productoId, datos) {
+  const { data } = await api.post(`/menu/productos/${productoId}/ingredientes/`, datos)
+  return data
+}
+
+export async function actualizarIngrediente(productoId, vinculoId, datos) {
+  const { data } = await api.patch(`/menu/productos/${productoId}/ingredientes/${vinculoId}/`, datos)
+  return data
+}
+
+export async function quitarIngrediente(productoId, vinculoId) {
+  await api.delete(`/menu/productos/${productoId}/ingredientes/${vinculoId}/`)
 }

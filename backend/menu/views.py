@@ -5,14 +5,15 @@ from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion
+from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo
 from .permissions import EsPersonalDeMenu
 from .serializers import (
     AdicionSerializer,
     CategoriaMenuSerializer,
-    InsumoOpcionSerializer,
+    InsumoSerializer,
     ProductoAdicionSerializer,
     ProductoImagenSerializer,
+    ProductoInsumoSerializer,
     ProductoOpcionSerializer,
 )
 
@@ -95,12 +96,36 @@ class AdicionViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["activa"])
 
 
-class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
-    """Insumos activos, para elegir cuál consume una adición. HU-77 agrega su gestión."""
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "activo",
+                str,
+                description="true (por defecto): solo activos · false: solo eliminados · todos: ambos.",
+            )
+        ]
+    )
+)
+class InsumoViewSet(viewsets.ModelViewSet):
+    """HU-77: catálogo de ingredientes (insumos). Eliminar es borrado lógico."""
 
-    serializer_class = InsumoOpcionSerializer
+    serializer_class = InsumoSerializer
     permission_classes = [EsPersonalDeMenu]
-    queryset = Insumo.objects.filter(activo=True).order_by("nombre")
+
+    def get_queryset(self):
+        insumos = Insumo.objects.order_by("nombre")
+        # El filtro aplica solo al listado, para poder editar o restaurar un eliminado.
+        if self.action == "list":
+            activo = self.request.query_params.get("activo", "true").lower()
+            if activo != "todos":
+                insumos = insumos.filter(activo=activo in ("true", "1"))
+        return insumos
+
+    def perform_destroy(self, instance):
+        # Borrado lógico: adiciones e inventario siguen apuntando a este insumo.
+        instance.activo = False
+        instance.save(update_fields=["activo"])
 
 
 class ProductoOpcionesView(generics.ListAPIView):
@@ -112,7 +137,23 @@ class ProductoOpcionesView(generics.ListAPIView):
     pagination_class = None
 
 
-class ProductoAdicionViewSet(viewsets.ModelViewSet):
+class DelProductoMixin:
+    """Comportamiento común de las rutas /api/menu/productos/<producto_pk>/..."""
+
+    def get_producto(self):
+        return get_object_or_404(Producto, pk=self.kwargs["producto_pk"])
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        if "producto_pk" in self.kwargs:
+            contexto["producto"] = self.get_producto()
+        return contexto
+
+    def perform_create(self, serializer):
+        serializer.save(producto=self.get_producto())
+
+
+class ProductoAdicionViewSet(DelProductoMixin, viewsets.ModelViewSet):
     """
     Adiciones que ofrece un producto: /api/menu/productos/<id>/adiciones/.
 
@@ -123,9 +164,6 @@ class ProductoAdicionViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoAdicionSerializer
     permission_classes = [EsPersonalDeMenu]
 
-    def get_producto(self):
-        return get_object_or_404(Producto, pk=self.kwargs["producto_pk"])
-
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ProductoAdicion.objects.none()
@@ -135,11 +173,23 @@ class ProductoAdicionViewSet(viewsets.ModelViewSet):
             .order_by("adicion__nombre")
         )
 
-    def get_serializer_context(self):
-        contexto = super().get_serializer_context()
-        if "producto_pk" in self.kwargs:
-            contexto["producto"] = self.get_producto()
-        return contexto
 
-    def perform_create(self, serializer):
-        serializer.save(producto=self.get_producto())
+class ProductoInsumoViewSet(DelProductoMixin, viewsets.ModelViewSet):
+    """
+    HU-77: ingredientes de un producto: /api/menu/productos/<id>/ingredientes/.
+
+    Los cambios se ven en el menú al instante. Los pedidos no guardan la receta
+    del producto, así que editar o quitar ingredientes no altera pedidos previos.
+    """
+
+    serializer_class = ProductoInsumoSerializer
+    permission_classes = [EsPersonalDeMenu]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ProductoInsumo.objects.none()
+        return (
+            ProductoInsumo.objects.filter(producto=self.get_producto())
+            .select_related("insumo")
+            .order_by("insumo__nombre")
+        )
