@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 from .catalogo import MenuSedeView, SedesMenuView
+from .disponibilidad import DisponibilidadProductoView, ValidarCarritoView
 
 from .views import (
     AdicionViewSet,
@@ -33,6 +34,16 @@ urlpatterns = [
     path("productos-opciones/", ProductoOpcionesView.as_view(), name="producto-opciones"),
     path("sedes/", SedesMenuView.as_view(), name="menu-sedes"),
     path("sedes/<int:sede_pk>/menu/", MenuSedeView.as_view(), name="menu-sede"),
+    path(
+        "sedes/<int:sede_pk>/validar-carrito/",
+        ValidarCarritoView.as_view(),
+        name="validar-carrito",
+    ),
+    path(
+        "productos/<int:pk>/disponibilidad/",
+        DisponibilidadProductoView.as_view(),
+        name="producto-disponibilidad",
+    ),
     path(
         "productos/<int:producto_pk>/adiciones/",
         producto_adiciones,

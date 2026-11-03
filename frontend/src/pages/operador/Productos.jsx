@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listarCategorias, listarProductos, listarSedesMenu } from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
 import { formatearPrecio } from '../../utils/formato.js'
+import DisponibilidadProducto from '../../components/menu/DisponibilidadProducto.jsx'
 import FormularioProducto from '../../components/menu/FormularioProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
@@ -19,6 +20,7 @@ export default function Productos() {
   const [recarga, setRecarga] = useState(0)
   const [editando, setEditando] = useState(null)
   const [mensaje, setMensaje] = useState(null)
+  const [conDisponibilidad, setConDisponibilidad] = useState(null)
 
   // Listado: se recarga al cambiar el filtro o después de guardar.
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function Productos() {
               {productos.map((producto) => (
                 <li
                   key={producto.id}
-                  className={`flex flex-col gap-3 rounded-lg border bg-fondo p-3 sm:flex-row sm:items-center ${
+                  className={`flex flex-col gap-3 rounded-lg border bg-fondo p-3 sm:flex-row sm:flex-wrap sm:items-center ${
                     editando?.id === producto.id ? 'border-marca' : 'border-borde'
                   }`}
                 >
@@ -161,14 +163,33 @@ export default function Productos() {
                     {!producto.activo && <p className="text-sm text-aviso">Inactivo</p>}
                   </div>
 
-                  <Boton
-                    variante="secundario"
-                    onClick={() => empezarEdicion(producto)}
-                    aria-label={`Editar ${producto.nombre}`}
-                    className="self-start sm:self-center"
-                  >
-                    Editar
-                  </Boton>
+                  <div className="flex gap-2 self-start sm:self-center">
+                    <Boton
+                      variante="secundario"
+                      onClick={() => setConDisponibilidad((actual) => (actual === producto.id ? null : producto.id))}
+                      aria-expanded={conDisponibilidad === producto.id}
+                      aria-controls={`disponibilidad-${producto.id}`}
+                      aria-label={`Disponibilidad de ${producto.nombre}`}
+                    >
+                      Disponibilidad
+                    </Boton>
+                    <Boton
+                      variante="secundario"
+                      onClick={() => empezarEdicion(producto)}
+                      aria-label={`Editar ${producto.nombre}`}
+                    >
+                      Editar
+                    </Boton>
+                  </div>
+
+                  {conDisponibilidad === producto.id && (
+                    <div id={`disponibilidad-${producto.id}`} className="basis-full">
+                      <DisponibilidadProducto
+                        producto={producto}
+                        alCambiar={() => setRecarga((valor) => valor + 1)}
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
