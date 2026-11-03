@@ -10,10 +10,12 @@ from .views import (
     ProductoImagenView,
     ProductoInsumoViewSet,
     ProductoOpcionesView,
+    ProductoViewSet,
 )
 
 router = SimpleRouter()
 router.register("categorias", CategoriaMenuViewSet, basename="categoria")
+router.register("productos", ProductoViewSet, basename="producto")
 router.register("adiciones", AdicionViewSet, basename="adicion")
 router.register("insumos", InsumoViewSet, basename="insumo")
 
