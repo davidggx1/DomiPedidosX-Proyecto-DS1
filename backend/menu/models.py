@@ -93,6 +93,10 @@ class ProductoTamano(models.Model):
                 fields=["producto", "nombre"],
                 name="producto_tamano_nombre_unico",
             ),
+            models.CheckConstraint(
+                condition=Q(precio_adicional__gte=0),
+                name="producto_tamano_precio_no_negativo",
+            ),
         ]
 
     def __str__(self):

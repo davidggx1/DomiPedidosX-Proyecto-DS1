@@ -1,11 +1,11 @@
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo
+from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo, ProductoTamano
 from .permissions import EsPersonalDeMenu
 from .serializers import (
     AdicionSerializer,
@@ -15,6 +15,7 @@ from .serializers import (
     ProductoDetalleSerializer,
     ProductoImagenSerializer,
     ProductoInsumoSerializer,
+    ProductoTamanoSerializer,
     ProductoOpcionSerializer,
     ProductoSerializer,
 )
@@ -64,7 +65,7 @@ class ProductoViewSet(
         if self.action == "retrieve":
             # Optimización SQL específica para la vista de detalle
             return Producto.objects.select_related("categoria").prefetch_related(
-                "tamanos",
+                Prefetch("tamanos", queryset=ProductoTamano.objects.filter(activo=True)),
                 "insumos_requeridos__insumo",
                 "adiciones_disponibles__adicion",
             )
@@ -82,6 +83,37 @@ class ProductoViewSet(
             if activo is not None:
                 productos = productos.filter(activo=activo.lower() in ("true", "1"))
         return productos
+
+
+class ProductoTamanoViewSet(viewsets.ModelViewSet):
+    """HU-75: tamaños asociados a un producto; DELETE es lógico."""
+
+    serializer_class = ProductoTamanoSerializer
+    permission_classes = [EsPersonalDeMenu]
+    http_method_names = ["get", "post", "patch", "put", "delete", "head", "options"]
+
+    def get_producto(self):
+        return get_object_or_404(Producto, pk=self.kwargs["producto_pk"])
+
+    def get_queryset(self):
+        tamanos = ProductoTamano.objects.filter(producto=self.get_producto()).order_by("id")
+        if self.action == "list":
+            activo = self.request.query_params.get("activo", "true").lower()
+            if activo != "todos":
+                tamanos = tamanos.filter(activo=activo in ("true", "1"))
+        return tamanos
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        contexto["producto"] = self.get_producto()
+        return contexto
+
+    def perform_create(self, serializer):
+        serializer.save(producto=self.get_producto())
+
+    def perform_destroy(self, instance):
+        instance.activo = False
+        instance.save(update_fields=["activo"])
 
 
 class ProductoImagenView(generics.GenericAPIView):

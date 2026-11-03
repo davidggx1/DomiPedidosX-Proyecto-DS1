@@ -7,6 +7,7 @@ import CampoTexto from '../ui/CampoTexto.jsx'
 import Casilla from '../ui/Casilla.jsx'
 import Selector from '../ui/Selector.jsx'
 import SelectorImagen from './SelectorImagen.jsx'
+import TamanosProducto from './TamanosProducto.jsx'
 
 const VACIO = {
   nombre: '',
@@ -145,7 +146,8 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
   }
 
   return (
-    <form noValidate onSubmit={enviar} className="flex flex-col gap-4">
+    <>
+      <form noValidate onSubmit={enviar} className="flex flex-col gap-4">
       <h2 className="text-lg font-bold">
         {esEdicion ? `Editar "${producto.nombre}"` : 'Nuevo producto'}
       </h2>
@@ -275,6 +277,8 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
           </Boton>
         )}
       </div>
-    </form>
+      </form>
+      {esEdicion && <TamanosProducto productoId={producto.id} />}
+    </>
   )
 }
