@@ -3,8 +3,9 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegistroClienteSerializer
+from .serializers import LoginSerializer, RegistroClienteSerializer
 
 
 class RegistroClienteView(APIView):
@@ -21,3 +22,6 @@ class RegistroClienteView(APIView):
             {"detail": "Cuenta creada correctamente.", "email": cliente.usuario.email},
             status=status.HTTP_201_CREATED,
         )
+
+class LoginView(TokenObtainPairView):
+    serializer_class = LoginSerializer
