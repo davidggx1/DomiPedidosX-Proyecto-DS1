@@ -6,7 +6,7 @@ from rest_framework import serializers
 from inventario.models import InventarioProducto
 from sedes.models import Sede
 
-from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo
+from .models import Adicion, CategoriaMenu, Insumo, Producto, ProductoAdicion, ProductoInsumo, ProductoTamano
 
 # Rules for the product image (HU-11: only JPG or PNG up to 2 MB)
 TAMANO_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
@@ -451,3 +451,59 @@ class ProductoInsumoSerializer(serializers.ModelSerializer):
                 {"insumo": "Este ingrediente ya está en el producto."}
             )
         return attrs
+
+class ProductoTamanoDetalleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductoTamano
+        fields = ["id", "nombre", "precio_adicional", "activo"]
+
+
+class ProductoInsumoDetalleSerializer(serializers.ModelSerializer):
+    nombre = serializers.CharField(source="insumo.nombre", read_only=True)
+    unidad_medida = serializers.CharField(source="insumo.unidad_medida", read_only=True)
+
+    class Meta:
+        model = ProductoInsumo
+        fields = ["id", "insumo", "nombre", "unidad_medida", "cantidad_necesaria", "es_excluible"]
+
+
+class ProductoAdicionDetalleSerializer(serializers.ModelSerializer):
+    nombre = serializers.CharField(source="adicion.nombre", read_only=True)
+    descripcion = serializers.CharField(source="adicion.descripcion", read_only=True)
+    precio = serializers.DecimalField(
+        source="adicion.precio", max_digits=10, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = ProductoAdicion
+        fields = ["id", "adicion", "nombre", "descripcion", "precio", "max_cantidad"]
+
+
+class ProductoDetalleSerializer(serializers.ModelSerializer):
+    categoria_nombre = serializers.CharField(source="categoria.nombre", read_only=True)
+    disponible = serializers.BooleanField(source="activo", read_only=True)
+    tamanos = ProductoTamanoDetalleSerializer(many=True, read_only=True)
+    ingredientes = ProductoInsumoDetalleSerializer(
+        source="insumos_requeridos", many=True, read_only=True
+    )
+    adiciones = ProductoAdicionDetalleSerializer(
+        source="adiciones_disponibles", many=True, read_only=True
+    )
+
+    class Meta:
+        model = Producto
+        fields = [
+            "id",
+            "nombre",
+            "descripcion",
+            "imagen_url",
+            "imagen",
+            "precio_base",
+            "tiempo_preparacion",
+            "disponible",
+            "categoria",
+            "categoria_nombre",
+            "tamanos",
+            "ingredientes",
+            "adiciones",
+        ]

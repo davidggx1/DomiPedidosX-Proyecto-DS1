@@ -12,6 +12,7 @@ from .serializers import (
     CategoriaMenuSerializer,
     InsumoSerializer,
     ProductoAdicionSerializer,
+    ProductoDetalleSerializer,
     ProductoImagenSerializer,
     ProductoInsumoSerializer,
     ProductoOpcionSerializer,
@@ -39,15 +40,35 @@ class ProductoViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    HU-11: listar, crear y editar productos del menú (sin borrar a propósito:
-    los pedidos los referencian; para retirarlo se marca activo=false).
+    HU-11 & HU-20: listar, crear, editar productos y consulta pública de detalle.
     """
 
     serializer_class = ProductoSerializer
     permission_classes = [EsPersonalDeMenu]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
+    def get_serializer_class(self):
+        # HU-20: GET /api/menu/productos/<id>/ usa el serializador detallado con ingredientes/adiciones
+        if self.action == "retrieve":
+            return ProductoDetalleSerializer
+        return ProductoSerializer
+
+    def get_permissions(self):
+        # HU-20: El detalle GET de un producto es público para cualquier cliente
+        if self.action == "retrieve":
+            return [permissions.AllowAny()]
+        # HU-11: Crear, listar y editar requieren permisos administrativos
+        return [EsPersonalDeMenu()]
+
     def get_queryset(self):
+        if self.action == "retrieve":
+            # Optimización SQL específica para la vista de detalle
+            return Producto.objects.select_related("categoria").prefetch_related(
+                "tamanos",
+                "insumos_requeridos__insumo",
+                "adiciones_disponibles__adicion",
+            )
+
         productos = (
             Producto.objects.select_related("categoria")
             .prefetch_related("inventarios")
