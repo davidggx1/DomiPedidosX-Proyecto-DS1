@@ -82,6 +82,8 @@ class Empleado(models.Model):
         "sedes.Sede",
         on_delete=models.PROTECT,
         related_name="empleados",
+        null=True,  # Permite None únicamente si es Administrador
+        blank=True,
     )
     tipo_documento = models.CharField(
         max_length=3,
