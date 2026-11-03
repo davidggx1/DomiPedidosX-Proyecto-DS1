@@ -5,7 +5,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import LoginSerializer, RegistroClienteSerializer
+from .permissions import rol_requerido
+from .roles import ROLES_PERSONAL, obtener_rol, obtener_sede
+from .serializers import LoginPersonalSerializer, LoginSerializer, RegistroClienteSerializer
 
 
 class RegistroClienteView(APIView):
@@ -25,3 +27,23 @@ class RegistroClienteView(APIView):
 
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
+
+class LoginPersonalView(TokenObtainPairView):
+    serializer_class = LoginPersonalSerializer
+
+
+class PerfilPersonalView(APIView):
+    """Rol y sede del usuario autenticado; el frontend lo usa para armar el menú."""
+
+    permission_classes = [rol_requerido(*ROLES_PERSONAL)]
+
+    @extend_schema(responses={200: None})
+    def get(self, request):
+        sede = obtener_sede(request.user)
+        return Response(
+            {
+                "email": request.user.email,
+                "rol": obtener_rol(request.user),
+                "sede_id": sede.pk if sede else None,
+            }
+        )
