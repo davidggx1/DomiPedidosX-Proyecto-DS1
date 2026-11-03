@@ -1,6 +1,7 @@
 Django>=5.2,<5.3
 psycopg[binary]>=3.3,<4.0
 python-dotenv>=1.0,<2.0
+Pillow>=11.3,<13.0  # necessary for ImageField (Products pictures)
 
 # API
 djangorestframework>=3.16,<4.0
