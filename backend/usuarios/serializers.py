@@ -1,3 +1,4 @@
+import re
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers
@@ -12,13 +13,30 @@ class RegistroClienteSerializer(serializers.Serializer):
     num_documento = serializers.CharField(max_length=12)
     nombres = serializers.CharField(max_length=100)
     apellidos = serializers.CharField(max_length=100)
-    celular = serializers.CharField(max_length=15)
+    celular = serializers.CharField(max_length=10)
     fecha_nacimiento = serializers.DateField()
 
     def validate_email(self, value):
         value = value.lower()
         if Usuario.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Ya existe una cuenta con este correo.")
+        return value
+
+    def validate_celular(self, value):
+        if not value:
+            raise serializers.ValidationError("El teléfono celular es obligatorio.")
+
+        # Validación de 10 dígitos numéricos
+        if not re.match(r"^\d{10}$", value):
+            raise serializers.ValidationError(
+                "El número de teléfono debe contener exactamente 10 dígitos numéricos."
+            )
+
+        # Validación de unicidad
+        if Cliente.objects.filter(celular=value).exists():
+            raise serializers.ValidationError(
+                "Este número de teléfono ya está registrado en otra cuenta."
+            )
         return value
 
     def validate_password(self, value):
