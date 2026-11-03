@@ -8,6 +8,9 @@ from sedes.views import EsAdministradorPermission
 from .models import Empleado
 
 from .serializers import LoginSerializer, RegistroClienteSerializer, RegistroEmpleadoSerializer, EmpleadoListSerializer
+from .permissions import rol_requerido
+from .roles import ROLES_PERSONAL, obtener_rol, obtener_sede
+from .serializers import LoginPersonalSerializer
 
 
 class RegistroClienteView(APIView):
@@ -62,3 +65,23 @@ class EmpleadoManagementView(APIView):
 
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
+
+class LoginPersonalView(TokenObtainPairView):
+    serializer_class = LoginPersonalSerializer
+
+
+class PerfilPersonalView(APIView):
+    """Rol y sede del usuario autenticado; el frontend lo usa para armar el menú."""
+
+    permission_classes = [rol_requerido(*ROLES_PERSONAL)]
+
+    @extend_schema(responses={200: None})
+    def get(self, request):
+        sede = obtener_sede(request.user)
+        return Response(
+            {
+                "email": request.user.email,
+                "rol": obtener_rol(request.user),
+                "sede_id": sede.pk if sede else None,
+            }
+        )

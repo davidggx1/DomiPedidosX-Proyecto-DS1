@@ -11,6 +11,7 @@ from rest_framework import serializers
 
 from .models import Cliente, TipoDocumento, Usuario, Empleado, Repartidor
 from sedes.models import Sede
+from .roles import ADMINISTRADOR, obtener_rol, obtener_sede
 
 User = get_user_model()
 
@@ -217,4 +218,14 @@ class LoginSerializer(TokenObtainPairSerializer):
             raise AuthenticationFailed("La cuenta está inactiva.", "cuenta_inactiva")
         return super().validate(attrs)
 
-        
+class LoginPersonalSerializer(LoginSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)  # credenciales, cuenta activa, tokens
+        rol = obtener_rol(self.user)
+        sede = obtener_sede(self.user)
+        # Un cliente, o un empleado sin sede, no entra por aquí (mensaje genérico).
+        if rol is None or (rol != ADMINISTRADOR and sede is None):
+            raise AuthenticationFailed("Credenciales inválidas.", "no_active_account")
+        data["rol"] = rol
+        data["sede_id"] = sede.pk if sede else None
+        return data        
