@@ -1,3 +1,6 @@
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers
@@ -45,3 +48,21 @@ class RegistroClienteSerializer(serializers.Serializer):
             username=email, email=email, password=password
         )
         return Cliente.objects.create(usuario=usuario, **validated_data)
+
+
+class LoginSerializer(TokenObtainPairSerializer):
+    # Mensaje genérico: no revela si falló el correo o la contraseña.
+    default_error_messages = {"no_active_account": "Credenciales inválidas."}
+
+    def validate(self, attrs):
+        Usuario = get_user_model()
+        email = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+        usuario = Usuario.objects.filter(email__iexact=email).first()
+        # Solo se avisa "inactiva" si la contraseña es correcta, para no
+        # revelar a un extraño qué correos existen.
+        if usuario and not usuario.is_active and usuario.check_password(password):
+            raise AuthenticationFailed("La cuenta está inactiva.", "cuenta_inactiva")
+        return super().validate(attrs)
+
+        
