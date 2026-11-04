@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { ROLES } from './auth/roles.js'
 import RutaProtegida from './auth/RutaProtegida.jsx'
 import Layout from './components/layout/Layout.jsx'
+import Carrito from './pages/cliente/Carrito.jsx'
 import CategoriasMenu from './pages/CategoriasMenu.jsx'
 import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="direcciones" element={<Direcciones />} />
           <Route path="mis-pedidos" element={<EnConstruccion titulo="Mis pedidos" historias="HU-26, HU-47" />} />
           <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-07" />} />
+          <Route path="carrito" element={<Carrito />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>

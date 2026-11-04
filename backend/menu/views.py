@@ -61,13 +61,23 @@ class ProductoViewSet(
         # HU-11: Crear, listar y editar requieren permisos administrativos
         return [EsPersonalDeMenu()]
 
+    def perform_authentication(self, request):
+        # HU-21: el detalle es público, igual que el menú: un token vencido no debe bloquearlo.
+        if self.action == "retrieve":
+            return
+        super().perform_authentication(request)
+
     def get_queryset(self):
         if self.action == "retrieve":
             # Optimización SQL específica para la vista de detalle
             return Producto.objects.select_related("categoria").prefetch_related(
                 Prefetch("tamanos", queryset=ProductoTamano.objects.filter(activo=True)),
                 "insumos_requeridos__insumo",
-                "adiciones_disponibles__adicion",
+                # HU-21: el cliente solo ve las adiciones que puede agregar al carrito.
+                Prefetch(
+                    "adiciones_disponibles",
+                    queryset=ProductoAdicion.objects.filter(adicion__activa=True).select_related("adicion"),
+                ),
             )
 
         productos = (

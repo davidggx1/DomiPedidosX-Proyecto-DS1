@@ -12,7 +12,7 @@ export default function Casilla({ etiqueta, descripcion, id, className = '', ...
         id={idCampo}
         type="checkbox"
         aria-describedby={descripcion ? idDescripcion : undefined}
-        className="mt-1 h-5 w-5 shrink-0 accent-marca"
+        className="mt-1 h-5 w-5 shrink-0 accent-marca disabled:cursor-not-allowed disabled:opacity-50"
         {...props}
       />
       <div>

@@ -164,6 +164,21 @@ export async function cambiarDisponibilidad(productoId, sedeId, disponible) {
   return data
 }
 
+// --- Carrito con productos personalizados (HU-21) ---
+
+// Detalle público (HU-20): { ..., precio_base, tamanos, ingredientes, adiciones }.
+export async function obtenerDetalleProducto(productoId) {
+  const { data } = await api.get(`/menu/productos/${productoId}/`)
+  return data
+}
+
+// linea = { producto, tamano, adiciones: [{ adicion, cantidad }], exclusiones: [ids], cantidad }.
+// Devuelve { precio_unitario, subtotal } o un 400 con el motivo por campo.
+export async function validarLineaCarrito(sedeId, linea) {
+  const { data } = await api.post(`/menu/sedes/${sedeId}/carrito/linea/`, linea)
+  return data
+}
+
 // Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }] }.
 export async function validarCarrito(sedeId, productoIds) {
   const { data } = await api.post(`/menu/sedes/${sedeId}/validar-carrito/`, {
