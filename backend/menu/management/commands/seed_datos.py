@@ -117,6 +117,7 @@ PRODUCTOS = [
         "tiempo_preparacion": 25,
         # (nombre, diferencia sobre el precio base)
         "tamanos": [("Personal", "0"), ("Mediana", "8000"), ("Familiar", "20000")],
+
         "ingredientes": [
             ("Masa de pizza", "1", False),
             ("Salsa de tomate", "80", False),
@@ -131,7 +132,9 @@ PRODUCTOS = [
         "descripcion": "Salsa de tomate, queso y tomate.",
         "precio_base": "21000",
         "tiempo_preparacion": 25,
+
         "tamanos": [("Personal", "0"), ("Mediana", "7000"), ("Familiar", "17000")],
+
         "ingredientes": [
             ("Masa de pizza", "1", False),
             ("Salsa de tomate", "80", False),
