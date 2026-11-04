@@ -9,8 +9,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Cliente, TipoDocumento, Usuario, Empleado, Repartidor
-from sedes.models import Sede
+from .models import Cliente, DireccionEntrega, TipoDocumento, Usuario, Empleado, Repartidor
+from sedes.models import Ciudad, Sede
 from .roles import ADMINISTRADOR, obtener_rol, obtener_sede
 
 User = get_user_model()
@@ -228,4 +228,49 @@ class LoginPersonalSerializer(LoginSerializer):
             raise AuthenticationFailed("Credenciales inválidas.", "no_active_account")
         data["rol"] = rol
         data["sede_id"] = sede.pk if sede else None
-        return data        
+        return data
+
+
+MENSAJE_SIN_COORDENADAS = "La dirección debe tener coordenadas: ubícala en el mapa."
+
+
+class DireccionEntregaSerializer(serializers.ModelSerializer):
+    """HU-06: dirección del cliente. Sin coordenadas no se acepta."""
+
+    alias = serializers.CharField(max_length=50)
+    latitud = serializers.FloatField(
+        min_value=-90,
+        max_value=90,
+        error_messages={"required": MENSAJE_SIN_COORDENADAS, "null": MENSAJE_SIN_COORDENADAS},
+    )
+    longitud = serializers.FloatField(
+        min_value=-180,
+        max_value=180,
+        error_messages={"required": MENSAJE_SIN_COORDENADAS, "null": MENSAJE_SIN_COORDENADAS},
+    )
+
+    class Meta:
+        model = DireccionEntrega
+        fields = ["id", "alias", "direccion", "barrio", "latitud", "longitud", "es_principal"]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        # Por ahora el negocio opera en una sola ciudad (Cali).
+        ciudad = Ciudad.objects.order_by("id").first()
+        if ciudad is None:
+            raise serializers.ValidationError({"detail": "No hay ciudades configuradas."})
+        cliente = self.context["request"].user.cliente
+        self._desmarcar_principal(cliente, validated_data)
+        return DireccionEntrega.objects.create(cliente=cliente, ciudad=ciudad, **validated_data)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        self._desmarcar_principal(instance.cliente, validated_data, excluir=instance.pk)
+        return super().update(instance, validated_data)
+
+    def _desmarcar_principal(self, cliente, validated_data, excluir=None):
+        # Solo una principal por cliente: la nueva reemplaza a la anterior.
+        if validated_data.get("es_principal"):
+            cliente.direcciones_entrega.filter(es_principal=True).exclude(pk=excluir).update(
+                es_principal=False
+            )
