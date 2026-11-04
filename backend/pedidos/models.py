@@ -83,6 +83,7 @@ class Pedido(models.Model):
     entrega_alias = models.CharField(max_length=50, blank=True)
     entrega_direccion = models.CharField(max_length=255, blank=True)
     entrega_barrio = models.CharField(max_length=50, blank=True)
+    entrega_indicaciones = models.CharField(max_length=200, blank=True)
     entrega_latitud = models.FloatField(null=True, blank=True)
     entrega_longitud = models.FloatField(null=True, blank=True)
     # Zona usada al validar la cobertura (tarifa, mínimo, reportes por zona).
@@ -122,6 +123,7 @@ class Pedido(models.Model):
         self.entrega_alias = direccion.alias
         self.entrega_direccion = direccion.direccion
         self.entrega_barrio = direccion.barrio
+        self.entrega_indicaciones = direccion.indicaciones
         self.entrega_latitud = direccion.latitud
         self.entrega_longitud = direccion.longitud
 

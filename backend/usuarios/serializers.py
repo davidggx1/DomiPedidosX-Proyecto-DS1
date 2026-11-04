@@ -251,7 +251,9 @@ class DireccionEntregaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DireccionEntrega
-        fields = ["id", "alias", "direccion", "barrio", "latitud", "longitud", "es_principal"]
+        fields = [
+            "id", "alias", "direccion", "barrio", "indicaciones", "latitud", "longitud", "es_principal",
+        ]
 
     @transaction.atomic
     def create(self, validated_data):

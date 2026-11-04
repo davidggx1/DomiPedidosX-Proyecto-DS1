@@ -32,7 +32,7 @@ def url(direccion):
 def datos(**cambios):
     base = {
         "alias": "Casa", "direccion": "Calle 5 # 38-20", "barrio": "San Fernando",
-        "latitud": 3.4372, "longitud": -76.5410,
+        "indicaciones": "Apto 301, torre B", "latitud": 3.4372, "longitud": -76.5410,
     }
     base.update(cambios)
     return base
@@ -112,6 +112,25 @@ def test_alias_es_obligatorio_y_barrio_opcional(api_ana):
     sin_barrio = datos()
     del sin_barrio["barrio"]
     assert api_ana.post(URL, sin_barrio, format="json").status_code == 201
+
+
+def test_indicaciones_son_opcionales_y_se_guardan(api_ana):
+    sin_indicaciones = datos()
+    del sin_indicaciones["indicaciones"]
+    respuesta = api_ana.post(URL, sin_indicaciones, format="json")
+    assert respuesta.status_code == 201
+    assert respuesta.data["indicaciones"] == ""
+
+    respuesta = api_ana.post(URL, datos(alias="Oficina"), format="json")
+    assert respuesta.status_code == 201
+    assert DireccionEntrega.objects.get(pk=respuesta.data["id"]).indicaciones == "Apto 301, torre B"
+
+
+def test_indicaciones_tienen_limite_de_largo(api_ana):
+    respuesta = api_ana.post(URL, datos(indicaciones="x" * 201), format="json")
+
+    assert respuesta.status_code == 400
+    assert "indicaciones" in respuesta.data
 
 
 # --- Listar ------------------------------------------------------------------
@@ -256,14 +275,16 @@ def copia_de(pedido):
     pedido.refresh_from_db()
     return (
         pedido.entrega_alias, pedido.entrega_direccion, pedido.entrega_barrio,
-        pedido.entrega_latitud, pedido.entrega_longitud,
+        pedido.entrega_indicaciones, pedido.entrega_latitud, pedido.entrega_longitud,
     )
 
 
 def test_pedido_copia_la_direccion(pedido_con_direccion):
     pedido, _ = pedido_con_direccion
 
-    assert copia_de(pedido) == ("Casa", "Calle 5 # 38-20", "San Fernando", 3.4372, -76.5410)
+    assert copia_de(pedido) == (
+        "Casa", "Calle 5 # 38-20", "San Fernando", "Apto 301, torre B", 3.4372, -76.5410,
+    )
 
 
 def test_editar_direccion_no_altera_pedido_realizado(api_ana, pedido_con_direccion):
@@ -272,7 +293,10 @@ def test_editar_direccion_no_altera_pedido_realizado(api_ana, pedido_con_direcci
 
     api_ana.patch(
         url(direccion),
-        {"alias": "Oficina", "direccion": "Av. 6N # 20-10", "latitud": 3.46, "longitud": -76.52},
+        {
+            "alias": "Oficina", "direccion": "Av. 6N # 20-10", "indicaciones": "Local 2",
+            "latitud": 3.46, "longitud": -76.52,
+        },
         format="json",
     )
 
