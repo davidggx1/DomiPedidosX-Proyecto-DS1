@@ -12,6 +12,7 @@ import NoEncontrada from './pages/NoEncontrada.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
 import Productos from './pages/operador/Productos.jsx'
+import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
@@ -27,8 +28,9 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.CLIENTE]} />}>
           <Route path="menu" element={<Menu />} />
+          <Route path="direcciones" element={<Direcciones />} />
           <Route path="mis-pedidos" element={<EnConstruccion titulo="Mis pedidos" historias="HU-26, HU-47" />} />
-          <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-06, HU-07" />} />
+          <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-07" />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>

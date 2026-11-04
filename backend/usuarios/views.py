@@ -1,16 +1,16 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import status, permissions
+from rest_framework import permissions, status, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from sedes.views import EsAdministradorPermission
-from .models import Empleado
+from .models import DireccionEntrega, Empleado
 
 from .serializers import LoginSerializer, RegistroClienteSerializer, RegistroEmpleadoSerializer, EmpleadoListSerializer
-from .permissions import rol_requerido
+from .permissions import EsCliente, rol_requerido
 from .roles import ROLES_PERSONAL, obtener_rol, obtener_sede
-from .serializers import LoginPersonalSerializer
+from .serializers import DireccionEntregaSerializer, LoginPersonalSerializer
 
 
 class RegistroClienteView(APIView):
@@ -85,3 +85,23 @@ class PerfilPersonalView(APIView):
                 "sede_id": sede.pk if sede else None,
             }
         )
+
+
+class DireccionEntregaViewSet(viewsets.ModelViewSet):
+    """HU-06: el cliente gestiona solo sus direcciones. Eliminar es borrado lógico."""
+
+    serializer_class = DireccionEntregaSerializer
+    permission_classes = [EsCliente]
+    http_method_names = ["get", "post", "patch", "delete"]
+
+    def get_queryset(self):
+        # Las ajenas no aparecen: responden 404 sin revelar que existen.
+        return DireccionEntrega.objects.filter(
+            cliente=self.request.user.cliente, activa=True
+        ).order_by("-es_principal", "alias", "id")
+
+    def perform_destroy(self, instance):
+        # Los pedidos guardan su propia copia de la dirección, así que no cambian.
+        instance.activa = False
+        instance.es_principal = False
+        instance.save(update_fields=["activa", "es_principal"])
