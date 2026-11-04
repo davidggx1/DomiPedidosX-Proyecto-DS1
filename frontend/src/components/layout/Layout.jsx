@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth.js'
-import { ENLACES_POR_ROL, ETIQUETA_ROL } from '../../auth/roles.js'
+import { ENLACES_POR_ROL, ETIQUETA_ROL, ROLES } from '../../auth/roles.js'
+import { useCarrito } from '../../carrito/useCarrito.js'
 import Navegacion from './Navegacion.jsx'
 
 // Estructura común de todas las páginas: encabezado, navegación por rol,
@@ -10,6 +11,7 @@ export default function Layout() {
   const { usuario, cerrarSesion } = useAuth()
   const navegar = useNavigate()
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const { articulos } = useCarrito()
 
   const enlaces = usuario ? (ENLACES_POR_ROL[usuario.rol] ?? []) : []
 
@@ -29,17 +31,27 @@ export default function Layout() {
       </a>
 
       <header className="bg-marca text-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <Link to="/" className="text-lg font-bold sm:text-xl">
             DomiPedidosX
           </Link>
 
           {usuario ? (
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
               <p className="hidden text-sm sm:block">
                 {usuario.nombre}
                 <span className="opacity-80"> · {ETIQUETA_ROL[usuario.rol]}</span>
               </p>
+              {usuario.rol === ROLES.CLIENTE && (
+                <Link
+                  to="/carrito"
+                  aria-label={`Carrito, ${articulos} ${articulos === 1 ? 'producto' : 'productos'}`}
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-white/70 px-3 text-sm font-medium hover:bg-marca-oscura"
+                >
+                  Carrito
+                  <span className="rounded-full bg-white px-2 text-xs font-bold text-marca">{articulos}</span>
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={manejarCerrarSesion}
