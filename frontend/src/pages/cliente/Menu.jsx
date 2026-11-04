@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { listarSedesMenu, obtenerMenuSede, validarCarrito } from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
+import { useCarrito } from '../../carrito/useCarrito.js'
+import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.jsx'
 import TarjetaProducto from '../../components/menu/TarjetaProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
@@ -37,6 +39,8 @@ export default function Menu() {
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [recargaMenu, setRecargaMenu] = useState(0)
+  const [personalizando, setPersonalizando] = useState(null)
+  const carrito = useCarrito()
 
   // Sedes activas. Si la sede guardada ya no está activa, se descarta.
   useEffect(() => {
@@ -79,13 +83,22 @@ export default function Menu() {
 
   function cambiarSede(evento) {
     const nueva = evento.target.value
+    // El carrito es de una sede: cambiarla lo vacía (disponibilidad y stock cambian).
+    const otraSede = carrito.lineas.length > 0 && String(carrito.sedeId) !== nueva
+    if (otraSede) {
+      const confirmado = window.confirm(
+        'Tu carrito tiene productos de otra sede. Si cambias de sede se vaciará. ¿Quieres continuar?',
+      )
+      if (!confirmado) return
+      carrito.vaciar()
+    }
     setSedeId(nueva)
     setCategoriaId(TODAS)
     setAviso(null)
     if (nueva) guardarSede(nueva)
   }
 
-  // Hook del carrito (HU-13): antes de agregar se confirma que el producto siga
+  // Hook del carrito (HU-13): antes de personalizar se confirma que el producto siga
   // disponible en la sede. HU-23 repetirá esta validación al confirmar el pedido.
   async function agregar(producto) {
     setAviso(null)
@@ -99,10 +112,7 @@ export default function Menu() {
         setRecargaMenu((valor) => valor + 1)
         return
       }
-      setAviso({
-        tipo: 'info',
-        texto: `Elegiste "${producto.nombre}". Muy pronto podrás agregarlo a tu carrito.`,
-      })
+      setPersonalizando(producto)
     } catch (err) {
       setAviso({ tipo: 'error', texto: interpretarError(err).general })
     }
@@ -196,6 +206,20 @@ export default function Menu() {
             </section>
           ))}
         </>
+      )}
+
+      {personalizando && (
+        <PersonalizarProducto
+          sedeId={Number(sedeId)}
+          producto={personalizando}
+          alCerrar={() => setPersonalizando(null)}
+          alAgregar={(linea) =>
+            setAviso({
+              tipo: 'exito',
+              texto: `Agregaste ${linea.cantidad} × "${linea.producto.nombre}" a tu carrito.`,
+            })
+          }
+        />
       )}
     </div>
   )
