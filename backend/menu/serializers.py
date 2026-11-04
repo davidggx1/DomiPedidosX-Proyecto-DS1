@@ -514,10 +514,12 @@ class ProductoAdicionDetalleSerializer(serializers.ModelSerializer):
     precio = serializers.DecimalField(
         source="adicion.precio", max_digits=10, decimal_places=2, read_only=True
     )
+    # HU-21: permite saber qué ingrediente base usa la adición (queso extra -> queso).
+    insumo = serializers.IntegerField(source="adicion.insumo_id", read_only=True)
 
     class Meta:
         model = ProductoAdicion
-        fields = ["id", "adicion", "nombre", "descripcion", "precio", "max_cantidad"]
+        fields = ["id", "adicion", "nombre", "descripcion", "precio", "insumo", "max_cantidad"]
 
 
 class ProductoDetalleSerializer(serializers.ModelSerializer):
