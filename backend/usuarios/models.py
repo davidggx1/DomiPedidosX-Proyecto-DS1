@@ -135,11 +135,17 @@ class DireccionEntrega(models.Model):
         on_delete=models.PROTECT,
         related_name="direcciones_entrega",
     )
+    # Nombre corto para reconocerla (HU-06): "Casa", "Oficina"...
+    alias = models.CharField(max_length=50, blank=True, default="")
     direccion = models.CharField(max_length=255)
     latitud = models.FloatField()
     longitud = models.FloatField()
-    barrio = models.CharField(max_length=50)
+    barrio = models.CharField(max_length=50, blank=True)
+    # Lo que el mapa no sabe: apartamento, torre, portería, referencias.
+    indicaciones = models.CharField(max_length=200, blank=True)
     es_principal = models.BooleanField(default=False)
+    # Borrado lógico: los pedidos anteriores siguen apuntando a la dirección.
+    activa = models.BooleanField(default=True)
 
     class Meta:
         constraints = [

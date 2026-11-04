@@ -21,6 +21,7 @@ export const ENLACES_POR_ROL = {
   [ROLES.CLIENTE]: [
     { ruta: '/menu', texto: 'Menú' },
     { ruta: '/mis-pedidos', texto: 'Mis pedidos' },
+    { ruta: '/direcciones', texto: 'Mis direcciones' },
     { ruta: '/perfil', texto: 'Mi perfil' },
   ],
   [ROLES.OPERADOR]: [

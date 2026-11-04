@@ -83,3 +83,13 @@ def filtrar_por_sede(queryset, usuario, campo="sede"):
     if obtener_rol(usuario) == ADMINISTRADOR:
         return queryset
     return queryset.filter(**{campo: obtener_sede(usuario)})
+
+
+class EsCliente(BasePermission):
+    """Autenticado y con perfil de cliente (no aplica a empleados)."""
+
+    message = "Esta función es solo para clientes."
+
+    def has_permission(self, request, view):
+        usuario = request.user
+        return bool(usuario and usuario.is_authenticated and hasattr(usuario, "cliente"))

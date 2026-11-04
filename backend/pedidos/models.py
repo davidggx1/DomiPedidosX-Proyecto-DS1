@@ -78,6 +78,14 @@ class Pedido(models.Model):
         blank=True,
         related_name="pedidos",
     )
+    # Copia de la dirección al momento del pedido (HU-06): si el cliente luego
+    # edita o elimina la dirección, el pedido conserva a dónde se entregó.
+    entrega_alias = models.CharField(max_length=50, blank=True)
+    entrega_direccion = models.CharField(max_length=255, blank=True)
+    entrega_barrio = models.CharField(max_length=50, blank=True)
+    entrega_indicaciones = models.CharField(max_length=200, blank=True)
+    entrega_latitud = models.FloatField(null=True, blank=True)
+    entrega_longitud = models.FloatField(null=True, blank=True)
     # Zona usada al validar la cobertura (tarifa, mínimo, reportes por zona).
     zona_cobertura = models.ForeignKey(
         "sedes.ZonaCobertura",
@@ -108,6 +116,16 @@ class Pedido(models.Model):
     tiempo_estimado_entrega = models.PositiveIntegerField(null=True, blank=True)
     motivo_cancelacion = models.TextField(blank=True)
     descripcion = models.CharField(max_length=200, blank=True)
+
+    def asignar_direccion_entrega(self, direccion):
+        """Liga la dirección y copia sus datos al pedido (no guarda)."""
+        self.direccion_entrega = direccion
+        self.entrega_alias = direccion.alias
+        self.entrega_direccion = direccion.direccion
+        self.entrega_barrio = direccion.barrio
+        self.entrega_indicaciones = direccion.indicaciones
+        self.entrega_latitud = direccion.latitud
+        self.entrega_longitud = direccion.longitud
 
     def __str__(self):
         return f"Pedido {self.numero_pedido}"
