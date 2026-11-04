@@ -178,8 +178,9 @@ export default function PersonalizarProducto({ sedeId, producto, linea = null, a
                         />
                         {tamano.nombre}
                       </span>
+                      {/* Precio del producto en ese tamaño, no la diferencia sobre el base. */}
                       <span className="text-sm text-texto-suave">
-                        {Number(tamano.precio_adicional) > 0 ? `+ ${formatearPrecio(tamano.precio_adicional)}` : 'Sin costo'}
+                        {formatearPrecio(Number(detalle.precio_base) + Number(tamano.precio_adicional))}
                       </span>
                     </label>
                   ))}
