@@ -11,7 +11,8 @@ from rest_framework import serializers
 
 from .models import Cliente, DireccionEntrega, TipoDocumento, Usuario, Empleado, Repartidor
 from sedes.models import Ciudad, Sede
-from .roles import ADMINISTRADOR, obtener_rol, obtener_sede
+from .repartidores import poner_no_disponible
+from .roles import ADMINISTRADOR, REPARTIDOR, obtener_rol, obtener_sede
 
 User = get_user_model()
 
@@ -170,9 +171,9 @@ class RegistroEmpleadoSerializer(serializers.Serializer):
             direccion=validated_data["direccion"],
         )
 
-        # Si el rol es Repartidor, crear también su perfil de repartidor disponible
+        # Si el rol es Repartidor, crear también su perfil (arranca "No disponible", HU-41)
         if rol_nombre == "REPARTIDOR":
-            Repartidor.objects.create(empleado=empleado, disponible=True)
+            Repartidor.objects.create(empleado=empleado, disponible=False)
 
         # Guardar la contraseña temporal en el objeto para ser devuelta en la respuesta HTTP
         empleado.contrasena_inicial = raw_password
@@ -226,6 +227,8 @@ class LoginPersonalSerializer(LoginSerializer):
         # Un cliente, o un empleado sin sede, no entra por aquí (mensaje genérico).
         if rol is None or (rol != ADMINISTRADOR and sede is None):
             raise AuthenticationFailed("Credenciales inválidas.", "no_active_account")
+        if rol == REPARTIDOR:
+            poner_no_disponible(self.user)  # HU-41: cada inicio de sesión arranca "No disponible"
         data["rol"] = rol
         data["sede_id"] = sede.pk if sede else None
         return data
