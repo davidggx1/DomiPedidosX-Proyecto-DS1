@@ -12,6 +12,7 @@ import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
+import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="operador/productos" element={<Productos />} />
           <Route path="operador/adiciones" element={<Adiciones />} />
           <Route path="operador/ingredientes" element={<Ingredientes />} />
+          <Route path="operador/inventario" element={<Inventario />} />
           <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
         </Route>
 
