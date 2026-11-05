@@ -15,9 +15,11 @@ class MetodoPago(models.TextChoices):
 
 # Estados según el enunciado (4.4). Los usan Pedido y HistorialEstadoPedido.
 class EstadoPedido(models.TextChoices):
+    PENDIENTE_APROBACION = "pendiente_aprobacion", "Pendiente de aprobación"
     RECIBIDO = "recibido", "Recibido"
     EN_PREPARACION = "en_preparacion", "En preparación"
     LISTO_DESPACHO = "listo_despacho", "Listo para despacho"
+    RECOGIDO = "recogido", "Recogido"
     EN_CAMINO = "en_camino", "En camino"
     ENTREGADO = "entregado", "Entregado"
     CANCELADO = "cancelado", "Cancelado"
