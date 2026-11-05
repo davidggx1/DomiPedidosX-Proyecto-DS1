@@ -1,6 +1,7 @@
-from django.db.models import Prefetch
+from django.db.models import OuterRef, Prefetch, Subquery
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -10,8 +11,13 @@ from rest_framework.views import APIView
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 
 from .estados import CLIENTE, TransicionInvalida, cambiar_estado
-from .models import HistorialEstadoPedido, Pedido
-from .serializers import CambioEstadoSerializer, EstadoPedidoSerializer
+from .models import EstadoPedido, HistorialEstadoPedido, Pedido
+from .serializers import (
+    CambioEstadoSerializer,
+    ComandaCocinaSerializer,
+    EstadoPedidoSerializer,
+    TarjetaCocinaSerializer,
+)
 
 
 def rol_de(usuario):
@@ -96,3 +102,99 @@ class EstadoPedidoView(APIView):
 
         pedido, rol = self.obtener(request, pk)
         return self.responder(pedido, rol)
+
+
+# --- Cocina: tablero Kanban (HU-29) y comanda (HU-30) ----------------------------
+
+COLUMNAS_COCINA = [EstadoPedido.RECIBIDO, EstadoPedido.EN_PREPARACION, EstadoPedido.LISTO_DESPACHO]
+ROLES_COCINA = (COCINA, OPERADOR, ADMINISTRADOR)
+
+
+def momento_del_estado(estado):
+    """Primera vez que el pedido llegó a `estado`, según el historial."""
+    return Subquery(
+        HistorialEstadoPedido.objects.filter(pedido=OuterRef("pk"), estado=estado)
+        .order_by("fecha_hora")
+        .values("fecha_hora")[:1]
+    )
+
+
+def pedidos_para_cocina(usuario, rol):
+    """Pedidos visibles con la hora de entrada a cocina y todo lo necesario para la comanda."""
+    return (
+        pedidos_visibles(usuario, rol)
+        .annotate(
+            # Si no hay historial (pedido creado ya "recibido"), se usa la fecha de creación.
+            recibido_en=Coalesce(momento_del_estado(EstadoPedido.RECIBIDO), "fecha_creacion"),
+            listo_en=momento_del_estado(EstadoPedido.LISTO_DESPACHO),
+        )
+        .prefetch_related(
+            "detalles__producto",
+            "detalles__producto_tamano",
+            "detalles__combo",
+            "detalles__adiciones__adicion",
+            "detalles__exclusiones",
+        )
+    )
+
+
+def rol_de_cocina(usuario):
+    rol = rol_de(usuario)
+    if rol not in ROLES_COCINA:
+        raise PermissionDenied("Solo cocina, el operador o el administrador ven la cocina.")
+    return rol
+
+
+class TableroCocinaView(APIView):
+    """
+    GET /api/pedidos/cocina/tablero/
+
+    Pedidos de la sede en tres columnas: recibido, en preparación y listo para
+    despacho, del más antiguo al más nuevo (HU-29 y HU-32). Cocina y operador
+    ven solo su sede; el administrador puede filtrar con ?sede=<id>.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[OpenApiParameter("sede", int, description="Solo administrador: filtrar por sede.")],
+        responses=inline_serializer(
+            "TableroCocina",
+            {estado.value: TarjetaCocinaSerializer(many=True) for estado in COLUMNAS_COCINA},
+        ),
+    )
+    def get(self, request):
+        rol = rol_de_cocina(request.user)
+        pedidos = pedidos_para_cocina(request.user, rol).filter(estado__in=COLUMNAS_COCINA)
+
+        sede = request.query_params.get("sede")
+        if sede is not None and rol == ADMINISTRADOR:
+            if not sede.isdigit():
+                return Response(
+                    {"sede": "Debe ser el id numérico de una sede."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            pedidos = pedidos.filter(sede_id=int(sede))
+
+        pedidos = pedidos.order_by("recibido_en", "id")
+        contexto = {"rol": rol}
+        tablero = {estado.value: [] for estado in COLUMNAS_COCINA}
+        for pedido in pedidos:
+            tablero[pedido.estado].append(TarjetaCocinaSerializer(pedido, context=contexto).data)
+        return Response(tablero)
+
+
+class ComandaCocinaView(APIView):
+    """
+    GET /api/pedidos/<id>/cocina/
+
+    Detalle para preparar el pedido (HU-30): platos, cantidades, tamaños,
+    adiciones, ingredientes quitados ("sin") y notas del cliente.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=ComandaCocinaSerializer)
+    def get(self, request, pk):
+        rol = rol_de_cocina(request.user)
+        pedido = get_object_or_404(pedidos_para_cocina(request.user, rol), pk=pk)
+        return Response(ComandaCocinaSerializer(pedido, context={"rol": rol}).data)
