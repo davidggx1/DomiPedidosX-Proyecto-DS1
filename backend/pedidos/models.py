@@ -235,6 +235,34 @@ class DetallePedidoAdicion(models.Model):
     def __str__(self):
         return f"{self.adicion.nombre} - Detalle {self.detalle_pedido_id}"
 
+class DetallePedidoExclusion(models.Model):
+    """Ingrediente que el cliente pidió quitar de un plato (HU-21). Cocina lo ve en rojo (HU-30)."""
+
+    detalle_pedido = models.ForeignKey(
+        DetallePedido,
+        on_delete=models.PROTECT,
+        related_name="exclusiones",
+    )
+    insumo = models.ForeignKey(
+        "menu.Insumo",
+        on_delete=models.PROTECT,
+        related_name="exclusiones_pedido",
+    )
+    # Copia del nombre al momento del pedido: si luego renombran el insumo,
+    # la comanda y el historial no cambian.
+    nombre_insumo = models.CharField(max_length=100)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["detalle_pedido", "insumo"],
+                name="detalle_exclusion_unica",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Sin {self.nombre_insumo} - Detalle {self.detalle_pedido_id}"
+    
 
 class HistorialEstadoPedido(models.Model):
     pedido = models.ForeignKey(
