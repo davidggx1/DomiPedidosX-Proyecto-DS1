@@ -30,6 +30,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/operador/productos', texto: 'Productos' },
     { ruta: '/operador/adiciones', texto: 'Adiciones' },
     { ruta: '/operador/ingredientes', texto: 'Ingredientes' },
+    { ruta: '/operador/inventario', texto: 'Inventario' },
     { ruta: '/operador/repartidores', texto: 'Repartidores' },
   ],
   [ROLES.COCINA]: [{ ruta: '/cocina', texto: 'Tablero de cocina' }],
