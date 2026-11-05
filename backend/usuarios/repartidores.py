@@ -90,7 +90,13 @@ class RepartidoresView(generics.ListAPIView):
     pagination_class = None
 
     def get_queryset(self):
-        en_curso = Q(pedidos_asignados__estado__in=[EstadoPedido.LISTO_DESPACHO, EstadoPedido.EN_CAMINO])
+        en_curso = Q(
+            pedidos_asignados__estado__in=[
+                EstadoPedido.LISTO_DESPACHO,
+                EstadoPedido.RECOGIDO,
+                EstadoPedido.EN_CAMINO,
+            ]
+        )
         repartidores = (
             Repartidor.objects.filter(empleado__usuario__is_active=True)
             .select_related("empleado")
