@@ -113,7 +113,8 @@ class Repartidor(models.Model):
         on_delete=models.PROTECT,
         related_name="perfil_repartidor",
     )
-    disponible = models.BooleanField(default=True)
+    # HU-41: arranca "No disponible" hasta que el repartidor active su jornada.
+    disponible = models.BooleanField(default=False)
     # La ubicación en el mapa es opcional.
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
