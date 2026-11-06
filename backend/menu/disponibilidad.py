@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from inventario.models import InventarioProducto
+from inventario.models import InventarioInsumo, InventarioProducto
 from sedes.models import Sede
 
 from .catalogo import producto_disponible
@@ -36,6 +36,14 @@ def sedes_que_gestiona(usuario):
     return {empleado.sede_id}
 
 
+def _insumos_de(sede, producto):
+    ids = producto.insumos_requeridos.values_list("insumo_id", flat=True)
+    return {
+        inventario.insumo_id: inventario
+        for inventario in InventarioInsumo.objects.filter(sede=sede, insumo_id__in=ids)
+    }
+
+
 def productos_no_disponibles(sede, ids):
     """Productos que ya no se pueden pedir en la sede: [{id, nombre}]. Lo reutiliza HU-23."""
     ids = set(ids)
@@ -49,7 +57,9 @@ def productos_no_disponibles(sede, ids):
         producto = productos.get(producto_id)
         if producto is None:
             resultado.append({"id": producto_id, "nombre": None})
-        elif not producto.activo or not producto_disponible(producto, inventarios.get(producto_id)):
+        elif not producto.activo or not producto_disponible(
+            producto, inventarios.get(producto_id), _insumos_de(sede, producto)
+        ):
             resultado.append({"id": producto_id, "nombre": producto.nombre})
     return resultado
 

@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from rest_framework.test import APIClient
 
-from inventario.models import InventarioProducto
+from inventario.models import InventarioInsumo, InventarioProducto
 from menu.models import (
     Adicion,
     CategoriaMenu,
@@ -215,15 +215,45 @@ def test_cantidad_no_supera_el_stock_cuando_se_controla_por_unidades(menu):
     assert "Solo quedan 3" in str(excedida.data["cantidad"])
 
 
-def test_control_por_insumos_aun_no_limita_la_cantidad(menu):
-    """Hook: el control por insumos llega con HU-14 (Sprint 2)."""
+def poner_control_por_insumos(menu, cebolla_g, pan_unidades):
+    """Producto con control por insumos y existencias de Cebolla (20 g c/u) y Pan (1 c/u) en la sede."""
     producto = menu["producto"]
     producto.tipo_control_stock = Producto.TipoControlStock.INSUMOS
     producto.save()
+    InventarioInsumo.objects.create(
+        sede=menu["sede"], insumo=menu["cebolla"].insumo, stock_actual=Decimal(cebolla_g)
+    )
+    InventarioInsumo.objects.create(
+        sede=menu["sede"], insumo=menu["pan"].insumo, stock_actual=Decimal(pan_unidades)
+    )
+
+
+def test_control_por_insumos_permite_la_cantidad_si_alcanzan_los_ingredientes(menu):
+    poner_control_por_insumos(menu, cebolla_g="1000", pan_unidades="50")  # 50 x 20 g = 1000 g
 
     respuesta = validar(menu["sede"], **linea_base(menu, cantidad=50))
 
     assert respuesta.status_code == 200
+
+
+def test_control_por_insumos_rechaza_la_cantidad_si_no_alcanzan_los_ingredientes(menu):
+    poner_control_por_insumos(menu, cebolla_g="1000", pan_unidades="50")
+
+    respuesta = validar(menu["sede"], **linea_base(menu, cantidad=51))
+
+    assert respuesta.status_code == 400
+    assert "No hay ingredientes suficientes" in str(respuesta.data["cantidad"])
+
+
+def test_control_por_insumos_sin_existencias_registradas_no_esta_disponible(menu):
+    producto = menu["producto"]
+    producto.tipo_control_stock = Producto.TipoControlStock.INSUMOS
+    producto.save()
+
+    respuesta = validar(menu["sede"], **linea_base(menu))
+
+    assert respuesta.status_code == 400
+    assert "no está disponible" in str(respuesta.data["producto"])
 
 
 def test_producto_no_disponible_en_la_sede(menu):
