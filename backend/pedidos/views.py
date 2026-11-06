@@ -31,6 +31,8 @@ from .serializers import (
     pedidos_con_detalle,
 )
 
+from .serializers_operador import CrearPedidoOperadorSerializer
+from .servicios_operador import crear_pedido_operador
 
 def rol_de(usuario):
     """Rol de personal del usuario, "cliente" si tiene perfil de cliente, o None."""
@@ -393,4 +395,36 @@ class AprobarPedidoView(APIView):
                 "aprobado_por": request.user.email,
                 "fecha_aprobacion": registro.fecha_hora,
             }
+        )
+
+class CrearPedidoOperadorView(APIView):
+    """HU-24: El operador crea un pedido a nombre de un cliente (mostrador o telefónico)."""
+
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+
+    @extend_schema(request=CrearPedidoOperadorSerializer, responses={201: None})
+    def post(self, request):
+        serializer = CrearPedidoOperadorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        pedido, factura = crear_pedido_operador(
+            usuario_operador=request.user,
+            datos=serializer.validated_data,
+        )
+
+        return Response(
+            {
+                "id": pedido.pk,
+                "numero_pedido": pedido.numero_pedido,
+                "estado": pedido.estado,
+                "origen": pedido.origen,
+                "factura": {
+                    "numero": factura.numero,
+                    "subtotal": factura.subtotal,
+                    "costo_domicilio": factura.costo_domicilio,
+                    "total": factura.total,
+                    "metodo_pago": factura.metodo_pago,
+                },
+            },
+            status=status.HTTP_201_CREATED,
         )
