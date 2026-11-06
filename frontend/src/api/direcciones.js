@@ -22,3 +22,8 @@ export async function actualizarDireccion(id, datos) {
 export async function eliminarDireccion(id) {
   await api.delete(`/usuarios/direcciones/${id}/`)
 }
+
+export async function obtenerDireccionesCliente() {
+  const { data } = await api.get('/usuarios/direcciones/')
+  return data
+}

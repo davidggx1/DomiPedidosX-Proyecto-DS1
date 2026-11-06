@@ -25,3 +25,9 @@ export async function crearPedidoOperador(datosPedido) {
   const { data } = await api.post('/pedidos/operador/crear/', datosPedido)
   return data
 }
+
+// HU-23: Confirmación de pedido por el Cliente
+export async function confirmarPedidoCliente(payload) {
+  const { data } = await api.post('/pedidos/confirmar/', payload)
+  return data
+}

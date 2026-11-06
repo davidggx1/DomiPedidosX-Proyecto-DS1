@@ -21,6 +21,7 @@ import Cuentas from './pages/admin/Cuentas.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
 import RegistrarEmpleado from "./pages/admin/RegistrarEmpleado.jsx";
 import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
+import ConfirmarPedido from "./pages/cliente/ConfirmarPedido.jsx";
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="mis-pedidos" element={<EnConstruccion titulo="Mis pedidos" historias="HU-26, HU-47" />} />
           <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-07" />} />
           <Route path="carrito" element={<Carrito />} />
+          <Route path="checkout" element={<ConfirmarPedido />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
