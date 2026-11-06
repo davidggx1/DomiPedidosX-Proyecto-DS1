@@ -5,6 +5,8 @@ Vive en un módulo aparte de views.py y serializers.py porque esos archivos
 reciben a la vez los cambios de gestión del menú (HU-11, HU-13, HU-75...).
 Así se evitan conflictos entre ramas.
 """
+from decimal import Decimal
+
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
@@ -21,17 +23,20 @@ from sedes.models import Sede
 from .models import CategoriaMenu, Producto
 
 
-def producto_disponible(producto, inventario):
-    """
-    Un producto se puede pedir en una sede si:
-    - la sede lo tiene en su inventario y marcado como disponible (HU-13), y
-    - cuando se controla por unidades, todavía le queda stock.
-    El control por insumos (HU-14) llega en el Sprint 2.
-    """
+def producto_disponible(producto, inventario, inventarios_insumos=None):
+    """Return whether a product can be ordered with the current stock."""
     if inventario is None or not inventario.disponible:
         return False
     if producto.tipo_control_stock == Producto.TipoControlStock.PRODUCTO:
         return inventario.stock_actual > 0
+    if producto.tipo_control_stock == Producto.TipoControlStock.INSUMOS:
+        inventarios_insumos = inventarios_insumos or {}
+        for receta in producto.insumos_requeridos.all():
+            stock = inventarios_insumos.get(receta.insumo_id)
+            if stock is None or not stock.disponible:
+                return False
+            if stock.stock_actual < Decimal(receta.cantidad_necesaria):
+                return False
     return True
 
 
@@ -57,7 +62,8 @@ class ProductoMenuSerializer(serializers.ModelSerializer):
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_disponible(self, producto):
         inventario = self.context["inventarios"].get(producto.id)
-        return producto_disponible(producto, inventario)
+        inventarios_insumos = self.context.get("inventarios_insumos", {})
+        return producto_disponible(producto, inventario, inventarios_insumos)
 
 
 class CategoriaConProductosSerializer(serializers.ModelSerializer):
@@ -137,9 +143,19 @@ class MenuSedeView(APIView):
             inventario.producto_id: inventario
             for inventario in InventarioProducto.objects.filter(sede=sede)
         }
+        from inventario.models import InventarioInsumo
+
+        inventarios_insumos = {
+            inventario.insumo_id: inventario
+            for inventario in InventarioInsumo.objects.filter(sede=sede)
+        }
 
         serializer = MenuSedeSerializer(
             {"sede": sede, "categorias": categorias},
-            context={"request": request, "inventarios": inventarios},
+            context={
+                "request": request,
+                "inventarios": inventarios,
+                "inventarios_insumos": inventarios_insumos,
+            },
         )
         return Response(serializer.data)

@@ -1,6 +1,7 @@
+"""HU-14 · API de existencias. Los listados y cambios quedan acotados a la sede del usuario."""
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from menu.disponibilidad import sedes_que_gestiona
 from menu.permissions import EsPersonalDeMenu
@@ -8,49 +9,46 @@ from menu.permissions import EsPersonalDeMenu
 from .models import InventarioInsumo, InventarioProducto
 from .serializers import InventarioInsumoSerializer, InventarioProductoSerializer
 
-PARAMETRO_SEDE = OpenApiParameter(
-    "sede", int, description="Filtra por sede (el operador solo ve la suya)"
-)
+PARAMETRO_SEDE = OpenApiParameter("sede", int, description="Filtra por id de sede.")
 
 
 class InventarioBaseViewSet(viewsets.ModelViewSet):
-    """Stock per sede. The operador only reaches the records of its own sede"""
-
     permission_classes = [EsPersonalDeMenu]
     modelo = None
-    relaciones = ()
-    orden = ()
+    campo_item = None
 
     def get_queryset(self):
-        existencias = self.modelo.objects.select_related(*self.relaciones).order_by(*self.orden)
         gestionables = sedes_que_gestiona(self.request.user)
+        queryset = self.modelo.objects.select_related("sede", self.campo_item).order_by(
+            "sede__nombre", f"{self.campo_item}__nombre", "id"
+        )
         if gestionables is not None:
-            # a record of another sede answers 404, like it did not exist
-            existencias = existencias.filter(sede_id__in=gestionables)
+            queryset = queryset.filter(sede_id__in=gestionables)
 
         sede = self.request.query_params.get("sede")
-        if self.action == "list" and sede:
-            if not sede.isdigit():
+        if sede not in (None, "") and self.action == "list":
+            try:
+                queryset = queryset.filter(sede_id=int(sede))
+            except ValueError:
                 raise ValidationError({"sede": "La sede debe ser un id numérico."})
-            existencias = existencias.filter(sede_id=int(sede))
-        return existencias
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        # Un operador sin sede asignada no puede registrar nada, sin importar el cuerpo.
+        if sedes_que_gestiona(request.user) == set():
+            raise PermissionDenied("No tienes una sede asignada.")
+        return super().create(request, *args, **kwargs)
 
 
 @extend_schema_view(list=extend_schema(parameters=[PARAMETRO_SEDE]))
 class InventarioProductoViewSet(InventarioBaseViewSet):
-    """HU-14: existencias de productos por sede (crear, ver, ajustar y quitar)"""
-
     serializer_class = InventarioProductoSerializer
     modelo = InventarioProducto
-    relaciones = ("sede", "producto", "producto__categoria")
-    orden = ("sede__nombre", "producto__nombre")
+    campo_item = "producto"
 
 
 @extend_schema_view(list=extend_schema(parameters=[PARAMETRO_SEDE]))
 class InventarioInsumoViewSet(InventarioBaseViewSet):
-    """HU-14: existencias de ingredientes por sede (crear, ver, ajustar y quitar)"""
-
     serializer_class = InventarioInsumoSerializer
     modelo = InventarioInsumo
-    relaciones = ("sede", "insumo")
-    orden = ("sede__nombre", "insumo__nombre")
+    campo_item = "insumo"

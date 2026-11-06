@@ -30,6 +30,7 @@ urlpatterns = [
     path("api/sedes/", include("sedes.urls")),  # 2. Rutas de la app sedes
     path("api/usuarios/", include("usuarios.urls")),
     path("api/menu/", include("menu.urls")),
+    path("api/inventario/", include("inventario.urls")),
     path("api/pedidos/", include("pedidos.urls")),
 ]
 
