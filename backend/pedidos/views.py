@@ -9,6 +9,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 
+from rest_framework.permissions import BasePermission
+from .serializers_confirmar import ConfirmarPedidoSerializer
+
+
+
 from usuarios.models import Repartidor
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 from usuarios.permissions import filtrar_por_sede, rol_requerido
@@ -323,3 +328,47 @@ class PedidosEntrantesView(ListAPIView):
     def get_queryset(self):
         qs = pedidos_con_detalle().filter(estado=EstadoPedido.PENDIENTE_APROBACION)
         return filtrar_por_sede(qs, self.request.user).order_by("fecha_creacion", "id")
+
+
+
+class EsCliente(BasePermission):
+    message = "Solo los clientes pueden confirmar pedidos."
+
+    def has_permission(self, request, view):
+        usuario = request.user
+        return bool(usuario and usuario.is_authenticated and hasattr(usuario, "cliente"))
+
+
+class ConfirmarPedidoView(APIView):
+    """HU-23: el carrito viaja en el cuerpo; el servidor recalcula los precios."""
+
+    permission_classes = [EsCliente]
+
+    @extend_schema(request=ConfirmarPedidoSerializer, responses={201: None})
+    def post(self, request):
+        from .servicios import confirmar_pedido  # evita import circular con consumers
+        serializer = ConfirmarPedidoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pedido, factura = confirmar_pedido(
+            usuario=request.user,
+            cliente=request.user.cliente,
+            datos=serializer.validated_data,
+        )
+        return Response(
+            {
+                "id": pedido.pk,
+                "numero_pedido": pedido.numero_pedido,
+                "estado": pedido.estado,
+                "tiempo_estimado_entrega": pedido.tiempo_estimado_entrega,
+                "factura": {
+                    "numero": factura.numero,
+                    "subtotal": factura.subtotal,
+                    "iva": factura.iva,
+                    "costo_domicilio": factura.costo_domicilio,
+                    "total": factura.total,
+                    "metodo_pago": factura.metodo_pago,
+                    "estado": factura.estado_factura,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
