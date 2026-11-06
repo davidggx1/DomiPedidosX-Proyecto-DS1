@@ -13,7 +13,6 @@ from rest_framework.permissions import BasePermission
 from .serializers_confirmar import ConfirmarPedidoSerializer
 
 
-
 from usuarios.models import Repartidor
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 from usuarios.permissions import filtrar_por_sede, rol_requerido
@@ -371,4 +370,27 @@ class ConfirmarPedidoView(APIView):
                 },
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+
+class AprobarPedidoView(APIView):
+    """HU-28: el operador aprueba un pedido entrante (pendiente -> recibido)."""
+
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+
+    @extend_schema(request=None, responses={200: None})
+    def patch(self, request, pk):
+        # Import perezoso: evita el import circular con consumers (como en HU-23).
+        from .aprobacion import aprobar_pedido
+
+        pedido, registro = aprobar_pedido(usuario=request.user, pedido_id=pk)
+        return Response(
+            {
+                "id": pedido.pk,
+                "numero_pedido": pedido.numero_pedido,
+                "estado": pedido.estado,
+                "aprobado_por": request.user.email,
+                "fecha_aprobacion": registro.fecha_hora,
+            }
         )
