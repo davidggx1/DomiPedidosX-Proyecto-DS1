@@ -8,6 +8,8 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.exceptions import APIException, ValidationError
 
+from .stock import descontar_stock
+
 from inventario.models import InventarioInsumo, InventarioProducto
 from menu.models import (
     Adicion,
@@ -283,7 +285,9 @@ def _preparar_carrito(items, sede):
     # Existencias de productos terminados.
     inv_producto = {
         i.producto_id: i
-        for i in InventarioProducto.objects.filter(sede=sede, producto_id__in=list(cant_producto))
+        for i in InventarioProducto.objects.select_for_update()
+        .filter(sede=sede, producto_id__in=list(cant_producto))
+        .order_by("pk")
     }
     for pid, pedido_cant in cant_producto.items():
         inv = inv_producto.get(pid)
@@ -295,9 +299,9 @@ def _preparar_carrito(items, sede):
     # Existencias de insumos (recetas) y de los insumos de las adiciones.
     inv_insumo = {
         i.insumo_id: i
-        for i in InventarioInsumo.objects.filter(
-            sede=sede, insumo_id__in=list(set(cant_insumo) | set(insumos_adicion))
-        )
+        for i in InventarioInsumo.objects.select_for_update()
+        .filter(sede=sede, insumo_id__in=list(set(cant_insumo) | set(insumos_adicion)))
+        .order_by("pk")
     }
     for iid, pedido_cant in cant_insumo.items():
         inv = inv_insumo.get(iid)
@@ -324,7 +328,13 @@ def _preparar_carrito(items, sede):
                 error_para(("c", cs_pk), f"Cupo diario del combo agotado (quedan {restante}).")
         consumos.append((cs, pedido_cant))
 
-    return lineas, consumos, errores
+    stock = {
+        "inv_producto": inv_producto,
+        "inv_insumo": inv_insumo,
+        "cant_producto": dict(cant_producto),
+        "cant_insumo": dict(cant_insumo),
+    }
+    return lineas, consumos, errores, stock
 
 
 def _crear_notificacion(usuario, pedido):
@@ -355,7 +365,7 @@ def confirmar_pedido(*, usuario, cliente, datos):
             {"direccion_id": ["La dirección está fuera de la cobertura de esta sede."]}
         )
 
-    lineas, consumos, errores = _preparar_carrito(datos["items"], sede)
+    lineas, consumos, errores, stock = _preparar_carrito(datos["items"], sede)
     if errores:
         raise ErrorConfirmacion("Algunos ítems no se pueden confirmar.", errores)
 
@@ -437,6 +447,8 @@ def confirmar_pedido(*, usuario, cliente, datos):
 
     for cs, cantidad in consumos:
         ConsumoCupoCombo.objects.create(combo_sede=cs, pedido=pedido, cantidad_usada=cantidad)
+
+    descontar_stock(**stock)
 
     HistorialEstadoPedido.objects.create(
         pedido=pedido,
