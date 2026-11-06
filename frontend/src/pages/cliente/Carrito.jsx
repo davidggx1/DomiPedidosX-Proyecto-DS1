@@ -20,10 +20,10 @@ function describirVariantes(linea) {
   return partes.join(' · ')
 }
 
-// HU-21 · Carrito del cliente: líneas personalizadas y subtotal.
-// La confirmación del pedido llega con HU-23.
+// HU-21 & HU-22 · Carrito del cliente: líneas personalizadas, subtotal, domicilio y total.
 export default function Carrito() {
-  const { sedeId, lineas, subtotal, cambiarCantidad, eliminar } = useCarrito()
+  // HU-22: Traemos costoDomicilio y total calculados dinámicamente desde el Contexto
+  const { sedeId, lineas, subtotal, costoDomicilio, total, cambiarCantidad, eliminar } = useCarrito()
   const [editando, setEditando] = useState(null)
   const [actualizando, setActualizando] = useState(null)
   const [aviso, setAviso] = useState(null)
@@ -118,12 +118,30 @@ export default function Carrito() {
         ))}
       </ul>
 
-      <div className="flex flex-col items-end gap-1 border-t border-borde pt-4">
-        <p className="text-texto-suave">Subtotal</p>
-        <p className="text-2xl font-bold" aria-live="polite">
-          {formatearPrecio(subtotal)}
-        </p>
-        <p className="text-sm text-texto-suave">El domicilio y los descuentos se calculan al confirmar el pedido.</p>
+      {/* HU-22: Desglose completo de Totales (Subtotal, Costo de domicilio y Total) */}
+      <div className="flex flex-col items-end gap-3 border-t border-borde pt-4">
+        <div className="flex w-full flex-col gap-1.5 sm:w-72">
+          <div className="flex justify-between text-sm text-texto-suave">
+            <span>Subtotal</span>
+            <span>{formatearPrecio(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-texto-suave">
+            <span>Costo de domicilio</span>
+            <span>{formatearPrecio(costoDomicilio)}</span>
+          </div>
+          <div className="flex justify-between border-t border-borde pt-2 text-xl font-bold text-texto">
+            <span>Total</span>
+            <span aria-live="polite">{formatearPrecio(total)}</span>
+          </div>
+        </div>
+
+        {/* Botón para proceder al flujo de la HU-23 */}
+        <Link
+          to="/checkout"
+          className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-marca px-6 font-bold text-white hover:bg-marca-oscura sm:w-auto"
+        >
+          Proceder a la compra
+        </Link>
       </div>
 
       {editando && (

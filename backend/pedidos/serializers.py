@@ -197,3 +197,53 @@ class PedidoDespachoSerializer(serializers.ModelSerializer):
 
     def get_resumen(self, pedido) -> list[str]:
         return [f"{d.cantidad}x {nombre_linea(d)}" for d in pedido.detalles.all()]
+
+def pedidos_con_detalle():
+    return Pedido.objects.select_related("cliente", "factura").prefetch_related(
+        "detalles__producto",
+        "detalles__combo",
+        "detalles__producto_tamano",
+        "detalles__adiciones__adicion",
+        "detalles__exclusiones",
+    )
+
+
+class PedidoEntranteSerializer(serializers.ModelSerializer):
+    sede_id = serializers.IntegerField(read_only=True)
+    cliente = serializers.SerializerMethodField()
+    metodo_pago = serializers.SerializerMethodField()
+    detalles = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pedido
+        fields = [
+            "id", "numero_pedido", "sede_id", "estado", "origen",
+            "fecha_creacion", "descripcion", "tiempo_estimado_entrega",
+            "cliente", "metodo_pago", "entrega_direccion", "entrega_barrio",
+            "entrega_indicaciones", "detalles",
+        ]
+
+    def get_cliente(self, obj):
+        if obj.cliente is None:
+            return None
+        return f"{obj.cliente.nombres} {obj.cliente.apellidos}"
+
+    def get_metodo_pago(self, obj):
+        factura = getattr(obj, "factura", None)
+        return factura.metodo_pago if factura else None
+
+    def get_detalles(self, obj):
+        return [
+            {
+                "nombre": d.producto.nombre if d.producto_id else d.combo.nombre,
+                "tamano": d.producto_tamano.nombre if d.producto_tamano_id else None,
+                "cantidad": d.cantidad,
+                "observaciones": d.observaciones,
+                "adiciones": [
+                    {"nombre": a.adicion.nombre, "cantidad": a.cantidad}
+                    for a in d.adiciones.all()
+                ],
+                "sin": [e.nombre_insumo for e in d.exclusiones.all()],
+            }
+            for d in obj.detalles.all()
+        ]

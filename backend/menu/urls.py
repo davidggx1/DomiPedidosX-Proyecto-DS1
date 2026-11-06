@@ -1,6 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
-from .carrito import ValidarLineaCarritoView
+from .carrito import ValidarLineaCarritoView, CalcularResumenCarritoView
 from .catalogo import MenuSedeView, SedesMenuView
 from .disponibilidad import DisponibilidadProductoView, ValidarCarritoView
 
@@ -77,6 +77,11 @@ urlpatterns = [
         "productos/<int:producto_pk>/ingredientes/<int:pk>/",
         producto_ingrediente_detalle,
         name="producto-ingrediente-detalle",
+    ),
+    path(
+        "sedes/<int:sede_pk>/carrito/resumen/",
+        CalcularResumenCarritoView.as_view(),
+        name="calcular-resumen-carrito",
     ),
     path("", include(router.urls)),
 ]

@@ -40,6 +40,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/pedidos', texto: 'Pedidos del día' },
     { ruta: '/admin/sedes', texto: 'Sedes' },
     { ruta: '/admin/personal', texto: 'Personal' },
+    { ruta: '/admin/cuentas', texto: 'Cuentas' },
   ],
 }
 

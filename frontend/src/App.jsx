@@ -16,6 +16,7 @@ import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
+import Cuentas from './pages/admin/Cuentas.jsx'
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="admin/pedidos" element={<EnConstruccion titulo="Pedidos del día" historias="HU-67" />} />
           <Route path="admin/sedes" element={<EnConstruccion titulo="Sedes" historias="HU-81, HU-82" />} />
           <Route path="admin/personal" element={<EnConstruccion titulo="Personal" historias="HU-08" />} />
+          <Route path="admin/cuentas" element={<Cuentas />} />
         </Route>
 
         <Route path="*" element={<NoEncontrada />} />

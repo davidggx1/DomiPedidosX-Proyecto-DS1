@@ -17,6 +17,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 
 from inventario.models import InventarioInsumo, InventarioProducto
 from sedes.models import Sede
@@ -258,4 +259,98 @@ class ValidarLineaCarritoView(APIView):
                 "precio_unitario": f"{precio_unitario.quantize(Decimal('0.01'))}",
                 "subtotal": f"{subtotal.quantize(Decimal('0.01'))}",
             }
+        )
+
+class ResumenCarritoSerializer(serializers.Serializer):
+    """
+    HU-22: Recibe la lista de líneas del carrito y calcula el subtotal, domicilio y total.
+    """
+    lineas = LineaCarritoSerializer(many=True, required=True, allow_empty=True)
+
+    def validate(self, attrs):
+        # Valida cada línea reutilizando la lógica de LineaCarritoSerializer
+        return attrs
+
+
+class CalcularResumenCarritoView(APIView):
+    """
+    POST /api/menu/sedes/<sede_pk>/carrito/resumen/
+
+    Payload de entrada:
+    {
+        "lineas": [
+            {
+                "producto": 1,
+                "tamano": 2,
+                "adiciones": [{"adicion": 3, "cantidad": 1}],
+                "exclusiones": [],
+                "cantidad": 2
+            }
+        ]
+    }
+
+    Respuesta (HU-22):
+    {
+        "subtotal": "54000.00",
+        "costo_domicilio": "4000.00",
+        "total": "58000.00",
+        "lineas": [ ... precio unitario y subtotal por línea ... ]
+    }
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=ResumenCarritoSerializer,
+        responses=inline_serializer(
+            "ResumenCarritoSalida",
+            {
+                "subtotal": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "costo_domicilio": serializers.DecimalField(max_digits=10, decimal_places=2),
+                "total": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "lineas": serializers.ListField(child=serializers.DictField()),
+            },
+        ),
+    )
+    def post(self, request, sede_pk):
+        sede = get_object_or_404(Sede, pk=sede_pk, activa=True)
+        serializer = ResumenCarritoSerializer(data=request.data, context={"sede": sede})
+        serializer.is_valid(raise_exception=True)
+
+        lineas_validadas = serializer.validated_data["lineas"]
+        subtotal_acumulado = Decimal("0.00")
+        lineas_desglosadas = []
+
+        for item in lineas_validadas:
+            precio_unitario = calcular_precio_unitario(
+                item["producto"], item["tamano"], item["adiciones"]
+            )
+            subtotal_linea = precio_unitario * item["cantidad"]
+            subtotal_acumulado += subtotal_linea
+
+            lineas_desglosadas.append(
+                {
+                    "producto_id": item["producto"].id,
+                    "producto_nombre": item["producto"].nombre,
+                    "cantidad": item["cantidad"],
+                    "precio_unitario": f"{precio_unitario.quantize(Decimal('0.01'))}",
+                    "subtotal_linea": f"{subtotal_linea.quantize(Decimal('0.01'))}",
+                }
+            )
+
+        # HU-22: Tarifa fija de domicilio provisional por sede para el PMV (Sprint 2)
+        costo_domicilio = getattr(sede, "tarifa_domicilio_fija", Decimal("4000.00"))
+        if subtotal_acumulado == Decimal("0.00"):
+            costo_domicilio = Decimal("0.00")
+
+        total = subtotal_acumulado + costo_domicilio
+
+        return Response(
+            {
+                "subtotal": f"{subtotal_acumulado.quantize(Decimal('0.01'))}",
+                "costo_domicilio": f"{costo_domicilio.quantize(Decimal('0.01'))}",
+                "total": f"{total.quantize(Decimal('0.01'))}",
+                "lineas": lineas_desglosadas,
+            },
+            status=status.HTTP_200_OK,
         )

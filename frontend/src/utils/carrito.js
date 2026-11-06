@@ -112,3 +112,21 @@ export function lineaParaValidar(linea) {
     cantidad: linea.cantidad,
   }
 }
+
+// Tarifa fija provisional por sede para el PMV (Sprint 2) - HU-22
+export const TARIFA_DOMICILIO_PROVISIONAL_DEFAULT = 4000
+
+/**
+ * Calcula el costo de domicilio provisional de la sede (HU-22).
+ * Si el carrito está vacío (subtotal = 0), el domicilio no se cobra.
+ */
+export function domicilioCarrito(subtotal, tarifaSede = TARIFA_DOMICILIO_PROVISIONAL_DEFAULT) {
+  return subtotal > 0 ? tarifaSede : 0
+}
+
+/**
+ * Calcula el total definitivo a pagar: Subtotal + Domicilio (HU-22).
+ */
+export function totalCarrito(subtotal, domicilio) {
+  return subtotal + domicilio
+}

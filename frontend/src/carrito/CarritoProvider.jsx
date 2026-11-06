@@ -5,9 +5,12 @@ import {
   agregarLinea,
   cantidadArticulos,
   claveCarrito,
+  domicilioCarrito,
   eliminarLinea,
   reemplazarLinea,
   subtotalCarrito,
+  totalCarrito,
+  TARIFA_DOMICILIO_PROVISIONAL_DEFAULT,
 } from '../utils/carrito.js'
 import { CarritoContext } from './CarritoContext.js'
 
@@ -41,12 +44,12 @@ function nuevoId() {
 }
 
 // El carrito pertenece a una sede: la disponibilidad y el stock dependen de ella.
-export default function CarritoProvider({ children }) {
+// Se agrega tarifaSede con valor por defecto en los props
+export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILIO_PROVISIONAL_DEFAULT }) {
   const { usuario } = useAuth()
   const clave = claveCarrito(usuario)
   const [estado, setEstado] = useState(() => ({ clave, carrito: leerCarrito(clave) }))
 
-  // Al iniciar o cerrar sesión, o cambiar de cuenta, se carga el carrito de esa cuenta.
   if (estado.clave !== clave) {
     setEstado({ clave, carrito: leerCarrito(clave) })
   }
@@ -87,11 +90,18 @@ export default function CarritoProvider({ children }) {
 
   const vaciar = useCallback(() => actualizar(() => VACIO), [actualizar])
 
+  // Cálculo de subtotales y totales usando tarifaSede
+  const subtotal = useMemo(() => subtotalCarrito(carrito.lineas), [carrito.lineas])
+  const costoDomicilio = useMemo(() => domicilioCarrito(subtotal, tarifaSede), [subtotal, tarifaSede])
+  const total = useMemo(() => totalCarrito(subtotal, costoDomicilio), [subtotal, costoDomicilio])
+
   const valor = useMemo(
     () => ({
       sedeId: carrito.sedeId,
       lineas: carrito.lineas,
-      subtotal: subtotalCarrito(carrito.lineas),
+      subtotal,
+      costoDomicilio,
+      total,
       articulos: cantidadArticulos(carrito.lineas),
       agregar,
       reemplazar,
@@ -99,7 +109,7 @@ export default function CarritoProvider({ children }) {
       eliminar,
       vaciar,
     }),
-    [carrito, agregar, reemplazar, cambiarCantidad, eliminar, vaciar],
+    [carrito, subtotal, costoDomicilio, total, agregar, reemplazar, cambiarCantidad, eliminar, vaciar],
   )
 
   return <CarritoContext.Provider value={valor}>{children}</CarritoContext.Provider>
