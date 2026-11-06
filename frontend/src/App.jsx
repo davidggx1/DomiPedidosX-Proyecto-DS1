@@ -12,9 +12,9 @@ import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
-import Despacho from './pages/operador/Despacho.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
+import MisEntregas from './pages/repartidor/MisEntregas.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
@@ -45,7 +45,7 @@ export default function App() {
           <Route path="operador/adiciones" element={<Adiciones />} />
           <Route path="operador/ingredientes" element={<Ingredientes />} />
           <Route path="operador/inventario" element={<Inventario />} />
-          <Route path="operador/repartidores" element={<Despacho />} />
+          <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
@@ -53,7 +53,7 @@ export default function App() {
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
-          <Route path="repartidor" element={<EnConstruccion titulo="Mis entregas" historias="HU-41, HU-42, HU-43, HU-45" />} />
+          <Route path="repartidor" element={<MisEntregas />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
