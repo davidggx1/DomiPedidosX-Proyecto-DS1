@@ -8,14 +8,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from usuarios.models import Repartidor
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 
+from .asignacion import AsignacionInvalida, asignar, retirar
 from .estados import CLIENTE, TransicionInvalida, cambiar_estado
-from .models import EstadoPedido, HistorialEstadoPedido, Pedido
+from .models import EstadoPedido, HistorialEstadoPedido, OrigenPedido, Pedido
 from .serializers import (
+    AsignarRepartidorSerializer,
     CambioEstadoSerializer,
     ComandaCocinaSerializer,
     EstadoPedidoSerializer,
+    PedidoDespachoSerializer,
     TarjetaCocinaSerializer,
 )
 
@@ -198,3 +202,109 @@ class ComandaCocinaView(APIView):
         rol = rol_de_cocina(request.user)
         pedido = get_object_or_404(pedidos_para_cocina(request.user, rol), pk=pk)
         return Response(ComandaCocinaSerializer(pedido, context={"rol": rol}).data)
+
+
+# --- Despacho: asignación manual de repartidor (HU-35) ---------------------------
+
+ROLES_DESPACHO = (OPERADOR, ADMINISTRADOR)
+
+
+def rol_de_despacho(usuario):
+    rol = rol_de(usuario)
+    if rol not in ROLES_DESPACHO:
+        raise PermissionDenied("Solo el operador o el administrador asignan repartidores.")
+    return rol
+
+
+class DespachoView(APIView):
+    """
+    GET /api/pedidos/despacho/
+
+    Pedidos "Listo para despacho" que van a domicilio, del más antiguo al más
+    nuevo, con su repartidor si ya tienen uno. Junto con
+    GET /api/usuarios/repartidores/?disponible=true forma las dos listas del
+    módulo de logística (HU-35, criterio 1). El administrador puede filtrar
+    con ?sede=<id>.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[OpenApiParameter("sede", int, description="Solo administrador: filtrar por sede.")],
+        responses=PedidoDespachoSerializer(many=True),
+    )
+    def get(self, request):
+        rol = rol_de_despacho(request.user)
+        pedidos = (
+            pedidos_visibles(request.user, rol)
+            .filter(estado=EstadoPedido.LISTO_DESPACHO)
+            .exclude(origen=OrigenPedido.MOSTRADOR)
+            .annotate(listo_en=momento_del_estado(EstadoPedido.LISTO_DESPACHO))
+            .select_related("repartidor__empleado")
+            .prefetch_related("detalles__producto", "detalles__producto_tamano", "detalles__combo")
+        )
+        sede = request.query_params.get("sede")
+        if sede is not None and rol == ADMINISTRADOR:
+            if not sede.isdigit():
+                return Response(
+                    {"sede": "Debe ser el id numérico de una sede."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            pedidos = pedidos.filter(sede_id=int(sede))
+        pedidos = pedidos.order_by("listo_en", "id")
+        return Response(PedidoDespachoSerializer(pedidos, many=True).data)
+
+
+class AsignacionRepartidorView(APIView):
+    """
+    POST   /api/pedidos/<id>/repartidor/  {"repartidor": <id>}  → asigna.
+    DELETE /api/pedidos/<id>/repartidor/                      → retira la asignación.
+
+    Las reglas viven en pedidos/asignacion.py.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def obtener_pedido(self, request, pk):
+        rol = rol_de_despacho(request.user)
+        return get_object_or_404(pedidos_visibles(request.user, rol), pk=pk)
+
+    def responder(self, pedido):
+        pedido = (
+            Pedido.objects.filter(pk=pedido.pk)
+            .annotate(listo_en=momento_del_estado(EstadoPedido.LISTO_DESPACHO))
+            .select_related("repartidor__empleado")
+            .prefetch_related("detalles__producto", "detalles__producto_tamano", "detalles__combo")
+            .get()
+        )
+        return Response(PedidoDespachoSerializer(pedido).data)
+
+    @staticmethod
+    def error(error):
+        codigo_http = status.HTTP_409_CONFLICT if error.codigo == "pedido_ya_asignado" else status.HTTP_400_BAD_REQUEST
+        return Response({error.campo: error.mensaje, "codigo": error.codigo}, status=codigo_http)
+
+    @extend_schema(request=AsignarRepartidorSerializer, responses=PedidoDespachoSerializer)
+    def post(self, request, pk):
+        pedido = self.obtener_pedido(request, pk)
+        datos = AsignarRepartidorSerializer(data=request.data)
+        datos.is_valid(raise_exception=True)
+        repartidor = Repartidor.objects.filter(pk=datos.validated_data["repartidor"]).first()
+        if repartidor is None:
+            return Response(
+                {"repartidor": "El repartidor no existe.", "codigo": "repartidor_inexistente"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            pedido = asignar(pedido, repartidor, usuario=request.user)
+        except AsignacionInvalida as error:
+            return self.error(error)
+        return self.responder(pedido)
+
+    @extend_schema(request=None, responses=PedidoDespachoSerializer)
+    def delete(self, request, pk):
+        pedido = self.obtener_pedido(request, pk)
+        try:
+            pedido = retirar(pedido, usuario=request.user)
+        except AsignacionInvalida as error:
+            return self.error(error)
+        return self.responder(pedido)
