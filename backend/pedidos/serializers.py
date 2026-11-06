@@ -1,7 +1,15 @@
 from rest_framework import serializers
 
 from .estados import siguientes_estados
-from .models import DetallePedido, DetallePedidoAdicion, EstadoPedido, HistorialEstadoPedido, Pedido
+from .models import (
+    DetallePedido,
+    DetallePedidoAdicion,
+    EstadoFactura,
+    EstadoPedido,
+    HistorialEstadoPedido,
+    MetodoPago,
+    Pedido,
+)
 
 
 class CambioEstadoSerializer(serializers.Serializer):
@@ -246,4 +254,94 @@ class PedidoEntranteSerializer(serializers.ModelSerializer):
                 "sin": [e.nombre_insumo for e in d.exclusiones.all()],
             }
             for d in obj.detalles.all()
+        ]
+
+
+# --- Repartidor: mis entregas (HU-42) y detalle de la entrega (HU-43) ------------
+
+
+def cobrar_en_efectivo(pedido):
+    """True si el repartidor debe cobrar al entregar: paga en efectivo y no está pagada."""
+    factura = getattr(pedido, "factura", None)
+    return bool(
+        factura
+        and factura.metodo_pago == MetodoPago.EFECTIVO
+        and factura.estado_factura == EstadoFactura.PENDIENTE
+    )
+
+
+class ClienteEntregaSerializer(serializers.Serializer):
+    nombre = serializers.SerializerMethodField()
+    celular = serializers.CharField(read_only=True)
+
+    def get_nombre(self, cliente) -> str:
+        return f"{cliente.nombres} {cliente.apellidos}"
+
+
+class TarjetaEntregaSerializer(serializers.ModelSerializer):
+    """Pedido en curso en la lista del repartidor (HU-42)."""
+
+    estado_nombre = serializers.CharField(source="get_estado_display", read_only=True)
+    cliente = ClienteEntregaSerializer(read_only=True, allow_null=True)
+    total = serializers.DecimalField(
+        source="factura.total", max_digits=12, decimal_places=2, read_only=True, default=None
+    )
+    metodo_pago = serializers.CharField(source="factura.metodo_pago", read_only=True, default=None)
+    metodo_pago_nombre = serializers.CharField(
+        source="factura.get_metodo_pago_display", read_only=True, default=None
+    )
+    cobrar_en_efectivo = serializers.SerializerMethodField()
+    siguientes_estados = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pedido
+        fields = [
+            "id",
+            "numero_pedido",
+            "estado",
+            "estado_nombre",
+            "fecha_creacion",
+            "entrega_direccion",
+            "entrega_barrio",
+            "cliente",
+            "total",
+            "metodo_pago",
+            "metodo_pago_nombre",
+            "cobrar_en_efectivo",
+            "siguientes_estados",
+        ]
+
+    def get_cobrar_en_efectivo(self, pedido) -> bool:
+        return cobrar_en_efectivo(pedido)
+
+    def get_siguientes_estados(self, pedido) -> list[str]:
+        return siguientes_estados(pedido.estado, self.context.get("rol"))
+
+
+class DetalleEntregaSerializer(TarjetaEntregaSerializer):
+    """Comanda de entrega: a dónde ir, qué llevar y cuánto cobrar (HU-43)."""
+
+    notas = serializers.CharField(source="descripcion", read_only=True)
+    lineas = LineaComandaSerializer(source="detalles", many=True, read_only=True)
+    subtotal = serializers.DecimalField(
+        source="factura.subtotal", max_digits=12, decimal_places=2, read_only=True, default=None
+    )
+    costo_domicilio = serializers.DecimalField(
+        source="factura.costo_domicilio", max_digits=12, decimal_places=2, read_only=True, default=None
+    )
+    valor_descuento = serializers.DecimalField(
+        source="factura.valor_descuento", max_digits=12, decimal_places=2, read_only=True, default=None
+    )
+
+    class Meta(TarjetaEntregaSerializer.Meta):
+        fields = TarjetaEntregaSerializer.Meta.fields + [
+            "entrega_alias",
+            "entrega_indicaciones",
+            "entrega_latitud",
+            "entrega_longitud",
+            "notas",
+            "lineas",
+            "subtotal",
+            "costo_domicilio",
+            "valor_descuento",
         ]
