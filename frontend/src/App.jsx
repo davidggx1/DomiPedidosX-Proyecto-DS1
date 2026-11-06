@@ -18,6 +18,9 @@ import Productos from './pages/operador/Productos.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
+import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
+import RegistrarEmpleado from "./pages/admin/RegistrarEmpleado.jsx";
+import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -40,6 +43,7 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
           <Route path="operador" element={<EnConstruccion titulo="Pedidos entrantes" historias="HU-27, HU-28" />} />
+          <Route path="operador/crear-pedido" element={<CrearPedidoOperador />} />
           <Route path="operador/menu" element={<CategoriasMenu />} />
           <Route path="operador/productos" element={<Productos />} />
           <Route path="operador/adiciones" element={<Adiciones />} />
@@ -60,7 +64,8 @@ export default function App() {
           <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
           <Route path="admin/pedidos" element={<EnConstruccion titulo="Pedidos del día" historias="HU-67" />} />
           <Route path="admin/sedes" element={<EnConstruccion titulo="Sedes" historias="HU-81, HU-82" />} />
-          <Route path="admin/personal" element={<EnConstruccion titulo="Personal" historias="HU-08" />} />
+          <Route path="admin/personal" element={<PersonalDashboard />} />
+          <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
           <Route path="admin/cuentas" element={<Cuentas />} />
         </Route>
 

@@ -20,3 +20,8 @@ export function conectarEstadoPedido(id, onChange) {
   socket.addEventListener('message', (event) => onChange(JSON.parse(event.data)))
   return () => socket.close()
 }
+
+export async function crearPedidoOperador(datosPedido) {
+  const { data } = await api.post('/pedidos/operador/crear/', datosPedido)
+  return data
+}
