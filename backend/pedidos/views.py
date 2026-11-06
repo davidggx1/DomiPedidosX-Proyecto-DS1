@@ -7,9 +7,11 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 
 from usuarios.models import Repartidor
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
+from usuarios.permissions import filtrar_por_sede, rol_requerido
 
 from .asignacion import AsignacionInvalida, asignar, retirar
 from .estados import CLIENTE, TransicionInvalida, cambiar_estado
@@ -21,6 +23,8 @@ from .serializers import (
     EstadoPedidoSerializer,
     PedidoDespachoSerializer,
     TarjetaCocinaSerializer,
+    PedidoEntranteSerializer, 
+    pedidos_con_detalle,
 )
 
 
@@ -308,3 +312,14 @@ class AsignacionRepartidorView(APIView):
         except AsignacionInvalida as error:
             return self.error(error)
         return self.responder(pedido)
+
+
+class PedidosEntrantesView(ListAPIView):
+    """Pedidos pendientes de aprobación, del más antiguo al más nuevo, solo de la sede del usuario."""
+
+    serializer_class = PedidoEntranteSerializer
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+
+    def get_queryset(self):
+        qs = pedidos_con_detalle().filter(estado=EstadoPedido.PENDIENTE_APROBACION)
+        return filtrar_por_sede(qs, self.request.user).order_by("fecha_creacion", "id")
