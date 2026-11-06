@@ -19,21 +19,38 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from inventario.models import InventarioProducto
+from inventario.models import InventarioInsumo, InventarioProducto
 from sedes.models import Sede
 
 from .catalogo import producto_disponible
 from .models import Producto, ProductoAdicion, ProductoInsumo, ProductoTamano
 
 
-def stock_suficiente(producto, inventario, cantidad):
+def inventarios_insumos_de(sede, producto):
+    """Existencias de la sede para los ingredientes de la receta: {insumo_id: InventarioInsumo}."""
+    ids = producto.insumos_requeridos.values_list("insumo_id", flat=True)
+    return {
+        inventario.insumo_id: inventario
+        for inventario in InventarioInsumo.objects.filter(sede=sede, insumo_id__in=ids)
+    }
+
+
+def stock_suficiente(producto, inventario, cantidad, inventarios_insumos=None):
     """
     Hook de stock. Con control por unidades se compara con el stock de la sede.
-    El control por insumos (HU-14) llega en el Sprint 2: por ahora no limita.
+    Con control por insumos (HU-14) cada ingrediente de la receta debe alcanzar
+    para la cantidad pedida.
     """
     if producto.tipo_control_stock == Producto.TipoControlStock.PRODUCTO:
         return inventario is not None and cantidad <= inventario.stock_actual
-    # HU-14 (Sprint 2): revisar InventarioInsumo con la receta del producto.
+    if producto.tipo_control_stock == Producto.TipoControlStock.INSUMOS:
+        inventarios_insumos = inventarios_insumos or {}
+        for receta in producto.insumos_requeridos.all():
+            stock = inventarios_insumos.get(receta.insumo_id)
+            if stock is None or not stock.disponible:
+                return False
+            if stock.stock_actual < Decimal(receta.cantidad_necesaria) * cantidad:
+                return False
     return True
 
 
@@ -99,7 +116,8 @@ class LineaCarritoSerializer(serializers.Serializer):
         if producto is None:
             raise serializers.ValidationError({"producto": "El producto no existe o no está activo."})
         inventario = InventarioProducto.objects.filter(sede=sede, producto=producto).first()
-        if not producto_disponible(producto, inventario):
+        insumos = inventarios_insumos_de(sede, producto)
+        if not producto_disponible(producto, inventario, insumos):
             raise serializers.ValidationError(
                 {"producto": f'"{producto.nombre}" no está disponible en esta sede.'}
             )
@@ -109,10 +127,15 @@ class LineaCarritoSerializer(serializers.Serializer):
         exclusiones = self._validar_exclusiones(producto, attrs["exclusiones"])
         self._validar_sin_contradicciones(adiciones, exclusiones)
 
-        if not stock_suficiente(producto, inventario, attrs["cantidad"]):
-            raise serializers.ValidationError(
-                {"cantidad": f"Solo quedan {inventario.stock_actual} unidades de \"{producto.nombre}\"."}
-            )
+        if not stock_suficiente(producto, inventario, attrs["cantidad"], insumos):
+            if producto.tipo_control_stock == Producto.TipoControlStock.INSUMOS:
+                mensaje = (
+                    f"No hay ingredientes suficientes para {attrs['cantidad']} "
+                    f"unidades de \"{producto.nombre}\"."
+                )
+            else:
+                mensaje = f"Solo quedan {inventario.stock_actual} unidades de \"{producto.nombre}\"."
+            raise serializers.ValidationError({"cantidad": mensaje})
 
         attrs.update(
             producto=producto,

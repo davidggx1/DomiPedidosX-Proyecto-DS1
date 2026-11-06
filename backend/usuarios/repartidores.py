@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, serializers
 from rest_framework.exceptions import NotFound
 
-from pedidos.models import EstadoPedido
+from pedidos.asignacion import ESTADOS_EN_CURSO
 
 from .models import Repartidor
 from .permissions import EsRepartidor, filtrar_por_sede, rol_requerido
@@ -90,13 +90,7 @@ class RepartidoresView(generics.ListAPIView):
     pagination_class = None
 
     def get_queryset(self):
-        en_curso = Q(
-            pedidos_asignados__estado__in=[
-                EstadoPedido.LISTO_DESPACHO,
-                EstadoPedido.RECOGIDO,
-                EstadoPedido.EN_CAMINO,
-            ]
-        )
+        en_curso = Q(pedidos_asignados__estado__in=ESTADOS_EN_CURSO)
         repartidores = (
             Repartidor.objects.filter(empleado__usuario__is_active=True)
             .select_related("empleado")
