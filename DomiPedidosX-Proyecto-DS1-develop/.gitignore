@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+db.sqlite3
+staticfiles/
+media/
+*.log
+
+# Secretos (NUNCA subir)
+.env
+.env.*
+!.env.example
+
+# Frontend (cuando se defina React/Vue)
+node_modules/
+dist/
+build/
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+
+

@@ -1,31 +1,27 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
-.coverage
-htmlcov/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Django
-db.sqlite3
-staticfiles/
-media/
-*.log
+# dependencies
+/node_modules
 
-# Secretos (NUNCA subir)
-.env
-.env.*
-!.env.example
+# next.js
+/.next/
+/out/
 
-# Frontend (cuando se defina React/Vue)
-node_modules/
-dist/
-build/
+# production
+/build
 
-# Editores y sistema
-.vscode/
-.idea/
-.DS_Store
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
+# env files
+.env*
 
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
