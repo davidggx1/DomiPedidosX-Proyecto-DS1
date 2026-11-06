@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 from .views import LoginView, RegistroClienteView, EmpleadoManagementView
 from .views import DireccionEntregaViewSet, LoginPersonalView, PerfilPersonalView
 from .repartidores import MiDisponibilidadView, RepartidoresView
+from .cuentas import CuentasView, CuentaView
 
 router = SimpleRouter()
 router.register("direcciones", DireccionEntregaViewSet, basename="direccion")
@@ -17,5 +18,7 @@ urlpatterns = [
     path("perfil-personal/", PerfilPersonalView.as_view(), name="perfil-personal"),
     path("repartidor/disponibilidad/", MiDisponibilidadView.as_view(), name="repartidor-disponibilidad"),
     path("repartidores/", RepartidoresView.as_view(), name="repartidores"),
+    path("cuentas/", CuentasView.as_view(), name="cuentas"),
+    path("cuentas/<int:pk>/", CuentaView.as_view(), name="cuenta"),
     path("", include(router.urls)),
 ]
