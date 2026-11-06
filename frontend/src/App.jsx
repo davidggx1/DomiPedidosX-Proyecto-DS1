@@ -6,6 +6,7 @@ import Carrito from './pages/cliente/Carrito.jsx'
 import CategoriasMenu from './pages/CategoriasMenu.jsx'
 import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
+import TableroCocina from './pages/cocina/TableroCocina.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Login from './pages/Login.jsx'
 import NoAutorizado from './pages/NoAutorizado.jsx'
@@ -48,7 +49,7 @@ export default function App() {
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
-          <Route path="cocina" element={<EnConstruccion titulo="Tablero de cocina" historias="HU-29, HU-30, HU-31" />} />
+          <Route path="cocina" element={<TableroCocina />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
