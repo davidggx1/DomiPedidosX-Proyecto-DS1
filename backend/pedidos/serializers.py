@@ -151,3 +151,49 @@ class ComandaCocinaSerializer(TarjetaCocinaSerializer):
             "lineas",
             "siguientes_estados",
         ]
+
+
+# --- Despacho: asignación manual de repartidor (HU-35) ---------------------------
+
+
+class AsignarRepartidorSerializer(serializers.Serializer):
+    repartidor = serializers.IntegerField(
+        min_value=1,
+        error_messages={
+            "required": "Selecciona un repartidor.",
+            "invalid": "El repartidor debe indicarse con su id.",
+            "min_value": "El repartidor debe indicarse con su id.",
+        },
+    )
+
+
+class RepartidorAsignadoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.SerializerMethodField()
+
+    def get_nombre(self, repartidor) -> str:
+        return f"{repartidor.empleado.nombres} {repartidor.empleado.apellidos}"
+
+
+class PedidoDespachoSerializer(serializers.ModelSerializer):
+    """Pedido listo para despacho, con su repartidor si ya tiene uno (HU-35, criterio 1)."""
+
+    listo_en = serializers.DateTimeField(read_only=True, allow_null=True)
+    resumen = serializers.SerializerMethodField()
+    repartidor = RepartidorAsignadoSerializer(read_only=True, allow_null=True)
+
+    class Meta:
+        model = Pedido
+        fields = [
+            "id",
+            "numero_pedido",
+            "origen",
+            "listo_en",
+            "entrega_direccion",
+            "entrega_barrio",
+            "resumen",
+            "repartidor",
+        ]
+
+    def get_resumen(self, pedido) -> list[str]:
+        return [f"{d.cantidad}x {nombre_linea(d)}" for d in pedido.detalles.all()]
