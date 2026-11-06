@@ -1,11 +1,14 @@
 // Etiqueta con texto y símbolo, para que no dependa solo del color
 function Etiqueta({ tipo, children }) {
-  const clases =
-    tipo === 'adicion'
-      ? 'border-exito bg-exito/15 text-exito'
-      : 'border-error bg-error/15 text-error'
+  const adicion = tipo === 'adicion'
+  const clases = adicion
+    ? 'border-exito bg-exito/15 text-exito'
+    : 'border-error bg-error/15 text-error'
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-sm font-medium ${clases}`}>
+    <span
+      className={`rounded-full border px-2 py-0.5 text-sm font-medium ${clases}`}
+      aria-label={adicion ? 'Adición' : 'Ingrediente removido'}
+    >
       {children}
     </span>
   )
@@ -23,12 +26,21 @@ function Nota({ children }) {
 
 // What cocina needs to prepare an order: additions in green, removed ingredients in red and notes
 export default function DetalleComanda({ comanda }) {
+  const lineas = Array.isArray(comanda.lineas) ? comanda.lineas : []
+
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-texto-suave">Detalle de la comanda</h3>
+        <div className="flex flex-wrap gap-2 text-xs" aria-label="Leyenda de cambios">
+          <span className="text-exito">+ Adición</span>
+          <span className="text-error">− Removido</span>
+        </div>
+      </div>
       {comanda.notas?.trim() && <Nota>{comanda.notas}</Nota>}
 
       <ul className="flex flex-col gap-3">
-        {comanda.lineas.map((linea) => (
+        {lineas.map((linea) => (
           <li key={linea.id} className="flex flex-col gap-2 rounded-lg border border-borde bg-fondo p-3">
             <p className="font-medium">
               {linea.cantidad}x {linea.nombre}

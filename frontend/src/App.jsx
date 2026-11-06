@@ -14,11 +14,15 @@ import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
+import DetalleEntrega from './pages/repartidor/DetalleEntrega.jsx'
 import MisEntregas from './pages/repartidor/MisEntregas.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
+import Despacho from './pages/operador/Despacho.jsx'
+import PedidosEntrantes from './pages/operador/PedidosEntrantes.jsx'
+import TableroCocina from './pages/cocina/TableroCocina.jsx'
 import RegistrarEmpleado from "./pages/admin/RegistrarEmpleado.jsx";
 import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
 import ConfirmarPedido from "./pages/cliente/ConfirmarPedido.jsx";
@@ -44,22 +48,23 @@ export default function App() {
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
-          <Route path="operador" element={<EnConstruccion titulo="Pedidos entrantes" historias="HU-27, HU-28" />} />
+          <Route path="operador" element={<PedidosEntrantes />} />
           <Route path="operador/crear-pedido" element={<CrearPedidoOperador />} />
           <Route path="operador/menu" element={<CategoriasMenu />} />
           <Route path="operador/productos" element={<Productos />} />
           <Route path="operador/adiciones" element={<Adiciones />} />
           <Route path="operador/ingredientes" element={<Ingredientes />} />
           <Route path="operador/inventario" element={<Inventario />} />
-          <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
+          <Route path="operador/repartidores" element={<Despacho />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
-          <Route path="cocina" element={<EnConstruccion titulo="Tablero de cocina" historias="HU-29, HU-30, HU-31" />} />
+          <Route path="cocina" element={<TableroCocina />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
           <Route path="repartidor" element={<MisEntregas />} />
+          <Route path="repartidor/entregas/:id" element={<DetalleEntrega />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>

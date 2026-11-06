@@ -21,7 +21,8 @@ from .models import EstadoPedido, OrigenPedido, Pedido
 # Pedidos que ocupan a un repartidor (también se usa en HU-41 para contar sus entregas).
 ESTADOS_EN_CURSO = [EstadoPedido.LISTO_DESPACHO, EstadoPedido.RECOGIDO, EstadoPedido.EN_CAMINO]
 
-# Se envía al confirmar la transacción. Argumentos: pedido, repartidor (None si se retiró), usuario.
+# Se envía al confirmar la transacción. Argumentos: pedido, repartidor (None si se retiró),
+# usuario y repartidor_anterior (a quién se le retiró; lo usa el aviso en tiempo real de HU-42).
 asignacion_cambiada = Signal()
 
 
@@ -76,10 +77,14 @@ def validar_asignacion(pedido, repartidor):
         )
 
 
-def _avisar(pedido, repartidor, usuario):
+def _avisar(pedido, repartidor, usuario, repartidor_anterior=None):
     transaction.on_commit(
         lambda: asignacion_cambiada.send(
-            sender=Pedido, pedido=pedido, repartidor=repartidor, usuario=usuario
+            sender=Pedido,
+            pedido=pedido,
+            repartidor=repartidor,
+            usuario=usuario,
+            repartidor_anterior=repartidor_anterior,
         )
     )
 
@@ -111,7 +116,8 @@ def retirar(pedido, usuario=None):
                 "El repartidor ya recogió el pedido; no se puede retirar la asignación.",
                 "pedido_recogido",
             )
+        anterior = pedido.repartidor
         pedido.repartidor = None
         pedido.save(update_fields=["repartidor"])
-        _avisar(pedido, None, usuario)
+        _avisar(pedido, None, usuario, repartidor_anterior=anterior)
     return pedido
