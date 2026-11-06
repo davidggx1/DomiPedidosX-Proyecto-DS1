@@ -5,7 +5,6 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from sedes.models import Ciudad, Sede
-from usuarios.models import TipoDocumento
 
 User = get_user_model()
 
@@ -30,14 +29,14 @@ class TestHU08RegistroPersonal:
             correo="sanfernando@domipedidos.com",
         )
 
-        # Crear Administrador
+        # Crear Administrador (usando grupo en minúsculas 'administrador' según roles.py)
         self.admin_user = User.objects.create_user(
             username="admin@domipedidos.com",
             email="admin@domipedidos.com",
             password="AdminPassword123!",
             is_staff=True,
         )
-        admin_group, _ = Group.objects.get_or_create(name="ADMINISTRADOR")
+        admin_group, _ = Group.objects.get_or_create(name="administrador")
         self.admin_user.groups.add(admin_group)
 
         # Crear Usuario Cliente (No Admin)
@@ -49,7 +48,7 @@ class TestHU08RegistroPersonal:
         )
 
     def test_crear_operador_exitoso_como_admin(self):
-        """Un administrador crea exitosamente un Operador con sede asignada."""
+        """Un administrador crea exitosamente un Operador con sede asignada y verifica asignación de grupo en minúsculas."""
         self.client.force_authenticate(user=self.admin_user)
         payload = {
             "email": "operador1@domipedidos.com",
@@ -65,6 +64,38 @@ class TestHU08RegistroPersonal:
         response = self.client.post("/api/usuarios/empleados/", payload)
         assert response.status_code == status.HTTP_201_CREATED
         assert "contrasena_inicial" in response.data
+
+        # Verificar que se asignó el grupo en minúsculas 'operador'
+        usuario_creado = User.objects.get(email="operador1@domipedidos.com")
+        assert usuario_creado.groups.filter(name="operador").exists()
+
+    def test_empleado_registrado_puede_hacer_login_personal(self):
+        """Un empleado recién creado con rol 'OPERADOR' puede iniciar sesión en /login-personal/."""
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "email": "operador.login@domipedidos.com",
+            "password": "PasswordSegura123!",
+            "nombres": "Carlos",
+            "apellidos": "Gómez",
+            "tipo_documento": "CC",
+            "num_documento": "1098765999",
+            "celular": "3151239999",
+            "direccion": "Carrera 1 # 2-3",
+            "rol": "OPERADOR",
+            "sede_id": self.sede.id,
+        }
+        res_crear = self.client.post("/api/usuarios/empleados/", payload)
+        assert res_crear.status_code == status.HTTP_201_CREATED
+
+        # Intentar Login Personal desautenticando el admin
+        self.client.force_authenticate(user=None)
+        res_login = self.client.post(
+            "/api/usuarios/login-personal/",
+            {"email": "operador.login@domipedidos.com", "password": "PasswordSegura123!"},
+            format="json",
+        )
+        assert res_login.status_code == status.HTTP_200_OK
+        assert "access" in res_login.data
 
     def test_admin_no_requiere_sede(self):
         """Un Administrador puede ser registrado sin especificar una sede."""
