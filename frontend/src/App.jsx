@@ -6,13 +6,13 @@ import Carrito from './pages/cliente/Carrito.jsx'
 import CategoriasMenu from './pages/CategoriasMenu.jsx'
 import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
-import TableroCocina from './pages/cocina/TableroCocina.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Login from './pages/Login.jsx'
 import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
+import Despacho from './pages/operador/Despacho.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
@@ -45,11 +45,11 @@ export default function App() {
           <Route path="operador/adiciones" element={<Adiciones />} />
           <Route path="operador/ingredientes" element={<Ingredientes />} />
           <Route path="operador/inventario" element={<Inventario />} />
-          <Route path="operador/repartidores" element={<EnConstruccion titulo="Repartidores" historias="HU-35" />} />
+          <Route path="operador/repartidores" element={<Despacho />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
-          <Route path="cocina" element={<TableroCocina />} />
+          <Route path="cocina" element={<EnConstruccion titulo="Tablero de cocina" historias="HU-29, HU-30, HU-31" />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
