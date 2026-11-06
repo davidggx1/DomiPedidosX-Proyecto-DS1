@@ -22,3 +22,9 @@ export async function listarMisEntregas() {
 export function conectarMisEntregas(eventos) {
   return conectarSocket('/ws/pedidos/mis-entregas/', eventos)
 }
+
+// Detail of one delivery: address, products, totals and payment (HU-43)
+export async function obtenerEntrega(id) {
+  const { data } = await api.get(`/pedidos/mis-entregas/${id}/`)
+  return data
+}
