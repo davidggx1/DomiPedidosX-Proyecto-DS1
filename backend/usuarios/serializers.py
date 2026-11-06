@@ -145,16 +145,17 @@ class RegistroEmpleadoSerializer(serializers.Serializer):
             alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
             raw_password = "".join(secrets.choice(alphabet) for _ in range(12))
 
-        # Crear usuario
+        # Crear usuario (evaluamos en mayúsculas/minúsculas de forma segura)
         usuario = Usuario.objects.create_user(
             username=email,
             email=email,
             password=raw_password,
-            is_staff=(rol_nombre == "ADMINISTRADOR"),
+            is_staff=(rol_nombre.upper() == "ADMINISTRADOR"),
         )
 
-        # Asignar a su grupo de Django (Rol)
-        grupo, _ = Group.objects.get_or_create(name=rol_nombre)
+        # FIX HU-08: Forzar minúsculas al asociar el grupo para que coincida con roles.py y migraciones
+        grupo_nombre = rol_nombre.lower()
+        grupo, _ = Group.objects.get_or_create(name=grupo_nombre)
         usuario.groups.add(grupo)
 
         sede_obj = Sede.objects.get(id=sede_id) if sede_id else None
@@ -171,11 +172,11 @@ class RegistroEmpleadoSerializer(serializers.Serializer):
             direccion=validated_data["direccion"],
         )
 
-        # Si el rol es Repartidor, crear también su perfil (arranca "No disponible", HU-41)
-        if rol_nombre == "REPARTIDOR":
+        # Si el rol es Repartidor (evaluando con .upper()), crear su perfil en False (HU-41)
+        if rol_nombre.upper() == "REPARTIDOR":
             Repartidor.objects.create(empleado=empleado, disponible=False)
 
-        # Guardar la contraseña temporal en el objeto para ser devuelta en la respuesta HTTP
+        # Guardar la contraseña temporal para ser devuelta en la respuesta HTTP
         empleado.contrasena_inicial = raw_password
         return empleado
 
