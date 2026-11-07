@@ -27,7 +27,7 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/sedes/", include("sedes.urls")),  # 2. Rutas de la app sedes
+    path("api/", include("sedes.urls")),  # 2. Rutas de la app sedes
     path("api/usuarios/", include("usuarios.urls")),
     path("api/menu/", include("menu.urls")),
     path("api/inventario/", include("inventario.urls")),
