@@ -35,6 +35,16 @@ export default function AuthProvider({ children }) {
 
   const cerrarSesion = useCallback(() => actualizarSesion(null), [actualizarSesion])
 
+  // Cambia datos del usuario sin cerrar la sesión (HU-07: el nombre del encabezado).
+  const actualizarUsuario = useCallback((cambios) => {
+    setSesion((actual) => {
+      if (!actual) return actual
+      const nueva = { ...actual, usuario: { ...actual.usuario, ...cambios } }
+      guardarSesion(nueva)
+      return nueva
+    })
+  }, [])
+
   const valor = useMemo(
     () => ({
       usuario: sesion?.usuario ?? null,
@@ -42,8 +52,9 @@ export default function AuthProvider({ children }) {
       iniciarSesion,
       iniciarSesionSimulada,
       cerrarSesion,
+      actualizarUsuario,
     }),
-    [sesion, iniciarSesion, iniciarSesionSimulada, cerrarSesion],
+    [sesion, iniciarSesion, iniciarSesionSimulada, cerrarSesion, actualizarUsuario],
   )
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>

@@ -19,6 +19,32 @@ User = get_user_model()
 ROLES_OPERATIVOS = ["OPERADOR", "COCINA", "REPARTIDOR"]
 ROLES_PERMITIDOS = ROLES_OPERATIVOS + ["ADMINISTRADOR"]
 
+
+def validar_celular_cliente(value, cliente=None):
+    """
+    Reglas del celular del cliente (HU-02): obligatorio, 10 dígitos y único.
+    Al editar el perfil (HU-07) se vuelve a validar, sin contar al propio `cliente`.
+    """
+    if not value:
+        raise serializers.ValidationError("El teléfono celular es obligatorio.")
+
+    # Validación de 10 dígitos numéricos
+    if not re.match(r"^\d{10}$", value):
+        raise serializers.ValidationError(
+            "El número de teléfono debe contener exactamente 10 dígitos numéricos."
+        )
+
+    # Validación de unicidad
+    otros = Cliente.objects.filter(celular=value)
+    if cliente is not None:
+        otros = otros.exclude(pk=cliente.pk)
+    if otros.exists():
+        raise serializers.ValidationError(
+            "Este número de teléfono ya está registrado en otra cuenta."
+        )
+    return value
+
+
 class RegistroClienteSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, style={"input_type": "password"})
@@ -36,21 +62,7 @@ class RegistroClienteSerializer(serializers.Serializer):
         return value
 
     def validate_celular(self, value):
-        if not value:
-            raise serializers.ValidationError("El teléfono celular es obligatorio.")
-
-        # Validación de 10 dígitos numéricos
-        if not re.match(r"^\d{10}$", value):
-            raise serializers.ValidationError(
-                "El número de teléfono debe contener exactamente 10 dígitos numéricos."
-            )
-
-        # Validación de unicidad
-        if Cliente.objects.filter(celular=value).exists():
-            raise serializers.ValidationError(
-                "Este número de teléfono ya está registrado en otra cuenta."
-            )
-        return value
+        return validar_celular_cliente(value)
 
     def validate_password(self, value):
         # Aplica las reglas de settings (mínimo 8 caracteres, no común, etc.)
@@ -76,6 +88,37 @@ class RegistroClienteSerializer(serializers.Serializer):
             username=email, email=email, password=password
         )
         return Cliente.objects.create(usuario=usuario, **validated_data)
+
+class PerfilClienteSerializer(serializers.ModelSerializer):
+    """
+    Datos de contacto que el cliente puede editar (HU-07): nombres, apellidos y celular.
+    Correo y documento se muestran pero no se cambian aquí.
+    """
+
+    email = serializers.EmailField(source="usuario.email", read_only=True)
+    celular = serializers.CharField(max_length=10)
+
+    class Meta:
+        model = Cliente
+        fields = [
+            "email",
+            "nombres",
+            "apellidos",
+            "celular",
+            "tipo_documento",
+            "num_documento",
+            "fecha_nacimiento",
+        ]
+        read_only_fields = ["tipo_documento", "num_documento", "fecha_nacimiento"]
+        extra_kwargs = {
+            "nombres": {"error_messages": {"blank": "Escribe tus nombres."}},
+            "apellidos": {"error_messages": {"blank": "Escribe tus apellidos."}},
+        }
+
+    def validate_celular(self, value):
+        # Re-validación del teléfono: mismas reglas del registro (HU-02).
+        return validar_celular_cliente(value, cliente=self.instance)
+
 
 class RegistroEmpleadoSerializer(serializers.Serializer):
     email = serializers.EmailField()

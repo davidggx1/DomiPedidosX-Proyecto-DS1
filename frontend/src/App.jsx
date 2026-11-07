@@ -19,6 +19,7 @@ import MisEntregas from './pages/repartidor/MisEntregas.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 import MisPedidos from './pages/cliente/MisPedidos.jsx'
+import Perfil from './pages/cliente/Perfil.jsx'
 import SeguimientoPedido from './pages/cliente/SeguimientoPedido.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
@@ -46,7 +47,7 @@ export default function App() {
           <Route path="direcciones" element={<Direcciones />} />
           <Route path="mis-pedidos" element={<MisPedidos />} />
           <Route path="mis-pedidos/:id" element={<SeguimientoPedido />} />
-          <Route path="perfil" element={<EnConstruccion titulo="Mi perfil" historias="HU-07" />} />
+          <Route path="perfil" element={<Perfil />} />
           <Route path="carrito" element={<Carrito />} />
           <Route path="checkout" element={<ConfirmarPedido />} />
         </Route>
