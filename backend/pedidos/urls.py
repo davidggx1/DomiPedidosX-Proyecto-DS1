@@ -10,7 +10,7 @@ from .views import (
     ConfirmarPedidoView,
     AprobarPedidoView, CrearPedidoOperadorView,
 )
-from .entregas import DetalleEntregaView, MisEntregasView
+from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
 
 urlpatterns = [
     path("<int:pk>/estado/", EstadoPedidoView.as_view(), name="pedido-estado"),
@@ -24,4 +24,5 @@ urlpatterns = [
     path("operador/crear/", CrearPedidoOperadorView.as_view(), name="pedidos-operador-crear"),
     path("mis-entregas/", MisEntregasView.as_view(), name="mis-entregas"),
     path("mis-entregas/<int:pk>/", DetalleEntregaView.as_view(), name="mis-entregas-detalle"),
+    path("mis-entregas/<int:pk>/entrega/", ActualizarEntregaView.as_view(), name="mis-entregas-actualizar"),
 ]

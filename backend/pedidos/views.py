@@ -28,6 +28,7 @@ from .serializers import (
     PedidoDespachoSerializer,
     TarjetaCocinaSerializer,
     PedidoEntranteSerializer, 
+    cobrar_en_efectivo,
     pedidos_con_detalle,
 )
 
@@ -96,6 +97,20 @@ class EstadoPedidoView(APIView):
         pedido, rol = self.obtener(request, pk)
         datos = CambioEstadoSerializer(data=request.data)
         datos.is_valid(raise_exception=True)
+
+        # HU-45: entregar un pedido en efectivo exige registrar el recaudo.
+        if (
+            rol == REPARTIDOR
+            and datos.validated_data["estado"] == EstadoPedido.ENTREGADO
+            and cobrar_en_efectivo(pedido)
+        ):
+            return Response(
+                {
+                    "detail": "Registra el dinero recibido en /api/pedidos/mis-entregas/<id>/entrega/.",
+                    "codigo": "recaudo_obligatorio",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             cambiar_estado(
