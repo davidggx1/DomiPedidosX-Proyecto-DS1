@@ -34,7 +34,7 @@ export async function confirmarPedidoCliente(payload) {
 
 // HU-27: Carga inicial de pedidos entrantes
 export async function obtenerPedidosEntrantes() {
-  const { data } = await api.get('/api/pedidos/entrantes/')
+  const { data } = await api.get('/pedidos/entrantes/')
   return data
 }
 
