@@ -30,6 +30,8 @@ import TableroCocina from './pages/cocina/TableroCocina.jsx'
 import RegistrarEmpleado from "./pages/admin/RegistrarEmpleado.jsx";
 import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
 import ConfirmarPedido from "./pages/cliente/ConfirmarPedido.jsx";
+import ConfiguracionHorarios from "./pages/admin/ConfiguracionHorarios.jsx";
+import Sedes from "./pages/admin/Sedes.jsx";
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -76,7 +78,8 @@ export default function App() {
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
           <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
           <Route path="admin/pedidos" element={<PedidosDelDia />} />
-          <Route path="admin/sedes" element={<EnConstruccion titulo="Sedes" historias="HU-81, HU-82" />} />
+          <Route path="admin/sedes" element={<Sedes />} />
+          <Route path="admin/horarios" element={<ConfiguracionHorarios />} />
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
           <Route path="admin/cuentas" element={<Cuentas />} />
