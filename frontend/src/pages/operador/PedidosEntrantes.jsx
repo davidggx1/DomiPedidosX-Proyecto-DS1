@@ -8,11 +8,15 @@ export default function PedidosEntrantes() {
   const [pedidos, setPedidos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [procesando, setProcesando] = useState(null)
+  const [procesando, setProcesando] = useState(false)
   const [estadoConexion, setEstadoConexion] = useState('conectando')
+
+  // Estado para el modal de confirmación de aprobación (HU-28)
+  const [pedidoAprobar, setPedidoAprobar] = useState(null)
+
   const wsRef = useRef(null)
 
-  // Carga inicial HTTP: GET /api/pedidos/entrantes/
+  // Carga inicial HTTP
   const cargar = useCallback(async () => {
     try {
       setError(null)
@@ -25,12 +29,11 @@ export default function PedidosEntrantes() {
     }
   }, [])
 
-  // Carga inicial al montar el componente
   useEffect(() => {
     cargar()
   }, [cargar])
 
-  // Conexión en tiempo real con WebSocket
+  // WebSocket lifecycle (HU-27)
   useEffect(() => {
     let reconexionTimeout = null
 
@@ -49,9 +52,7 @@ export default function PedidosEntrantes() {
       const socket = new WebSocket(wsUrl)
       wsRef.current = socket
 
-      socket.onopen = () => {
-        setEstadoConexion('conectado')
-      }
+      socket.onopen = () => setEstadoConexion('conectado')
 
       socket.onmessage = (event) => {
         try {
@@ -65,36 +66,30 @@ export default function PedidosEntrantes() {
             })
           } else if (tipo === 'pedido_actualizado') {
             setPedidos((prev) => {
-              // Si ya no está en pendiente_aprobacion (aprobado o cancelado), se elimina
+              // Si ya no está pendiente de aprobación (recibido o cancelado), se remueve de la lista
               if (pedido.estado !== 'pendiente_aprobacion') {
                 return prev.filter((p) => p.id !== pedido.id)
               }
-              // Si sigue pendiente_aprobacion, se actualiza en la lista
               return prev.map((p) => (p.id === pedido.id ? pedido : p))
             })
           }
         } catch (e) {
-          console.error('Error al procesar evento WS:', e)
+          console.error('Error procesando evento WS:', e)
         }
       }
 
-      socket.onerror = () => {
-        setEstadoConexion('desconectado')
-      }
+      socket.onerror = () => setEstadoConexion('desconectado')
 
       socket.onclose = (event) => {
         setEstadoConexion('desconectado')
-
         if (event.code === 4401) {
-          setError('Tu sesión o token ha expirado (4401). Intenta recargar o iniciar sesión.')
+          setError('Tu sesión o token ha expirado (4401). Intenta recargar la página.')
           return
         }
         if (event.code === 4403) {
           setError('No tienes permisos o sede asignada para ver pedidos entrantes (4403).')
           return
         }
-
-        // Reconexión automática
         reconexionTimeout = window.setTimeout(conectarWS, 5000)
       }
     }
@@ -107,15 +102,39 @@ export default function PedidosEntrantes() {
     }
   }, [])
 
-  async function aprobar(id) {
-    setProcesando(id)
+  // Confirmar aprobación (HU-28)
+  const confirmarAprobacion = async () => {
+    if (!pedidoAprobar) return
+    setProcesando(true)
+    setError(null)
+
     try {
-      // Usar PATCH en lugar de POST (HU-28)
-      await api.patch(`/pedidos/${id}/aprobar/`)
-    } catch {
-      setError('No fue posible aprobar el pedido. Actualiza e inténtalo de nuevo.')
+      // Petición PATCH sin cuerpo según contrato
+      await api.patch(`/pedidos/${pedidoAprobar.id}/aprobar/`)
+
+      // Éxito HTTP 200: se remueve de la lista localmente mientras llega el evento WS
+      setPedidos((prev) => prev.filter((p) => p.id !== pedidoAprobar.id))
+      setPedidoAprobar(null)
+    } catch (err) {
+      const status = err.response?.status
+      const data = err.response?.data
+
+      if (status === 409) {
+        // Conflicto: otro operador ya procesó el pedido
+        const estadoActual = data?.estado_actual || 'procesado por otro usuario'
+        setError(`El pedido #${pedidoAprobar.numero_pedido ?? pedidoAprobar.id} ya fue modificado. Estado actual: ${estadoActual}.`)
+        await cargar() // Refrescar lista automáticamente
+      } else if (status === 404) {
+        setError('El pedido ya no existe o pertenece a otra sede.')
+        await cargar()
+      } else if (status === 403) {
+        setError('No tienes permisos suficientes para aprobar pedidos.')
+      } else {
+        setError('No fue posible aprobar el pedido. Inténtalo de nuevo.')
+      }
+      setPedidoAprobar(null)
     } finally {
-      setProcesando(null)
+      setProcesando(false)
     }
   }
 
@@ -171,7 +190,6 @@ export default function PedidosEntrantes() {
               )}
               {pedido.descripcion && <p className="mt-2 text-sm">{pedido.descripcion}</p>}
 
-              {/* Lista de detalles si la API los retorna */}
               {Array.isArray(pedido.detalles) && pedido.detalles.length > 0 && (
                 <div className="mt-3 rounded-lg border border-borde bg-fondo p-3 text-xs space-y-1">
                   <p className="font-semibold">Detalle:</p>
@@ -183,11 +201,41 @@ export default function PedidosEntrantes() {
                 </div>
               )}
 
-              <Boton className="mt-4 w-full" onClick={() => aprobar(pedido.id)} cargando={procesando === pedido.id}>
+              {/* Botón que abre el modal de confirmación */}
+              <Boton className="mt-4 w-full" onClick={() => setPedidoAprobar(pedido)}>
                 Aprobar pedido
               </Boton>
             </Tarjeta>
           ))}
+        </div>
+      )}
+
+      {/* Modal de confirmación (HU-28) */}
+      {pedidoAprobar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-negro/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-borde bg-superficie p-6 shadow-lg">
+            <h3 className="text-lg font-bold">Aprobar Pedido</h3>
+            <p className="mt-2 text-sm text-texto-suave">
+              ¿Estás seguro de que deseas aprobar el pedido{' '}
+              <strong>#{pedidoAprobar.numero_pedido ?? pedidoAprobar.id}</strong>? El pedido pasará a cocina para su preparación.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Boton
+                variante="secundario"
+                onClick={() => setPedidoAprobar(null)}
+                disabled={procesando}
+              >
+                Cancelar
+              </Boton>
+              <Boton
+                onClick={confirmarAprobacion}
+                cargando={procesando}
+              >
+                Sí, aprobar
+              </Boton>
+            </div>
+          </div>
         </div>
       )}
     </div>
