@@ -28,3 +28,10 @@ export async function obtenerEntrega(id) {
   const { data } = await api.get(`/pedidos/mis-entregas/${id}/`)
   return data
 }
+
+// Next step of the delivery; with cash, the amount received from the customer (HU-45)
+export async function actualizarEntrega(id, estado, montoRecaudado = null) {
+  const cuerpo = montoRecaudado == null ? { estado } : { estado, monto_recaudado: montoRecaudado }
+  const { data } = await api.patch(`/pedidos/mis-entregas/${id}/entrega/`, cuerpo)
+  return data
+}
