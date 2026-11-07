@@ -66,7 +66,7 @@ class TestHU81SedesBackend:
             "telefono": "3109876543",
             "correo": "norte@domipedidos.com"
         }
-        response = self.client.post('/api/sedes/sedes/', payload)
+        response = self.client.post('/api/sedes/', payload)
         assert response.status_code == status.HTTP_201_CREATED
         assert Sede.objects.filter(nombre="Sede Norte").exists()
 
@@ -85,7 +85,7 @@ class TestHU81SedesBackend:
             "telefono": "3000000000",
             "correo": "otro@domipedidos.com"
         }
-        response = self.client.post('/api/sedes/sedes/', payload)
+        response = self.client.post('/api/sedes/', payload)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "nombre" in response.data
         assert "Ya existe una sede registrada con este nombre." in str(response.data["nombre"])
@@ -100,7 +100,7 @@ class TestHU81SedesBackend:
             "telefono": "",      # Vacío
             "correo": "invalido" # Correo con mal formato
         }
-        response = self.client.post('/api/sedes/sedes/', payload)
+        response = self.client.post('/api/sedes/', payload)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "nombre" in response.data
         assert "direccion" in response.data
@@ -121,11 +121,11 @@ class TestHU81SedesBackend:
             "correo": "test@test.com"
         }
         # Intento de creación
-        response = self.client.post('/api/sedes/sedes/', payload)
+        response = self.client.post('/api/sedes/', payload)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
         # Intento de modificación
-        response = self.client.patch(f'/api/sedes/sedes/{self.sede_existente.id}/', {"activa": False})
+        response = self.client.patch(f'/api/sedes/{self.sede_existente.id}/', {"activa": False})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     # --- PRUEBA 5: QA Ocultamiento de Sedes Inactivas en Catálogo ---
@@ -143,7 +143,7 @@ class TestHU81SedesBackend:
             correo="inactiva@domipedidos.com"
         )
 
-        response = self.client.get('/api/sedes/sedes/?activa=true')
+        response = self.client.get('/api/sedes/?activa=true')
         assert response.status_code == status.HTTP_200_OK
 
         ids_retornados = [sede["id"] for sede in response.data]
@@ -155,7 +155,7 @@ class TestHU81SedesBackend:
         """Un admin puede cambiar el estado de activa a False."""
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.patch(
-            f'/api/sedes/sedes/{self.sede_existente.id}/',
+            f'/api/sedes/{self.sede_existente.id}/',
             {"activa": False},
             format='json'
         )
