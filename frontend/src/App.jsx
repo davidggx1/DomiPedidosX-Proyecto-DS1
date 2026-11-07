@@ -19,6 +19,7 @@ import MisEntregas from './pages/repartidor/MisEntregas.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
+import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
 import Despacho from './pages/operador/Despacho.jsx'
 import PedidosEntrantes from './pages/operador/PedidosEntrantes.jsx'
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="operador/ingredientes" element={<Ingredientes />} />
           <Route path="operador/inventario" element={<Inventario />} />
           <Route path="operador/repartidores" element={<Despacho />} />
+          <Route path="operador/pedidos-del-dia" element={<PedidosDelDia />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
@@ -69,7 +71,7 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
           <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
-          <Route path="admin/pedidos" element={<EnConstruccion titulo="Pedidos del día" historias="HU-67" />} />
+          <Route path="admin/pedidos" element={<PedidosDelDia />} />
           <Route path="admin/sedes" element={<EnConstruccion titulo="Sedes" historias="HU-81, HU-82" />} />
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />

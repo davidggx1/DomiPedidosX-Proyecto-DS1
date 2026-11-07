@@ -31,3 +31,15 @@ export async function confirmarPedidoCliente(payload) {
   const { data } = await api.post('/pedidos/confirmar/', payload)
   return data
 }
+
+// HU-27: Carga inicial de pedidos entrantes
+export async function obtenerPedidosEntrantes() {
+  const { data } = await api.get('/api/pedidos/entrantes/')
+  return data
+}
+
+// Orders of today by sede, counted by state (HU-67)
+export async function obtenerResumenDia() {
+  const { data } = await api.get('/pedidos/resumen-dia/')
+  return data
+}
