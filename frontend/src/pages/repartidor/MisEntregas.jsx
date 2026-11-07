@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { interpretarError } from '../../api/errores.js'
 import { conectarMisEntregas, listarMisEntregas } from '../../api/repartidores.js'
 import DisponibilidadRepartidor from '../../components/repartidor/DisponibilidadRepartidor.jsx'
@@ -12,6 +13,8 @@ export default function MisEntregas() {
   const [entregas, setEntregas] = useState(null) // null while it loads
   const [error, setError] = useState(null)
   const [enVivo, setEnVivo] = useState(false)
+  // message left by the detail page after a delivery (HU-45)
+  const mensaje = useLocation().state?.mensaje
 
   useEffect(() => {
     let vigente = true
@@ -57,6 +60,8 @@ export default function MisEntregas() {
         </div>
         <DisponibilidadRepartidor />
       </header>
+
+      {mensaje && <Alerta tipo="exito" titulo={mensaje} />}
 
       <Tarjeta>
         <p className="text-sm text-texto-suave">

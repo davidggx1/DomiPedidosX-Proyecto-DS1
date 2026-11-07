@@ -32,3 +32,36 @@ export function enlaceMapa(entrega) {
       : [entrega.entrega_direccion, entrega.entrega_barrio, 'Cali'].filter(Boolean).join(', ')
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
 }
+
+// The one step forward the repartidor gives from each state (HU-45), in strict order
+export const AVANCE_ENTREGA = {
+  listo_despacho: {
+    estado: 'recogido',
+    texto: 'Recogí el pedido',
+    pregunta: '¿Ya recogiste el pedido en la sede?',
+  },
+  recogido: {
+    estado: 'en_camino',
+    texto: 'Voy en camino',
+    pregunta: '¿Sales ahora hacia la dirección del cliente?',
+  },
+  en_camino: {
+    estado: 'entregado',
+    texto: 'Marcar como entregado',
+    pregunta: '¿Ya le entregaste el pedido al cliente?',
+  },
+}
+
+// The next step, only if the API says this repartidor can give it
+export function avanceDeEntrega(entrega) {
+  const avance = AVANCE_ENTREGA[entrega.estado]
+  return avance && entrega.siguientes_estados.includes(avance.estado) ? avance : null
+}
+
+// Change to give back. null while the amount is empty or does not cover the total
+export function calcularCambio(recibido, total) {
+  if (recibido === '' || recibido == null) return null
+  const monto = Number(recibido)
+  if (!Number.isFinite(monto) || monto < Number(total)) return null
+  return monto - Number(total)
+}
