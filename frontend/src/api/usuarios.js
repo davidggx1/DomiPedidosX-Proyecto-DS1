@@ -11,3 +11,13 @@ export async function listarEmpleados() {
   const { data } = await api.get('/usuarios/empleados/')
   return data
 }
+// HU-07: perfil del cliente (nombres, apellidos y celular se pueden editar)
+export async function obtenerPerfil() {
+  const { data } = await api.get('/usuarios/perfil/')
+  return data
+}
+
+export async function actualizarPerfil(datos) {
+  const { data } = await api.patch('/usuarios/perfil/', datos)
+  return data
+}

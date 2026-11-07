@@ -4,6 +4,7 @@ from rest_framework.exceptions import APIException, NotFound
 
 from usuarios.permissions import filtrar_por_sede
 
+from .estados import estado_pedido_cambiado
 from .eventos import notificar_pedido
 from .models import EstadoPedido, HistorialEstadoPedido, Pedido
 
@@ -46,4 +47,14 @@ def aprobar_pedido(*, usuario, pedido_id):
 
     # Sale por WebSocket al confirmarse la transacción (on_commit).
     notificar_pedido(pedido)
+    # El mismo aviso que los demás cambios de estado: el cliente que sigue
+    # su pedido ve pasar "Pendiente de aprobación" a "Recibido" (HU-47).
+    transaction.on_commit(
+        lambda: estado_pedido_cambiado.send(
+            sender=Pedido,
+            pedido=pedido,
+            estado_anterior=EstadoPedido.PENDIENTE_APROBACION,
+            usuario=usuario,
+        )
+    )
     return pedido, registro

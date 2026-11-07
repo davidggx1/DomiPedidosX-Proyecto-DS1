@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { interpretarError } from '../../api/errores.js'
 import { conectarMisEntregas, obtenerEntrega } from '../../api/repartidores.js'
 import DetalleComanda from '../../components/cocina/DetalleComanda.jsx'
+import ConfirmarPasoEntrega from '../../components/repartidor/ConfirmarPasoEntrega.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
+import Boton from '../../components/ui/Boton.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
-import { avisoDePago, enlaceMapa } from '../../utils/entregas.js'
+import { avanceDeEntrega, avisoDePago, enlaceMapa } from '../../utils/entregas.js'
 import { datosEstado } from '../../utils/estadosPedido.js'
 import { formatearPrecio } from '../../utils/formato.js'
 
@@ -41,12 +43,16 @@ const VOLVER = (
   </Link>
 )
 
-// HU-43 · Delivery order: where to go, what to bring and how much to charge
+// HU-43 · Delivery order: where to go, what to bring and how much to charge.
+// HU-45 · The button that moves the delivery one step forward, after confirming
 export default function DetalleEntrega() {
   const { id } = useParams()
   const [entrega, setEntrega] = useState(null)
   const [error, setError] = useState(null)
   const [yaNoEsTuya, setYaNoEsTuya] = useState(false)
+  const [confirmando, setConfirmando] = useState(false)
+  const [mensaje, setMensaje] = useState(null)
+  const navegar = useNavigate()
 
   useEffect(() => {
     let vigente = true
@@ -101,6 +107,18 @@ export default function DetalleEntrega() {
   }
 
   const estado = datosEstado(entrega.estado)
+  const avance = avanceDeEntrega(entrega)
+
+  function pasoConfirmado(actualizada) {
+    setConfirmando(false)
+    if (actualizada.estado === 'entregado') {
+      // the order is closed: it leaves the list, back to the remaining deliveries
+      navegar('/repartidor', { state: { mensaje: `Pedido ${actualizada.numero_pedido} entregado.` } })
+      return
+    }
+    setEntrega(actualizada)
+    setMensaje(`Pedido ${actualizada.numero_pedido}: ${datosEstado(actualizada.estado).etiqueta.toLowerCase()}.`)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,7 +132,22 @@ export default function DetalleEntrega() {
       </header>
 
       {error && <Alerta tipo="error" titulo={error} />}
+      {mensaje && <Alerta tipo="exito" titulo={mensaje} />}
       <BannerPago entrega={entrega} />
+
+      {avance && (
+        <Boton onClick={() => setConfirmando(true)} className="w-full text-lg">
+          {avance.texto}
+        </Boton>
+      )}
+      {confirmando && (
+        <ConfirmarPasoEntrega
+          entrega={entrega}
+          avance={avance}
+          alCerrar={() => setConfirmando(false)}
+          alConfirmar={pasoConfirmado}
+        />
+      )}
 
       <Tarjeta titulo="Dirección de entrega">
         <div className="flex flex-col gap-1">

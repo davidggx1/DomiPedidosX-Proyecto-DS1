@@ -313,6 +313,16 @@ class Factura(models.Model):
         choices=EstadoFactura.choices,
         default=EstadoFactura.PENDIENTE,
     )
+    # Recaudo del pago contra entrega (HU-45): lo registra el repartidor al entregar.
+    monto_recaudado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    fecha_recaudo = models.DateTimeField(null=True, blank=True)
+    recaudado_por = models.ForeignKey(
+        "usuarios.Repartidor",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="recaudos",
+    )
 
     class Meta:
         constraints = [
@@ -335,6 +345,10 @@ class Factura(models.Model):
             models.CheckConstraint(
                 condition=Q(valor_descuento__gte=0),
                 name="factura_valor_descuento_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=Q(monto_recaudado__isnull=True) | Q(monto_recaudado__gte=0),
+                name="factura_monto_recaudado_no_negativo",
             ),
         ]
 

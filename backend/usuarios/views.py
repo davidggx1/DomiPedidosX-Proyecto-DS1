@@ -1,5 +1,5 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, status, viewsets
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,7 +10,7 @@ from .models import DireccionEntrega, Empleado
 from .serializers import LoginSerializer, RegistroClienteSerializer, RegistroEmpleadoSerializer, EmpleadoListSerializer
 from .permissions import EsCliente, rol_requerido
 from .roles import ROLES_PERSONAL, obtener_rol, obtener_sede
-from .serializers import DireccionEntregaSerializer, LoginPersonalSerializer
+from .serializers import DireccionEntregaSerializer, LoginPersonalSerializer, PerfilClienteSerializer
 
 
 class RegistroClienteView(APIView):
@@ -85,6 +85,22 @@ class PerfilPersonalView(APIView):
                 "sede_id": sede.pk if sede else None,
             }
         )
+
+
+class PerfilClienteView(generics.RetrieveUpdateAPIView):
+    """
+    GET / PATCH /api/usuarios/perfil/
+
+    HU-07: el cliente consulta y edita sus nombres, apellidos y celular.
+    Si cambia el celular, se vuelve a validar con las reglas del registro.
+    """
+
+    serializer_class = PerfilClienteSerializer
+    permission_classes = [EsCliente]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        return self.request.user.cliente
 
 
 class DireccionEntregaViewSet(viewsets.ModelViewSet):

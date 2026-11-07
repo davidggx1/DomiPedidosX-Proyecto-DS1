@@ -3,6 +3,7 @@ import logging
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.dispatch import receiver
+from django.utils import timezone
 
 from .asignacion import asignacion_cambiada
 from .consumers import grupo_repartidor
@@ -20,6 +21,10 @@ def publicar_cambio_estado(sender, pedido, estado_anterior, usuario, **kwargs):
         'estado_anterior': estado_anterior,
         'estado': pedido.estado,
         'usuario_id': usuario.pk if usuario else None,
+        # Para que el seguimiento del cliente (HU-47) se actualice sin volver a consultar.
+        'estado_nombre': pedido.get_estado_display(),
+        'motivo_cancelacion': pedido.motivo_cancelacion,
+        'fecha_hora': timezone.now().isoformat(),
     }
     async_to_sync(get_channel_layer().group_send)(
         f'pedido_{pedido.pk}',
