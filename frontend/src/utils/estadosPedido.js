@@ -15,3 +15,18 @@ export const ESTADOS_PEDIDO = {
 export function datosEstado(estado) {
   return ESTADOS_PEDIDO[estado] ?? { etiqueta: estado, clases: 'border-borde text-texto-suave' }
 }
+
+// Phases of the flow, to group the counters of the daily summary (HU-67)
+export const FASES_PEDIDO = [
+  { titulo: 'Por aprobar', estados: ['pendiente_aprobacion'] },
+  { titulo: 'En cocina', estados: ['recibido', 'en_preparacion', 'listo_despacho'] },
+  { titulo: 'En entrega', estados: ['recogido', 'en_camino'] },
+  { titulo: 'Cerrados', estados: ['entregado', 'cancelado'] },
+]
+
+// Orders still moving (neither delivered nor cancelled)
+export function pedidosActivos(porEstado) {
+  return Object.entries(porEstado)
+    .filter(([estado]) => estado !== 'entregado' && estado !== 'cancelado')
+    .reduce((total, [, cantidad]) => total + cantidad, 0)
+}
