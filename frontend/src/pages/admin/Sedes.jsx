@@ -44,7 +44,7 @@ export default function Sedes() {
     try {
       const [resSedes, resCiudades] = await Promise.all([
         api.get('/sedes/'),
-        api.get('/ciudades/').catch(() => ({ data: [] })), // Opcional si hay endpoint de ciudades
+        api.get('/ciudades/').catch(() => ({ data: [] })),
       ])
       setSedes(Array.isArray(resSedes.data) ? resSedes.data : resSedes.data.results ?? [])
       setCiudades(Array.isArray(resCiudades.data) ? resCiudades.data : resCiudades.data.results ?? [])
@@ -56,8 +56,26 @@ export default function Sedes() {
   }, [])
 
   useEffect(() => {
-    cargarDatos()
-  }, [cargarDatos])
+    let activo = true
+    Promise.all([
+      api.get('/sedes/'),
+      api.get('/ciudades/').catch(() => ({ data: [] })),
+    ])
+      .then(([resSedes, resCiudades]) => {
+        if (activo) {
+          setSedes(Array.isArray(resSedes.data) ? resSedes.data : resSedes.data.results ?? [])
+          setCiudades(Array.isArray(resCiudades.data) ? resCiudades.data : resCiudades.data.results ?? [])
+          setCargando(false)
+        }
+      })
+      .catch(() => {
+        if (activo) {
+          setError('No fue posible cargar la lista de sedes.')
+          setCargando(false)
+        }
+      })
+    return () => { activo = false }
+  }, [])
 
   const abrirModalCrear = () => {
     setSedeEditando(null)
@@ -186,7 +204,6 @@ export default function Sedes() {
               </div>
 
               <div className="flex flex-col gap-2 pt-2 border-t border-borde">
-                {/* HU-82: Enlace directo a Horarios */}
                 <Boton
                   variante="secundario"
                   className="w-full text-xs"
@@ -217,7 +234,6 @@ export default function Sedes() {
         </div>
       )}
 
-      {/* Modal de Advertencia por Pedidos Pendientes al Desactivar (HU-81) */}
       {advertenciaDesactivar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-negro/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-borde bg-superficie p-6 shadow-lg">
@@ -239,7 +255,6 @@ export default function Sedes() {
         </div>
       )}
 
-      {/* Modal de Creación / Edición (HU-81) */}
       {modalAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-negro/50 p-4 overflow-y-auto">
           <div className="w-full max-w-lg rounded-xl border border-borde bg-superficie p-6 shadow-lg my-8">

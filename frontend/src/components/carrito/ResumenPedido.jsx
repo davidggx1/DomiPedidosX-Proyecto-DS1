@@ -1,8 +1,7 @@
-import React from 'react'
 import { useCarrito } from '../context/useCarrito.js'
 
 export function ResumenPedido({ onConfirmar }) {
-  const { lineas, subtotal, costoDomicilio, total, articulos } = useCarrito()
+  const {subtotal, costoDomicilio, total, articulos } = useCarrito()
 
   const formatearMoneda = (valor) =>
     new Intl.NumberFormat('es-CO', {

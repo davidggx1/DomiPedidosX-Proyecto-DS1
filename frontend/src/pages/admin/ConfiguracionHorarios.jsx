@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom' // 👈 1. Importar useSearchParams
+import { useSearchParams } from 'react-router-dom'
 import api from '../../api/cliente.js'
 import {
   obtenerHorariosSede,
@@ -27,11 +27,10 @@ const DIAS = [
 ]
 
 export default function ConfiguracionHorarios() {
-  const [searchParams] = useSearchParams() // 👈 2. Obtener los parámetros de la URL
-  const sedeIdUrl = searchParams.get('sede') // Lee el valor de ?sede=ID
+  const [searchParams] = useSearchParams()
+  const sedeIdUrl = searchParams.get('sede')
 
   const [sedes, setSedes] = useState([])
-  // Asignamos sedeIdUrl directamente como valor por defecto si existe en la URL
   const [sedeSeleccionada, setSedeSeleccionada] = useState(sedeIdUrl || '')
   const [horarios, setHorarios] = useState([])
   const [feriados, setFeriados] = useState([])
@@ -50,15 +49,17 @@ export default function ConfiguracionHorarios() {
   const [cerradoFeriado, setCerradoFeriado] = useState(true)
 
   useEffect(() => {
+    let activo = true
     api.get('/sedes/').then(({ data }) => {
-      const listaSedes = Array.isArray(data) ? data : data.results ?? []
-      setSedes(listaSedes)
-
-      // Si viene el id en la URL, aseguramos que quede seleccionado al cargar la lista
-      if (sedeIdUrl) {
-        setSedeSeleccionada(sedeIdUrl)
+      if (activo) {
+        const listaSedes = Array.isArray(data) ? data : data.results ?? []
+        setSedes(listaSedes)
+        if (sedeIdUrl) {
+          setSedeSeleccionada(sedeIdUrl)
+        }
       }
     })
+    return () => { activo = false }
   }, [sedeIdUrl])
 
   const cargarConfiguracion = useCallback(async () => {
@@ -76,8 +77,22 @@ export default function ConfiguracionHorarios() {
   }, [sedeSeleccionada])
 
   useEffect(() => {
-    cargarConfiguracion()
-  }, [cargarConfiguracion])
+    let activo = true
+    if (sedeSeleccionada) {
+      Promise.all([
+        obtenerHorariosSede(sedeSeleccionada),
+        obtenerFeriadosSede(sedeSeleccionada),
+      ]).then(([h, f]) => {
+        if (activo) {
+          setHorarios(Array.isArray(h) ? h : h.results ?? [])
+          setFeriados(Array.isArray(f) ? f : f.results ?? [])
+        }
+      }).catch(() => {
+        if (activo) setError('Error cargando la configuración de la sede.')
+      })
+    }
+    return () => { activo = false }
+  }, [sedeSeleccionada])
 
   const handleGuardarHorario = async (e) => {
     e.preventDefault()
