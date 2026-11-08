@@ -9,6 +9,11 @@ import {
   guardarFeriado,
   eliminarFeriado,
 } from '../../api/horarios.js'
+import {
+  obtenerCapacidadesSede,
+  guardarCapacidad,
+  eliminarCapacidad,
+} from '../../api/capacidades.js'
 import Selector from '../../components/ui/Selector.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Casilla from '../../components/ui/Casilla.jsx'
@@ -34,6 +39,7 @@ export default function ConfiguracionHorarios() {
   const [sedeSeleccionada, setSedeSeleccionada] = useState(sedeIdUrl || '')
   const [horarios, setHorarios] = useState([])
   const [feriados, setFeriados] = useState([])
+  const [capacidades, setCapacidades] = useState([])
 
   const [mensaje, setMensaje] = useState(null)
   const [error, setError] = useState(null)
@@ -47,6 +53,13 @@ export default function ConfiguracionHorarios() {
   const [fechaFeriado, setFechaFeriado] = useState('')
   const [descFeriado, setDescFeriado] = useState('')
   const [cerradoFeriado, setCerradoFeriado] = useState(true)
+
+  // Formulario Capacidad (HU-59)
+  const [franjaInicio, setFranjaInicio] = useState('11:00')
+  const [franjaFin, setFranjaFin] = useState('15:00')
+  const [diasCapacidad, setDiasCapacidad] = useState('lunes,martes,miercoles,jueves,viernes')
+  const [maxSimultaneos, setMaxSimultaneos] = useState(10)
+  const [umbralAlerta, setUmbralAlerta] = useState(8)
 
   useEffect(() => {
     let activo = true
@@ -65,12 +78,14 @@ export default function ConfiguracionHorarios() {
   const cargarConfiguracion = useCallback(async () => {
     if (!sedeSeleccionada) return
     try {
-      const [h, f] = await Promise.all([
+      const [h, f, c] = await Promise.all([
         obtenerHorariosSede(sedeSeleccionada),
         obtenerFeriadosSede(sedeSeleccionada),
+        obtenerCapacidadesSede(sedeSeleccionada),
       ])
       setHorarios(Array.isArray(h) ? h : h.results ?? [])
       setFeriados(Array.isArray(f) ? f : f.results ?? [])
+      setCapacidades(Array.isArray(c) ? c : c.results ?? [])
     } catch {
       setError('Error cargando la configuración de la sede.')
     }
@@ -82,10 +97,12 @@ export default function ConfiguracionHorarios() {
       Promise.all([
         obtenerHorariosSede(sedeSeleccionada),
         obtenerFeriadosSede(sedeSeleccionada),
-      ]).then(([h, f]) => {
+        obtenerCapacidadesSede(sedeSeleccionada),
+      ]).then(([h, f, c]) => {
         if (activo) {
           setHorarios(Array.isArray(h) ? h : h.results ?? [])
           setFeriados(Array.isArray(f) ? f : f.results ?? [])
+          setCapacidades(Array.isArray(c) ? c : c.results ?? [])
         }
       }).catch(() => {
         if (activo) setError('Error cargando la configuración de la sede.')
@@ -132,11 +149,33 @@ export default function ConfiguracionHorarios() {
     }
   }
 
+  const handleGuardarCapacidad = async (e) => {
+    e.preventDefault()
+    setError(null)
+    setMensaje(null)
+    try {
+      await guardarCapacidad({
+        sede: sedeSeleccionada,
+        hora_inicio: franjaInicio,
+        hora_fin: franjaFin,
+        dias_semana: diasCapacidad,
+        max_pedidos_simultaneos: Number(maxSimultaneos),
+        umbral_alerta: Number(umbralAlerta),
+      })
+      setMensaje('Capacidad por franja horaria guardada correctamente.')
+      cargarConfiguracion()
+    } catch (err) {
+      const data = err.response?.data
+      const msg = data?.max_pedidos_simultaneos?.[0] || data?.non_field_errors?.[0] || data?.hora_fin || 'Error al guardar la capacidad.'
+      setError(msg)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-bold">Horarios de Atención y Festivos</h1>
-        <p className="text-texto-suave">Configura las reglas de apertura por sede (HU-82).</p>
+        <h1 className="text-2xl font-bold">Horarios de Atención, Festivos y Capacidad</h1>
+        <p className="text-texto-suave">Configura las reglas de apertura y límites por franja (HU-82 / HU-59).</p>
       </header>
 
       {error && <Alerta tipo="error" titulo={error} />}
@@ -153,8 +192,8 @@ export default function ConfiguracionHorarios() {
       </Tarjeta>
 
       {sedeSeleccionada && (
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Horarios Regulares */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* 1. Horarios Regulares */}
           <Tarjeta titulo="Horarios por Día">
             <form onSubmit={handleGuardarHorario} className="flex flex-col gap-4 mb-6">
               <Selector
@@ -196,7 +235,7 @@ export default function ConfiguracionHorarios() {
             </div>
           </Tarjeta>
 
-          {/* Festivos / Feriados */}
+          {/* 2. Festivos / Feriados */}
           <Tarjeta titulo="Días Festivos / Especiales">
             <form onSubmit={handleGuardarFeriado} className="flex flex-col gap-4 mb-6">
               <CampoTexto
@@ -232,6 +271,70 @@ export default function ConfiguracionHorarios() {
                   <Boton variante="peligro" onClick={async () => { await eliminarFeriado(f.id); cargarConfiguracion(); }}>
                     Borrar
                   </Boton>
+                </div>
+              ))}
+            </div>
+          </Tarjeta>
+
+          {/* 3. Límite de Capacidad Simultánea (HU-59) */}
+          <Tarjeta titulo="Capacidad por Franja (HU-59)">
+            <form onSubmit={handleGuardarCapacidad} className="flex flex-col gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <CampoTexto
+                  tipo="time"
+                  etiqueta="Hora Inicio"
+                  value={franjaInicio}
+                  onChange={(e) => setFranjaInicio(e.target.value)}
+                  requerido
+                />
+                <CampoTexto
+                  tipo="time"
+                  etiqueta="Hora Fin"
+                  value={franjaFin}
+                  onChange={(e) => setFranjaFin(e.target.value)}
+                  requerido
+                />
+              </div>
+
+              <CampoTexto
+                etiqueta="Días (separados por coma)"
+                placeholder="lunes,martes,miercoles"
+                value={diasCapacidad}
+                onChange={(e) => setDiasCapacidad(e.target.value)}
+                requerido
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <CampoTexto
+                  tipo="number"
+                  etiqueta="Max Pedidos"
+                  value={maxSimultaneos}
+                  onChange={(e) => setMaxSimultaneos(e.target.value)}
+                  requerido
+                />
+                <CampoTexto
+                  tipo="number"
+                  etiqueta="Umbral Alerta"
+                  value={umbralAlerta}
+                  onChange={(e) => setUmbralAlerta(e.target.value)}
+                  requerido
+                />
+              </div>
+
+              <Boton tipo="submit">Guardar Capacidad</Boton>
+            </form>
+
+            <div className="space-y-2">
+              {capacidades.map((c) => (
+                <div key={c.id} className="flex flex-col gap-1 rounded-lg border border-borde p-3 text-sm">
+                  <div className="flex items-center justify-between font-semibold">
+                    <span>{c.hora_inicio} - {c.hora_fin}</span>
+                    <Boton variante="peligro" onClick={async () => { await eliminarCapacidad(c.id); cargarConfiguracion(); }}>
+                      Borrar
+                    </Boton>
+                  </div>
+                  <p className="text-xs text-texto-suave">Días: {c.dias_semana}</p>
+                  <p className="text-xs text-verde">Máx simultáneos: {c.max_pedidos_simultaneos} (Alerta: {c.umbral_alerta})</p>
                 </div>
               ))}
             </div>
