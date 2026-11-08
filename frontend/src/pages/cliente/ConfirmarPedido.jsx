@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react'
+import {useState, useEffect, useCallback} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import { confirmarPedidoCliente } from '../../api/pedidos.js'
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
+import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { subtotalLinea } from '../../utils/carrito.js'
-import { validarCoberturaDireccion } from '../../api/sedes.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
 
-  // Hook del carrito con las propiedades reales de tu context
+  // Hook del carrito
   const { sedeId, lineas = [], subtotal, costoDomicilio, total, vaciar } = useCarrito()
 
   const [direcciones, setDirecciones] = useState([])
@@ -20,16 +20,19 @@ export default function ConfirmarPedido() {
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [observaciones, setObservaciones] = useState('')
 
+  // Cobertura HU-58
+  const [coberturaInfo, setCoberturaInfo] = useState(null)
+  const [validandoCobertura, setValidandoCobertura] = useState(false)
+
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
   const [resumenExito, setResumenExito] = useState(null)
-  const [coberturaInfo, setCoberturaInfo] = useState(null)
-  const [validandoCobertura, setValidandoCobertura] = useState(false)
 
-  const handleSeleccionarDireccion = async (dirObj) => {
+  const handleSeleccionarDireccion = useCallback(async (dirObj) => {
     setDireccionId(dirObj.id)
     setMensaje(null)
+    setCoberturaInfo(null)
 
     if (dirObj.latitud && dirObj.longitud) {
       setValidandoCobertura(true)
@@ -45,24 +48,38 @@ export default function ConfirmarPedido() {
         setValidandoCobertura(false)
       }
     }
-  }
+  }, [])
 
   useEffect(() => {
+    let activo = true
+
     obtenerDireccionesCliente()
       .then((data) => {
-        const lista = Array.isArray(data) ? data : data?.results || []
-        setDirecciones(lista)
-        if (lista.length > 0) setDireccionId(lista[0].id)
+        if (activo) {
+          const lista = Array.isArray(data) ? data : data?.results || []
+          setDirecciones(lista)
+          if (lista.length > 0) {
+            handleSeleccionarDireccion(lista[0])
+          }
+        }
       })
       .catch((err) => console.error('Error al cargar direcciones:', err))
-  }, [])
+
+    return () => {
+      activo = false
+    }
+  }, [handleSeleccionarDireccion])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setMensaje(null)
     setErroresItems([])
 
-    // Validar sedeId del context (o fallback del localStorage)
+    if (coberturaInfo && !coberturaInfo.cubierto) {
+      setMensaje({ tipo: 'error', texto: coberturaInfo.mensaje })
+      return
+    }
+
     const sedeFinal = sedeId || localStorage.getItem('domipedidosx.sede')
 
     if (!sedeFinal) {
@@ -86,14 +103,12 @@ export default function ConfirmarPedido() {
     try {
       setCargando(true)
 
-      // Payload mapeado a la estructura exacta exigida por Django
       const payload = {
         sede_id: Number(sedeFinal),
         direccion_id: Number(direccionId),
         metodo_pago: metodoPago,
         observaciones: observaciones.trim(),
         items: lineas.map((linea) => {
-          // Si la línea corresponde a un combo
           if (linea.combo || linea.combo_id) {
             return {
               combo_id: Number(linea.combo_id || linea.combo?.id || linea.id),
@@ -101,7 +116,6 @@ export default function ConfirmarPedido() {
             }
           }
 
-          // Mapeo seguro de adiciones buscando la propiedad ID en todas sus variaciones
           const adicionesMapeadas = (linea.adiciones || [])
             .map((ad) => {
               const idReal = ad.adicion_id ?? ad.id ?? (typeof ad.adicion === 'object' ? ad.adicion?.id : ad.adicion)
@@ -112,7 +126,6 @@ export default function ConfirmarPedido() {
             })
             .filter((ad) => !isNaN(ad.adicion_id) && ad.adicion_id > 0)
 
-          // Mapeo seguro de exclusiones
           const exclusionesMapeadas = (linea.exclusiones || [])
             .map((ex) => {
               const idReal = ex.exclusion_id ?? ex.id ?? (typeof ex.exclusion === 'object' ? ex.exclusion?.id : ex)
@@ -134,7 +147,6 @@ export default function ConfirmarPedido() {
       const res = await confirmarPedidoCliente(payload)
       setResumenExito(res)
 
-      // Vaciar el carrito usando la función nativa del contexto
       if (typeof vaciar === 'function') {
         vaciar()
       }
@@ -176,7 +188,6 @@ export default function ConfirmarPedido() {
     }
   }
 
-  // Vista de pedido exitoso tras el 201 Created
   if (resumenExito) {
     return (
       <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-borde bg-superficie p-6 text-center shadow-sm">
@@ -261,8 +272,12 @@ export default function ConfirmarPedido() {
           ) : (
             <select
               value={direccionId}
-              onChange={(e) => setDireccionId(e.target.value)}
+              onChange={(e) => {
+                const encontrada = direcciones.find((d) => String(d.id) === e.target.value)
+                if (encontrada) handleSeleccionarDireccion(encontrada)
+              }}
               required
+              disabled={validandoCobertura}
               className="w-full rounded-lg border border-borde bg-fondo p-2.5 text-texto"
             >
               {direcciones.map((dir) => (
@@ -271,6 +286,16 @@ export default function ConfirmarPedido() {
                 </option>
               ))}
             </select>
+          )}
+
+          {validandoCobertura && (
+            <p className="mt-1 text-xs text-texto-suave">Validando cobertura de la dirección...</p>
+          )}
+
+          {coberturaInfo && coberturaInfo.cubierto && (
+            <p className="mt-1 text-xs font-semibold text-verde">
+              ✓ {coberturaInfo.mensaje} (Distancia: {coberturaInfo.sede.distancia_km} km)
+            </p>
           )}
         </div>
 
@@ -340,7 +365,7 @@ export default function ConfirmarPedido() {
           tipo="submit"
           variante="primario"
           className="mt-4 w-full"
-          disabled={cargando || !direccionId}
+          disabled={cargando || !direccionId || validandoCobertura || (coberturaInfo && !coberturaInfo.cubierto)}
         >
           {cargando ? 'Procesando pedido...' : 'Confirmar y Pagar'}
         </Boton>
