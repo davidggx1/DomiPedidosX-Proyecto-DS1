@@ -7,6 +7,7 @@ import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { subtotalLinea } from '../../utils/carrito.js'
+import { validarCoberturaDireccion } from '../../api/sedes.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
@@ -23,6 +24,28 @@ export default function ConfirmarPedido() {
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
   const [resumenExito, setResumenExito] = useState(null)
+  const [coberturaInfo, setCoberturaInfo] = useState(null)
+  const [validandoCobertura, setValidandoCobertura] = useState(false)
+
+  const handleSeleccionarDireccion = async (dirObj) => {
+    setDireccionId(dirObj.id)
+    setMensaje(null)
+
+    if (dirObj.latitud && dirObj.longitud) {
+      setValidandoCobertura(true)
+      try {
+        const res = await validarCoberturaDireccion(dirObj.latitud, dirObj.longitud)
+        setCoberturaInfo(res)
+        if (!res.cubierto) {
+          setMensaje({ tipo: 'error', texto: res.mensaje })
+        }
+      } catch {
+        setMensaje({ tipo: 'error', texto: 'No se pudo verificar la cobertura de la dirección.' })
+      } finally {
+        setValidandoCobertura(false)
+      }
+    }
+  }
 
   useEffect(() => {
     obtenerDireccionesCliente()
