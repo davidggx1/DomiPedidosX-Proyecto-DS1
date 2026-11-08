@@ -2,7 +2,6 @@ import math
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import viewsets
 from .models import Ciudad, Sede, HorarioSede, Feriado, ZonaCobertura
 from .serializers import (
     SedeSerializer, CiudadSerializer, HorarioSedeSerializer, FeriadoSerializer
@@ -17,78 +16,6 @@ class EsAdministradorPermission(permissions.BasePermission):
         rol = getattr(request.user, 'rol', None)
         return request.user.is_staff or rol == 'ADMINISTRADOR'
 
-
-# ViewSet de Sedes
-class SedeViewSet(viewsets.ModelViewSet):
-    queryset = Sede.objects.select_related('ciudad').all()
-    serializer_class = SedeSerializer
-
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [permissions.AllowAny()]
-        return [EsAdministradorPermission()]
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        activa_param = self.request.query_params.get('activa', None)
-        if activa_param is not None:
-            es_activa = activa_param.lower() in ['true', '1']
-            queryset = queryset.filter(activa=es_activa)
-        return queryset
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        nuevo_estado_activo = request.data.get('activa', instance.activa)
-        confirmar_desactivacion = request.data.get('confirmar_desactivacion', False)
-
-        if instance.activa and not nuevo_estado_activo:
-            serializer = self.get_serializer(instance)
-            if serializer.data['tiene_pedidos_pendientes'] and not confirmar_desactivacion:
-                return Response(
-                    {
-                        "warning": True,
-                        "message": (
-                            f"La sede '{instance.nombre}' tiene pedidos pendientes por entregar. "
-                            "¿Desea confirmar la desactivación?"
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        return super().update(request, *args, **kwargs)
-
-
-# ViewSet de Horarios (HU-82)
-class HorarioSedeViewSet(viewsets.ModelViewSet):
-    queryset = HorarioSede.objects.all()
-    serializer_class = HorarioSedeSerializer
-    permission_classes = [EsAdministradorPermission]
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        sede_id = self.request.query_params.get('sede', None)
-        if sede_id:
-            queryset = queryset.filter(sede_id=sede_id)
-        return queryset
-
-
-# ViewSet de Feriados (HU-82)
-class FeriadoViewSet(viewsets.ModelViewSet):
-    queryset = Feriado.objects.all()
-    serializer_class = FeriadoSerializer
-    permission_classes = [EsAdministradorPermission]
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        sede_id = self.request.query_params.get('sede', None)
-        if sede_id:
-            queryset = queryset.filter(sede_id=sede_id)
-        return queryset
-
-class CiudadViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ciudad.objects.all()
-    serializer_class = CiudadSerializer
-    permission_classes = [permissions.AllowAny]
 
 # ---------------------------------------------------------------------------
 # Algoritmo Geográfico de Cobertura (Haversine + Point-in-Polygon Ray-Casting)
@@ -173,7 +100,7 @@ def evaluar_cobertura_sede(lat, lon, sede):
     return False, dist_sede, None
 
 
-# En SedeViewSet agregamos la acción de validación:
+# ViewSet de Sedes
 class SedeViewSet(viewsets.ModelViewSet):
     queryset = Sede.objects.select_related('ciudad').all()
     serializer_class = SedeSerializer
@@ -183,7 +110,37 @@ class SedeViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [EsAdministradorPermission()]
 
-    # ... get_queryset y update existentes ...
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        activa_param = self.request.query_params.get('activa', None)
+
+        if activa_param is not None:
+            # Convierte adecuadamente booleanos y strings ('true', 'True', '1')
+            es_activa = str(activa_param).lower() in ['true', '1']
+            queryset = queryset.filter(activa=es_activa)
+
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        nuevo_estado_activo = request.data.get('activa', instance.activa)
+        confirmar_desactivacion = request.data.get('confirmar_desactivacion', False)
+
+        if instance.activa and not nuevo_estado_activo:
+            serializer = self.get_serializer(instance)
+            if serializer.data['tiene_pedidos_pendientes'] and not confirmar_desactivacion:
+                return Response(
+                    {
+                        "warning": True,
+                        "message": (
+                            f"La sede '{instance.nombre}' tiene pedidos pendientes por entregar. "
+                            "¿Desea confirmar la desactivación?"
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return super().update(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'], url_path='validar-cobertura')
     def validar_cobertura(self, request):
@@ -220,7 +177,6 @@ class SedeViewSet(viewsets.ModelViewSet):
 
         # Criterio 2: Fuera de todas las áreas
         if not sedes_con_cobertura:
-            # Encontrar la sede activa más cercana para informar al cliente
             sede_mas_cercana = min(
                 sedes_activas,
                 key=lambda s: calcular_distancia_haversine(lat, lon, s.latitud, s.longitud)
@@ -255,3 +211,37 @@ class SedeViewSet(viewsets.ModelViewSet):
                 "tiempo_estimado": zona_asignada.tiempo_estimado if zona_asignada else 30,
             }
         }, status=status.HTTP_200_OK)
+
+
+# ViewSet de Horarios (HU-82)
+class HorarioSedeViewSet(viewsets.ModelViewSet):
+    queryset = HorarioSede.objects.all()
+    serializer_class = HorarioSedeSerializer
+    permission_classes = [EsAdministradorPermission]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        sede_id = self.request.query_params.get('sede', None)
+        if sede_id:
+            queryset = queryset.filter(sede_id=sede_id)
+        return queryset
+
+
+# ViewSet de Feriados (HU-82)
+class FeriadoViewSet(viewsets.ModelViewSet):
+    queryset = Feriado.objects.all()
+    serializer_class = FeriadoSerializer
+    permission_classes = [EsAdministradorPermission]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        sede_id = self.request.query_params.get('sede', None)
+        if sede_id:
+            queryset = queryset.filter(sede_id=sede_id)
+        return queryset
+
+
+class CiudadViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Ciudad.objects.all()
+    serializer_class = CiudadSerializer
+    permission_classes = [permissions.AllowAny]

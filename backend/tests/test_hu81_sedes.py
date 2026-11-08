@@ -128,7 +128,6 @@ class TestHU81SedesBackend:
         response = self.client.patch(f'/api/sedes/{self.sede_existente.id}/', {"activa": False})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    # --- PRUEBA 5: QA Ocultamiento de Sedes Inactivas en Catálogo ---
     def test_ocultar_sedes_inactivas_en_catalogo_cliente(self):
         """QA: El filtro ?activa=true oculta las sedes inactivas del público."""
         sede_inactiva = Sede.objects.create(
@@ -146,7 +145,10 @@ class TestHU81SedesBackend:
         response = self.client.get('/api/sedes/?activa=true')
         assert response.status_code == status.HTTP_200_OK
 
-        ids_retornados = [sede["id"] for sede in response.data]
+        # Extraer la lista sin importar si la API retorna lista directa o dict con "results" (paginación)
+        data = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+        ids_retornados = [sede["id"] for sede in data]
+
         assert self.sede_existente.id in ids_retornados
         assert sede_inactiva.id not in ids_retornados
 
