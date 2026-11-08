@@ -2,9 +2,9 @@ import math
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Ciudad, Sede, HorarioSede, Feriado, ZonaCobertura
+from .models import Ciudad, Sede, HorarioSede, Feriado, ZonaCobertura, CapacidadSede
 from .serializers import (
-    SedeSerializer, CiudadSerializer, HorarioSedeSerializer, FeriadoSerializer
+    SedeSerializer, CiudadSerializer, HorarioSedeSerializer, FeriadoSerializer, CapacidadSedeSerializer
 )
 
 # Permiso personalizado
@@ -240,8 +240,19 @@ class FeriadoViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(sede_id=sede_id)
         return queryset
 
-
 class CiudadViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ciudad.objects.all()
     serializer_class = CiudadSerializer
     permission_classes = [permissions.AllowAny]
+
+class CapacidadSedeViewSet(viewsets.ModelViewSet):
+    queryset = CapacidadSede.objects.all()
+    serializer_class = CapacidadSedeSerializer
+    permission_classes = [EsAdministradorPermission]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        sede_id = self.request.query_params.get('sede', None)
+        if sede_id:
+            queryset = queryset.filter(sede_id=sede_id)
+        return queryset

@@ -19,9 +19,8 @@ from menu.models import (
     ProductoTamano,
 )
 from promociones.models import Combo, ComboProducto, ComboSede
-from sedes.models import Sede, ZonaCobertura
+from sedes.models import Sede, ZonaCobertura, CapacidadSede
 from usuarios.models import DireccionEntrega
-
 from .eventos import notificar_pedido
 from .models import (
     ConsumoCupoCombo,
@@ -38,6 +37,16 @@ from .models import (
     Pedido,
     TipoNotificacion,
 )
+
+DIAS_MAP = {
+    0: 'lunes',
+    1: 'martes',
+    2: 'miercoles',
+    3: 'jueves',
+    4: 'viernes',
+    5: 'sabado',
+    6: 'domingo',
+}
 
 # --- Configuración (confirmar con el equipo) --------------------------------
 IVA = Decimal("0.19")
@@ -462,3 +471,58 @@ def confirmar_pedido(*, usuario, cliente, datos):
     # si el pedido quedó guardado completo.
     notificar_pedido(pedido)
     return pedido, factura
+
+
+def obtener_capacidad_franja_actual(sede, fecha_hora=None):
+    """
+    Retorna el objeto CapacidadSede correspondiente al momento de la compra.
+    """
+    if fecha_hora is None:
+        fecha_hora = timezone.localtime()
+
+    dia_nombre = DIAS_MAP[fecha_hora.weekday()]
+    hora_actual = fecha_hora.time()
+
+    # Buscar la franja que coincida con el día y hora actual
+    capacidades = CapacidadSede.objects.filter(
+        sede=sede,
+        hora_inicio__lte=hora_actual,
+        hora_fin__gte=hora_actual,
+    )
+
+    for cap in capacidades:
+        dias_cap = [d.strip().lower() for d in cap.dias_semana.split(',') if d.strip()]
+        if dia_nombre in dias_cap:
+            return cap
+
+    return None
+
+
+def validar_disponibilidad_cupo_sede(sede):
+    """
+    HU-59 Criterio #3: Suma órdenes en 'recibido' y 'en_preparacion'.
+    Si supera la capacidad configurada en la franja, bloquea el pedido.
+    """
+    capacidad = obtener_capacidad_franja_actual(sede)
+
+    # Si no hay capacidad configurada o límite explicito, se permite la operación
+    if not capacidad:
+        return True, None
+
+    # Métrica: pedidos activos en cocina para esta sede
+    pedidos_activos = Pedido.objects.filter(
+        sede=sede,
+        estado__in=[EstadoPedido.RECIBIDO, EstadoPedido.EN_PREPARACION]
+    ).count()
+
+    if pedidos_activos >= capacidad.max_pedidos_simultaneos:
+        raise ValidationError({
+            "detail": (
+                f"La sede '{sede.nombre}' ha alcanzado el límite de pedidos simultáneos en cocina "
+                f"({pedidos_activos}/{capacidad.max_pedidos_simultaneos}) para esta franja horaria. "
+                "Por favor intente nuevamente en unos minutos."
+            ),
+            "codigo": "capacidad_maxima_alcanzada"
+        })
+
+    return True, capacidad

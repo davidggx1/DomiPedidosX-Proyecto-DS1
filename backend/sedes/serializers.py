@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Sede, Ciudad, HorarioSede, Feriado
+from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede
 
 class CiudadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -99,4 +99,53 @@ class FeriadoSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "La hora de apertura debe ser anterior a la hora de cierre en el horario especial."
                 )
+        return data
+
+class CapacidadSedeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CapacidadSede
+        fields = [
+            'id',
+            'sede',
+            'hora_inicio',
+            'hora_fin',
+            'dias_semana',
+            'max_pedidos_simultaneos',
+            'umbral_alerta',
+        ]
+
+    def validate_max_pedidos_simultaneos(self, value):
+        if value < 1:
+            raise serializers.ValidationError("La capacidad máxima de pedidos debe ser al menos 1.")
+        return value
+
+    def validate(self, data):
+        sede = data.get('sede', getattr(self.instance, 'sede', None))
+        inicio = data.get('hora_inicio', getattr(self.instance, 'hora_inicio', None))
+        fin = data.get('hora_fin', getattr(self.instance, 'hora_fin', None))
+        dias = data.get('dias_semana', getattr(self.instance, 'dias_semana', ''))
+
+        if inicio and fin and inicio >= fin:
+            raise serializers.ValidationError({
+                "hora_fin": "La hora de inicio debe ser estrictamente anterior a la hora de fin."
+            })
+
+        # Validación de Solapamiento Horario por días de la semana
+        if sede and inicio and fin and dias:
+            dias_lista = [d.strip().lower() for d in dias.split(',') if d.strip()]
+            capacidades_existentes = CapacidadSede.objects.filter(sede=sede)
+            if self.instance:
+                capacidades_existentes = capacidades_existentes.exclude(pk=self.instance.pk)
+
+            for cap in capacidades_existentes:
+                cap_dias = [d.strip().lower() for d in cap.dias_semana.split(',') if d.strip()]
+                # Verificar intersección de días
+                if any(d in cap_dias for d in dias_lista):
+                    # Verificar solapamiento de horario: max(inicio1, inicio2) < min(fin1, fin2)
+                    if max(inicio, cap.hora_inicio) < min(fin, cap.hora_fin):
+                        raise serializers.ValidationError(
+                            f"La franja {inicio.strftime('%H:%M')} - {fin.strftime('%H:%M')} se solapa "
+                            f"con una configuración existente ({cap.hora_inicio.strftime('%H:%M')} - {cap.hora_fin.strftime('%H:%M')})."
+                        )
+
         return data
