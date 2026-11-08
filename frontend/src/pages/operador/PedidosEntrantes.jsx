@@ -11,12 +11,9 @@ export default function PedidosEntrantes() {
   const [procesando, setProcesando] = useState(false)
   const [estadoConexion, setEstadoConexion] = useState('conectando')
 
-  // Estado para el modal de confirmación de aprobación (HU-28)
   const [pedidoAprobar, setPedidoAprobar] = useState(null)
-
   const wsRef = useRef(null)
 
-  // Carga inicial HTTP
   const cargar = useCallback(async () => {
     try {
       setError(null)
@@ -30,10 +27,23 @@ export default function PedidosEntrantes() {
   }, [])
 
   useEffect(() => {
-    cargar()
-  }, [cargar])
+    let activo = true
+    api.get('/pedidos/entrantes/')
+      .then(({ data }) => {
+        if (activo) {
+          setPedidos(Array.isArray(data) ? data : data.results ?? [])
+          setCargando(false)
+        }
+      })
+      .catch(() => {
+        if (activo) {
+          setError('No fue posible cargar los pedidos entrantes.')
+          setCargando(false)
+        }
+      })
+    return () => { activo = false }
+  }, [])
 
-  // WebSocket lifecycle (HU-27)
   useEffect(() => {
     let reconexionTimeout = null
 
@@ -66,7 +76,6 @@ export default function PedidosEntrantes() {
             })
           } else if (tipo === 'pedido_actualizado') {
             setPedidos((prev) => {
-              // Si ya no está pendiente de aprobación (recibido o cancelado), se remueve de la lista
               if (pedido.estado !== 'pendiente_aprobacion') {
                 return prev.filter((p) => p.id !== pedido.id)
               }
@@ -102,17 +111,13 @@ export default function PedidosEntrantes() {
     }
   }, [])
 
-  // Confirmar aprobación (HU-28)
   const confirmarAprobacion = async () => {
     if (!pedidoAprobar) return
     setProcesando(true)
     setError(null)
 
     try {
-      // Petición PATCH sin cuerpo según contrato
       await api.patch(`/pedidos/${pedidoAprobar.id}/aprobar/`)
-
-      // Éxito HTTP 200: se remueve de la lista localmente mientras llega el evento WS
       setPedidos((prev) => prev.filter((p) => p.id !== pedidoAprobar.id))
       setPedidoAprobar(null)
     } catch (err) {
@@ -120,10 +125,9 @@ export default function PedidosEntrantes() {
       const data = err.response?.data
 
       if (status === 409) {
-        // Conflicto: otro operador ya procesó el pedido
         const estadoActual = data?.estado_actual || 'procesado por otro usuario'
         setError(`El pedido #${pedidoAprobar.numero_pedido ?? pedidoAprobar.id} ya fue modificado. Estado actual: ${estadoActual}.`)
-        await cargar() // Refrescar lista automáticamente
+        await cargar()
       } else if (status === 404) {
         setError('El pedido ya no existe o pertenece a otra sede.')
         await cargar()
@@ -201,7 +205,6 @@ export default function PedidosEntrantes() {
                 </div>
               )}
 
-              {/* Botón que abre el modal de confirmación */}
               <Boton className="mt-4 w-full" onClick={() => setPedidoAprobar(pedido)}>
                 Aprobar pedido
               </Boton>
@@ -210,7 +213,6 @@ export default function PedidosEntrantes() {
         </div>
       )}
 
-      {/* Modal de confirmación (HU-28) */}
       {pedidoAprobar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-negro/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-borde bg-superficie p-6 shadow-lg">

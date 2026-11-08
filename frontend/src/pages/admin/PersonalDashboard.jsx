@@ -12,29 +12,32 @@ export default function PersonalDashboard() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    cargarEmpleados()
+    let activo = true
+    listarEmpleados()
+      .then((data) => {
+        if (activo) {
+          const lista = Array.isArray(data) ? data : data?.results || []
+          setEmpleados(lista)
+          setCargando(false)
+        }
+      })
+      .catch((err) => {
+        if (activo) {
+          console.error('Error al cargar empleados:', err)
+          setError('No se pudo obtener el listado de empleados.')
+          setCargando(false)
+        }
+      })
+
+    return () => {
+      activo = false
+    }
   }, [])
 
-  const cargarEmpleados = async () => {
-    try {
-      setCargando(true)
-      const data = await listarEmpleados()
-      // Asegura que data sea un arreglo (o data.results si viene paginado)
-      const lista = Array.isArray(data) ? data : data?.results || []
-      setEmpleados(lista)
-    } catch (err) {
-      console.error('Error al cargar empleados:', err)
-      setError('No se pudo obtener el listado de empleados.')
-    } finally {
-      setCargando(false)
-    }
-  }
-
   const empleadosFiltrados = empleados.filter((emp) => {
-    const coincideNombre =
-      `${emp.nombres} ${emp.apellidos} ${emp.usuario?.email || emp.email}`
-        .toLowerCase()
-        .includes(busqueda.toLowerCase())
+    const coincideNombre = `${emp.nombres} ${emp.apellidos} ${emp.usuario?.email || emp.email}`
+      .toLowerCase()
+      .includes(busqueda.toLowerCase())
 
     const coincideRol =
       filtroRol === 'TODOS' || (emp.rol || emp.grupo_nombre)?.toUpperCase() === filtroRol
