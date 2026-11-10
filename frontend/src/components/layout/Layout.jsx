@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth.js'
 import { ENLACES_POR_ROL, ETIQUETA_ROL, ROLES } from '../../auth/roles.js'
 import { useCarrito } from '../../carrito/useCarrito.js'
+import AvisosRepartidor from '../repartidor/AvisosRepartidor.jsx'
 import Navegacion from './Navegacion.jsx'
 
 // Estructura común de todas las páginas: encabezado, navegación por rol,
@@ -89,6 +90,9 @@ export default function Layout() {
           alNavegar={() => setMenuAbierto(false)}
         />
       )}
+
+      {/* HU-40: avisos de pedidos asignados o retirados, en cualquier pantalla del repartidor */}
+      {usuario?.rol === ROLES.REPARTIDOR && <AvisosRepartidor />}
 
       <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <Outlet />

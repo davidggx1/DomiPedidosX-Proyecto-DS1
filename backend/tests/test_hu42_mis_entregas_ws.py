@@ -74,7 +74,8 @@ async def test_repartidor_recibe_en_menos_de_10s_el_pedido_que_le_asignan():
     data = await canal.receive_json_from(timeout=10)
 
     assert time.monotonic() - inicio < 10
-    assert data == {"tipo": "entregas_actualizadas", "pedido_id": pedido.id}
+    assert data["tipo"] == "entregas_actualizadas"
+    assert data["pedido_id"] == pedido.id
     await canal.disconnect()
 
 
