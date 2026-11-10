@@ -25,7 +25,15 @@ export default function TarjetaDespacho({ pedido, libres, ahora, ocupado, alAsig
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-borde bg-fondo p-3">
       <div>
-        <p className="font-bold">{pedido.numero_pedido}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-bold">{pedido.numero_pedido}</p>
+          {/* HU-36: el sistema no encontró repartidor libre; hay que asignarlo a mano */}
+          {!pedido.repartidor && (
+            <span className="rounded-full border border-aviso px-2 py-0.5 text-xs font-medium text-aviso">
+              Sin asignar
+            </span>
+          )}
+        </div>
         <p className="text-sm text-texto-suave">
           Listo hace {textoDuracion(minutosEntre(pedido.listo_en, ahora))}
         </p>
@@ -45,8 +53,18 @@ export default function TarjetaDespacho({ pedido, libres, ahora, ocupado, alAsig
 
       {pedido.repartidor ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-borde pt-3">
-          <p>
-            Repartidor: <strong>{pedido.repartidor.nombre}</strong>
+          <p className="flex flex-wrap items-center gap-2">
+            <span>
+              Repartidor: <strong>{pedido.repartidor.nombre}</strong>
+            </span>
+            {/* HU-36, criterio 3: quién eligió al repartidor */}
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                pedido.asignacion_automatica ? 'border-exito text-exito' : 'border-borde text-texto-suave'
+              }`}
+            >
+              {pedido.asignacion_automatica ? 'Automática' : 'Manual'}
+            </span>
           </p>
           <Boton
             variante="peligro"

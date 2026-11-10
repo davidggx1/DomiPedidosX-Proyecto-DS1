@@ -9,7 +9,8 @@ Reglas:
 - Un pedido tiene un solo repartidor; para cambiarlo, primero se retira la
   asignación (criterio 4). Solo se retira antes de que lo recoja.
 
-La asignación automática (HU-36) puede reutilizar `repartidor_libre` y `asignar`.
+La asignación automática (HU-36, pedidos/asignacion_automatica.py) reutiliza
+`validar_asignacion` y `asignar`, así ambas formas siguen las mismas reglas.
 """
 from django.db import transaction
 from django.dispatch import Signal
@@ -89,8 +90,11 @@ def _avisar(pedido, repartidor, usuario, repartidor_anterior=None):
     )
 
 
-def asignar(pedido, repartidor, usuario=None):
-    """Asigna el repartidor al pedido. Bloquea ambas filas para evitar asignaciones dobles."""
+def asignar(pedido, repartidor, usuario=None, automatica=False):
+    """Asigna el repartidor al pedido. Bloquea ambas filas para evitar asignaciones dobles.
+
+    `automatica` marca si la eligió el sistema (HU-36) o el operador (HU-35).
+    """
     with transaction.atomic():
         pedido = Pedido.objects.select_for_update().get(pk=pedido.pk)
         repartidor = (
@@ -100,7 +104,8 @@ def asignar(pedido, repartidor, usuario=None):
         )
         validar_asignacion(pedido, repartidor)
         pedido.repartidor = repartidor
-        pedido.save(update_fields=["repartidor"])
+        pedido.asignacion_automatica = automatica
+        pedido.save(update_fields=["repartidor", "asignacion_automatica"])
         _avisar(pedido, repartidor, usuario)
     return pedido
 
@@ -118,6 +123,7 @@ def retirar(pedido, usuario=None):
             )
         anterior = pedido.repartidor
         pedido.repartidor = None
-        pedido.save(update_fields=["repartidor"])
+        pedido.asignacion_automatica = False
+        pedido.save(update_fields=["repartidor", "asignacion_automatica"])
         _avisar(pedido, None, usuario, repartidor_anterior=anterior)
     return pedido
