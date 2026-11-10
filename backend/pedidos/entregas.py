@@ -32,7 +32,7 @@ ESTADOS_DE_ENTREGA = [EstadoPedido.RECOGIDO, EstadoPedido.EN_CAMINO, EstadoPedid
 def entregas_del_repartidor(usuario):
     return (
         pedidos_visibles(usuario, REPARTIDOR)
-        .select_related("cliente", "factura")
+        .select_related("cliente", "factura", "sede__ciudad")
         .prefetch_related(
             "detalles__producto",
             "detalles__producto_tamano",
