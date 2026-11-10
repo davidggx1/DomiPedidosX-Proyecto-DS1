@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { avanceDeEntrega, avisoDePago, calcularCambio, enlaceMapa } from './entregas.js'
+import {
+  avanceDeEntrega,
+  avisoDePago,
+  calcularCambio,
+  destinoEntrega,
+  enlaceMapa,
+  enlaceRuta,
+  mensajeErrorGps,
+} from './entregas.js'
 
 const base = { total: '35000.00', metodo_pago: 'efectivo', metodo_pago_nombre: 'Efectivo' }
 
@@ -62,5 +70,36 @@ describe('cambio para el cliente', () => {
   it('sin monto o si no alcanza no hay cambio', () => {
     expect(calcularCambio('', '35000.00')).toBeNull()
     expect(calcularCambio('20000', '35000.00')).toBeNull()
+  })
+})
+
+describe('ruta hasta el cliente (HU-44)', () => {
+  const conCoordenadas = { entrega_latitud: 3.4372, entrega_longitud: -76.5447 }
+
+  it('el destino son las coordenadas cuando existen', () => {
+    expect(destinoEntrega(conCoordenadas)).toBe('3.4372,-76.5447')
+  })
+
+  it('sin coordenadas el destino es la dirección escrita', () => {
+    expect(destinoEntrega({ direccion_completa: 'Carrera 10 # 20-30, San Fernando, Cali' })).toBe(
+      'Carrera 10 # 20-30, San Fernando, Cali',
+    )
+  })
+
+  it('con GPS traza la ruta desde la posición del repartidor', () => {
+    const url = new URL(enlaceRuta(conCoordenadas, { latitud: 3.45, longitud: -76.53 }))
+    expect(url.origin + url.pathname).toBe('https://www.google.com/maps/dir/')
+    expect(url.searchParams.get('origin')).toBe('3.45,-76.53')
+    expect(url.searchParams.get('destination')).toBe('3.4372,-76.5447')
+  })
+
+  it('sin GPS deja que Google Maps use la ubicación del celular', () => {
+    expect(new URL(enlaceRuta(conCoordenadas)).searchParams.has('origin')).toBe(false)
+  })
+
+  it('explica cada falla del GPS', () => {
+    expect(mensajeErrorGps(1)).toMatch(/permiso/)
+    expect(mensajeErrorGps(2)).toMatch(/dirección escrita/)
+    expect(mensajeErrorGps(3)).toMatch(/tardando/)
   })
 })

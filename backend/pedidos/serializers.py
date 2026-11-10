@@ -318,10 +318,31 @@ class TarjetaEntregaSerializer(serializers.ModelSerializer):
         return siguientes_estados(pedido.estado, self.context.get("rol"))
 
 
+class PuntoRecogidaSerializer(serializers.Serializer):
+    """Sede donde el repartidor recoge el pedido: punto de partida de la ruta (HU-44)."""
+
+    nombre = serializers.CharField(read_only=True)
+    direccion = serializers.CharField(read_only=True)
+    barrio = serializers.CharField(read_only=True)
+    telefono = serializers.CharField(read_only=True)
+    latitud = serializers.FloatField(read_only=True)
+    longitud = serializers.FloatField(read_only=True)
+
+
 class DetalleEntregaSerializer(TarjetaEntregaSerializer):
-    """Comanda de entrega: a dónde ir, qué llevar y cuánto cobrar (HU-43)."""
+    """Comanda de entrega: a dónde ir, qué llevar y cuánto cobrar (HU-43).
+
+    HU-44 agrega lo que necesita el mapa del repartidor:
+    - tiene_ubicacion: si la dirección trae coordenadas para poner el pin.
+    - direccion_completa: la dirección escrita, que siempre se muestra aunque
+      el mapa o el GPS fallen (criterio 3).
+    - punto_recogida: la sede, para trazar la ruta cuando no hay GPS.
+    """
 
     notas = serializers.CharField(source="descripcion", read_only=True)
+    tiene_ubicacion = serializers.SerializerMethodField()
+    direccion_completa = serializers.SerializerMethodField()
+    punto_recogida = PuntoRecogidaSerializer(source="sede", read_only=True)
     lineas = LineaComandaSerializer(source="detalles", many=True, read_only=True)
     subtotal = serializers.DecimalField(
         source="factura.subtotal", max_digits=12, decimal_places=2, read_only=True, default=None
@@ -339,9 +360,21 @@ class DetalleEntregaSerializer(TarjetaEntregaSerializer):
             "entrega_indicaciones",
             "entrega_latitud",
             "entrega_longitud",
+            "tiene_ubicacion",
+            "direccion_completa",
+            "punto_recogida",
             "notas",
             "lineas",
             "subtotal",
             "costo_domicilio",
             "valor_descuento",
         ]
+
+    def get_tiene_ubicacion(self, pedido):
+        return pedido.entrega_latitud is not None and pedido.entrega_longitud is not None
+
+    def get_direccion_completa(self, pedido):
+        """Dirección en texto, con barrio y ciudad: el respaldo si el mapa no carga."""
+        ciudad = pedido.sede.ciudad.nombre if pedido.sede_id else ""
+        partes = [pedido.entrega_direccion, pedido.entrega_barrio, ciudad]
+        return ", ".join(parte for parte in partes if parte)

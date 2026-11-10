@@ -4,10 +4,11 @@ import { interpretarError } from '../../api/errores.js'
 import { conectarMisEntregas, obtenerEntrega } from '../../api/repartidores.js'
 import DetalleComanda from '../../components/cocina/DetalleComanda.jsx'
 import ConfirmarPasoEntrega from '../../components/repartidor/ConfirmarPasoEntrega.jsx'
+import MapaEntrega from '../../components/repartidor/MapaEntrega.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
-import { avanceDeEntrega, avisoDePago, enlaceMapa } from '../../utils/entregas.js'
+import { avanceDeEntrega, avisoDePago } from '../../utils/entregas.js'
 import { datosEstado } from '../../utils/estadosPedido.js'
 import { formatearPrecio } from '../../utils/formato.js'
 
@@ -160,14 +161,10 @@ export default function DetalleEntrega() {
               {entrega.entrega_indicaciones}
             </p>
           )}
-          <a
-            href={enlaceMapa(entrega)}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 self-start text-marca-clara underline underline-offset-4"
-          >
-            Abrir en el mapa
-          </a>
+        </div>
+        {/* HU-44: la dirección escrita de arriba se ve siempre, aunque el mapa o el GPS fallen */}
+        <div className="mt-3">
+          <MapaEntrega entrega={entrega} />
         </div>
       </Tarjeta>
 

@@ -33,6 +33,31 @@ export function enlaceMapa(entrega) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
 }
 
+// HU-44 · Destino de la ruta: las coordenadas si las hay; si no, la dirección escrita
+export function destinoEntrega(entrega) {
+  if (entrega.entrega_latitud != null && entrega.entrega_longitud != null) {
+    return `${entrega.entrega_latitud},${entrega.entrega_longitud}`
+  }
+  return entrega.direccion_completa || [entrega.entrega_direccion, entrega.entrega_barrio, 'Cali'].filter(Boolean).join(', ')
+}
+
+// HU-44 · Enlace de navegación de Google Maps hasta el cliente.
+// origen: { latitud, longitud } del GPS del repartidor (o de la sede). Sin origen,
+// Google Maps arranca desde la ubicación que tenga el celular.
+export function enlaceRuta(entrega, origen = null) {
+  const parametros = new URLSearchParams({ api: '1', destination: destinoEntrega(entrega), travelmode: 'driving' })
+  if (origen) parametros.set('origin', `${origen.latitud},${origen.longitud}`)
+  return `https://www.google.com/maps/dir/?${parametros}`
+}
+
+// HU-44 · Mensaje para el repartidor cuando el GPS no responde. El código viene de
+// GeolocationPositionError: 1 permiso negado, 2 sin señal, 3 tardó demasiado
+export function mensajeErrorGps(codigo) {
+  if (codigo === 1) return 'No diste permiso para usar tu ubicación. Actívalo en el navegador para ver tu posición.'
+  if (codigo === 3) return 'Tu ubicación está tardando en llegar. Sigue guiándote por la dirección escrita.'
+  return 'No pudimos obtener tu ubicación. Sigue guiándote por la dirección escrita.'
+}
+
 // The one step forward the repartidor gives from each state (HU-45), in strict order
 export const AVANCE_ENTREGA = {
   listo_despacho: {
