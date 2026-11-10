@@ -66,6 +66,8 @@ export default function Despacho() {
 
   // an assigned repartidor already counts as busy, so only free ones can take a new order
   const libres = repartidores.filter((repartidor) => repartidor.pedidos_activos === 0)
+  // HU-36: orders the system could not assign because nobody was free
+  const sinAsignar = pedidos.filter((pedido) => !pedido.repartidor).length
 
   async function ejecutar(pedido, accion, textoExito) {
     setMoviendo(pedido.id)
@@ -106,8 +108,8 @@ export default function Despacho() {
         <div>
           <h1 className="text-2xl font-bold">Repartidores</h1>
           <p className="text-texto-suave">
-            Asigna cada pedido listo a un repartidor libre. Se actualiza solo cada{' '}
-            {INTERVALO_MS / 1000} segundos.
+            Los pedidos listos se asignan solos al repartidor libre que lleva más tiempo esperando. Si no
+            hay ninguno libre, asígnalo tú. Se actualiza solo cada {INTERVALO_MS / 1000} segundos.
           </p>
         </div>
         <Boton variante="secundario" onClick={() => setRecarga((numero) => numero + 1)}>
@@ -117,6 +119,18 @@ export default function Despacho() {
 
       {mensaje && <Alerta tipo={mensaje.tipo} titulo={mensaje.texto} />}
       {errorCarga && <Alerta tipo="error" titulo={errorCarga} />}
+      {!cargando && sinAsignar > 0 && (
+        <Alerta
+          tipo="aviso"
+          titulo={
+            sinAsignar === 1 ? 'Hay 1 pedido sin repartidor' : `Hay ${sinAsignar} pedidos sin repartidor`
+          }
+        >
+          {libres.length === 0
+            ? 'No hay repartidores libres en este momento. Asígnalos cuando alguno se libere.'
+            : 'Ya hay repartidores libres: asígnalos desde la tarjeta del pedido.'}
+        </Alerta>
+      )}
       {cargando && <p className="text-texto-suave">Cargando…</p>}
 
       {!cargando && (
