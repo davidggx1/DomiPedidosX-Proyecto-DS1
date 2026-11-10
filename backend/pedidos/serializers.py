@@ -201,6 +201,7 @@ class PedidoDespachoSerializer(serializers.ModelSerializer):
             "entrega_barrio",
             "resumen",
             "repartidor",
+            "asignacion_automatica",
         ]
 
     def get_resumen(self, pedido) -> list[str]:

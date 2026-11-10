@@ -103,6 +103,8 @@ class Pedido(models.Model):
         blank=True,
         related_name="pedidos_asignados",
     )
+    # HU-36: True si el sistema eligió al repartidor; False si lo eligió el operador.
+    asignacion_automatica = models.BooleanField(default=False)
     origen = models.CharField(
         max_length=20,
         choices=OrigenPedido.choices,
