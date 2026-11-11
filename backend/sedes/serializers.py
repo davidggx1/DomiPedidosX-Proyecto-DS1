@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede
+from .geometria import envolvente, normalizar_poligono, traslapan
+from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede, ZonaCobertura
 
 class CiudadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -148,4 +149,104 @@ class CapacidadSedeSerializer(serializers.ModelSerializer):
                             f"con una configuración existente ({cap.hora_inicio.strftime('%H:%M')} - {cap.hora_fin.strftime('%H:%M')})."
                         )
 
+        return data
+
+
+class ZonaCoberturaSerializer(serializers.ModelSerializer):
+    """Zona de cobertura de una sede, por radio o por polígono.
+
+    - Por radio: enviar `radio` (km, > 0), `centro_latitud` y `centro_longitud`.
+    - Por polígono: enviar `poligono_vertices` como [[lat, lon], ...] (mínimo 3 puntos;
+      el cierre puede repetirse o no). `centro_*` y `radio` se calculan solos.
+    - Dos zonas activas de la misma sede no pueden traslaparse.
+    """
+
+    tipo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ZonaCobertura
+        fields = [
+            "id", "sede", "nombre", "tipo", "radio", "centro_latitud", "centro_longitud",
+            "poligono_vertices", "tarifa_domicilio", "tiempo_estimado", "pedido_minimo",
+            "activo",
+        ]
+        extra_kwargs = {
+            "radio": {"required": False},
+            "centro_latitud": {"required": False},
+            "centro_longitud": {"required": False},
+        }
+
+    def get_tipo(self, obj):
+        return "poligono" if obj.poligono_vertices else "radio"
+
+    def validate_tarifa_domicilio(self, value):
+        if value < 0:
+            raise serializers.ValidationError("La tarifa no puede ser negativa.")
+        return value
+
+    def validate_pedido_minimo(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El pedido mínimo no puede ser negativo.")
+        return value
+
+    def validate_tiempo_estimado(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El tiempo estimado debe ser mayor que 0 minutos.")
+        return value
+
+    def validate(self, data):
+        instancia = self.instance
+
+        def actual(campo, por_defecto=None):
+            return data[campo] if campo in data else getattr(instancia, campo, por_defecto)
+
+        sede = actual("sede")
+        if instancia and sede != instancia.sede:
+            raise serializers.ValidationError({"sede": "No se puede mover una zona a otra sede."})
+
+        vertices = actual("poligono_vertices")
+        if vertices:
+            try:
+                vertices = normalizar_poligono(vertices)
+            except ValueError as error:
+                raise serializers.ValidationError({"poligono_vertices": str(error)})
+            centro_lat, centro_lon, radio = envolvente(vertices)
+        else:
+            vertices = None
+            centro_lat = actual("centro_latitud")
+            centro_lon = actual("centro_longitud")
+            radio = actual("radio")
+            for campo, valor in (
+                ("radio", radio), ("centro_latitud", centro_lat), ("centro_longitud", centro_lon)
+            ):
+                if valor is None:
+                    raise serializers.ValidationError(
+                        {campo: "Obligatorio en una zona por radio (o envía poligono_vertices)."}
+                    )
+            if radio <= 0:
+                raise serializers.ValidationError({"radio": "El radio debe ser mayor que 0 km."})
+            if not (-90 <= centro_lat <= 90):
+                raise serializers.ValidationError({"centro_latitud": "Latitud fuera de rango."})
+            if not (-180 <= centro_lon <= 180):
+                raise serializers.ValidationError({"centro_longitud": "Longitud fuera de rango."})
+
+        data["poligono_vertices"] = vertices
+        data["centro_latitud"], data["centro_longitud"], data["radio"] = (
+            centro_lat, centro_lon, radio
+        )
+
+        # Solo las zonas activas operan, así que solo ellas se comparan.
+        if actual("activo", True):
+            nueva = (centro_lat, centro_lon, radio, vertices)
+            otras = ZonaCobertura.objects.filter(sede=sede, activo=True)
+            if instancia:
+                otras = otras.exclude(pk=instancia.pk)
+            for otra in otras:
+                existente = (
+                    otra.centro_latitud, otra.centro_longitud, otra.radio, otra.poligono_vertices
+                )
+                if traslapan(nueva, existente):
+                    raise serializers.ValidationError(
+                        f"La zona se traslapa con «{otra.nombre}», que ya está activa en esta sede."
+                    )
         return data
