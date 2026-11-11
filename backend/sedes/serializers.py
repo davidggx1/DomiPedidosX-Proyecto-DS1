@@ -180,7 +180,7 @@ class ZonaCoberturaSerializer(serializers.ModelSerializer):
         return "poligono" if obj.poligono_vertices else "radio"
 
     def validate_tarifa_domicilio(self, value):
-        if value < 0:
+        if value is not None and value < 0:
             raise serializers.ValidationError("La tarifa no puede ser negativa.")
         return value
 
@@ -190,7 +190,7 @@ class ZonaCoberturaSerializer(serializers.ModelSerializer):
         return value
 
     def validate_tiempo_estimado(self, value):
-        if value <= 0:
+        if value is not None and value <= 0:
             raise serializers.ValidationError("El tiempo estimado debe ser mayor que 0 minutos.")
         return value
 
@@ -234,6 +234,15 @@ class ZonaCoberturaSerializer(serializers.ModelSerializer):
         data["centro_latitud"], data["centro_longitud"], data["radio"] = (
             centro_lat, centro_lon, radio
         )
+
+
+        # HU-56: sin tarifa y tiempo, la zona no puede estar activa.
+        if actual("tarifa_domicilio") is None or actual("tiempo_estimado") is None:
+            if data.get("activo") is True:
+                raise serializers.ValidationError(
+                    {"activo": "Para activar la zona define la tarifa y el tiempo estimado."}
+                )
+            data["activo"] = False
 
         # Solo las zonas activas operan, así que solo ellas se comparan.
         if actual("activo", True):
