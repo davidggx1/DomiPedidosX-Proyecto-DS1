@@ -35,6 +35,7 @@ import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
 import ConfirmarPedido from "./pages/cliente/ConfirmarPedido.jsx";
 import ConfiguracionHorarios from "./pages/admin/ConfiguracionHorarios.jsx";
 import Sedes from "./pages/admin/Sedes.jsx";
+import ZonasCobertura from "./pages/admin/ZonasCobertura.jsx";
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
           <Route path="admin/pedidos" element={<PedidosDelDia />} />
           <Route path="admin/sedes" element={<Sedes />} />
+          <Route path="admin/zonas" element={<ZonasCobertura />} />
           <Route path="admin/horarios" element={<ConfiguracionHorarios />} />
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
