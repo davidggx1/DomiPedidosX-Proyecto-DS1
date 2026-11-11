@@ -10,6 +10,14 @@ import Boton from '../../components/ui/Boton.jsx'
 import Modal from '../../components/ui/Modal.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
+import Interruptor from '../../components/ui/Interruptor.jsx'
+import {
+  formatearTarifa,
+  formatearTiempo,
+  validarTarifaTiempo,
+  zonaConfigurada,
+} from '../../utils/zonas.js'
+
 
 const VACIO = {
   nombre: '',
@@ -107,8 +115,8 @@ export default function ZonasCobertura() {
     setEdicion({ zona })
     setValores({
       nombre: zona.nombre,
-      tarifa_domicilio: zona.tarifa_domicilio,
-      tiempo_estimado: zona.tiempo_estimado,
+      tarifa_domicilio: zona.tarifa_domicilio ?? '',
+      tiempo_estimado: zona.tiempo_estimado ?? '',
       pedido_minimo: zona.pedido_minimo,
       activo: zona.activo,
     })
@@ -133,11 +141,17 @@ export default function ZonasCobertura() {
       return
     }
 
+    const erroresTarifa = validarTarifaTiempo(valores)
+    if (Object.keys(erroresTarifa).length > 0) {
+      setErrores(erroresTarifa)
+      return
+    }
+
     const datos = {
       sede: Number(sedeId),
       nombre: valores.nombre,
-      tarifa_domicilio: valores.tarifa_domicilio,
-      tiempo_estimado: Number(valores.tiempo_estimado),
+      tarifa_domicilio: valores.tarifa_domicilio === '' ? null : valores.tarifa_domicilio,
+      tiempo_estimado: valores.tiempo_estimado === '' ? null : Number(valores.tiempo_estimado),
       pedido_minimo: valores.pedido_minimo,
       activo: valores.activo,
       ...(forma.tipo === 'radio'
@@ -152,9 +166,14 @@ export default function ZonasCobertura() {
 
     setGuardando(true)
     try {
-      if (edicion.zona) await actualizarZona(edicion.zona.id, datos)
-      else await crearZona(datos)
-      setExito(`Zona "${valores.nombre}" guardada. Aplica a los pedidos futuros.`)
+        const guardada = edicion.zona
+        ? await actualizarZona(edicion.zona.id, datos)
+        : await crearZona(datos)
+      setExito(
+        guardada.activo
+          ? `Zona "${valores.nombre}" guardada. Aplica a los pedidos futuros.`
+          : `Zona "${valores.nombre}" guardada como desactivada.`,
+      )
       setEdicion(null)
       recargar()
     } catch (e) {
@@ -189,6 +208,22 @@ export default function ZonasCobertura() {
       setError(interpretarError(e).general)
     }
   }
+
+  const alternarActiva = async (zona) => {
+    setError(null)
+    setExito(null)
+    try {
+      await actualizarZona(zona.id, { activo: !zona.activo })
+      setExito(
+        `Zona "${zona.nombre}" ${zona.activo ? 'desactivada' : 'activada'}. Aplica a los pedidos futuros.`,
+      )
+      recargar()
+    } catch (e) {
+      const { general, campos } = interpretarError(e)
+      setError(campos.activo ?? general)
+    }
+  }
+
 
   const otras = useMemo(
     () => zonas.filter((z) => z.id !== edicion?.zona?.id),
@@ -269,25 +304,35 @@ export default function ZonasCobertura() {
                 <Tarjeta key={zona.id} className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-bold">{zona.nombre}</h3>
-                    <span
-                      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                        zona.activo
-                          ? 'border-exito text-exito'
-                          : 'border-borde text-texto-suave'
-                      }`}
-                    >
-                      {zona.activo ? 'Activa' : 'Inactiva'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                          zona.activo ? 'border-exito text-exito' : 'border-borde text-texto-suave'
+                        }`}
+                      >
+                        {zona.activo ? 'Activa' : 'Desactivada'}
+                      </span>
+                      <Interruptor
+                        activo={zona.activo}
+                        alCambiar={() => alternarActiva(zona)}
+                        etiqueta={`${zona.activo ? 'Desactivar' : 'Activar'} zona ${zona.nombre}`}
+                        disabled={!zona.activo && !zonaConfigurada(zona)}
+                      />
+                    </div>
                   </div>
                   <p className="text-sm text-texto-suave">
                     {zona.tipo === 'poligono'
                       ? `Polígono (${zona.poligono_vertices.length} puntos)`
                       : `Radio de ${zona.radio.toFixed(2)} km`}
-                    {' · '}${Number(zona.tarifa_domicilio).toLocaleString('es-CO')} de domicilio
                     {' · '}
-                    {zona.tiempo_estimado} min
+                    {formatearTarifa(zona.tarifa_domicilio)} de domicilio
+                    {' · '}
+                    {formatearTiempo(zona.tiempo_estimado)}
                     {' · '}mínimo ${Number(zona.pedido_minimo).toLocaleString('es-CO')}
                   </p>
+                  {!zonaConfigurada(zona) && (
+                    <p className="text-sm text-aviso">Define tarifa y tiempo para poder activarla.</p>
+                  )}
                   <div className="flex gap-2">
                     <Boton variante="fantasma" className="flex-1 text-sm" onClick={() => abrirEditar(zona)}>
                       Editar

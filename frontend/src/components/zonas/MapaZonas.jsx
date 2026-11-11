@@ -7,7 +7,8 @@ import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import { CENTRO_CALI } from '../../api/geocodificacion.js'
 
 const ESTILO_EDITABLE = { color: '#ff6b6b', weight: 2, fillOpacity: 0.2 }
-const ESTILO_OTRAS = { color: '#8a8f98', weight: 1, fillOpacity: 0.1 }
+const ESTILO_ACTIVA = { color: '#2ecc71', weight: 2, fillOpacity: 0.12 }
+const ESTILO_INACTIVA = { color: '#8a8f98', weight: 1, dashArray: '6 6', fillOpacity: 0.04 }
 
 // Convierte la capa dibujada en los campos que espera la API (radio en km).
 function leerCapa(capa) {
@@ -119,18 +120,22 @@ export default function MapaZonas({ formaInicial, otras = [], centro, alCambiar 
         />
         {otras.map((zona) =>
           zona.tipo === 'poligono' ? (
-            <Polygon key={zona.id} positions={zona.poligono_vertices} pathOptions={ESTILO_OTRAS} />
+            <Polygon key={zona.id} positions={zona.poligono_vertices} pathOptions={zona.activo ? ESTILO_ACTIVA : ESTILO_INACTIVA} />
           ) : (
             <Circle
               key={zona.id}
               center={[zona.centro_latitud, zona.centro_longitud]}
               radius={zona.radio * 1000}
-              pathOptions={ESTILO_OTRAS}
+              pathOptions={zona.activo ? ESTILO_ACTIVA : ESTILO_INACTIVA}
             />
           ),
         )}
         <EditorForma formaInicial={formaInicial} alCambiar={alCambiar} />
       </MapContainer>
+      <p className="flex gap-4 border-t border-borde bg-superficie px-3 py-2 text-xs text-texto-suave">
+        <span><span className="text-exito">●</span> Zona activa</span>
+        <span>○ Zona desactivada</span>
+      </p>
     </div>
   )
 }
