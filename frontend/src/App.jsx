@@ -23,6 +23,7 @@ import Menu from './pages/cliente/Menu.jsx'
 import MisPedidos from './pages/cliente/MisPedidos.jsx'
 import Perfil from './pages/cliente/Perfil.jsx'
 import SeguimientoPedido from './pages/cliente/SeguimientoPedido.jsx'
+import Clientes from './pages/admin/Clientes.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
           <Route path="admin/cuentas" element={<Cuentas />} />
+          <Route path="admin/clientes" element={<Clientes />} />
         </Route>
 
         <Route path="*" element={<NoEncontrada />} />
