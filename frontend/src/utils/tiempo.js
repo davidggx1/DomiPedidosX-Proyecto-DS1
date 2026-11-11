@@ -13,3 +13,15 @@ export function textoDuracion(minutos) {
 export function horaCorta(fecha) {
   return new Date(fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
 }
+
+// "12 nov 2026"
+export function fechaCorta(fecha) {
+  return new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// "12 nov 2026, 07:14 p. m."
+export function fechaHora(fecha) {
+  return new Date(fecha).toLocaleString('es-CO', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
