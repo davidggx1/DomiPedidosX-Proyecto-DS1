@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { errorDeCapacidad, interpretarCapacidad } from './capacidad.js'
+import {
+  capacidadDeEvento,
+  describirCapacidad,
+  errorDeCapacidad,
+  interpretarCapacidad,
+  umbralSugerido,
+} from './capacidad.js'
 
 const base = { sede: 1, activos: 0, maximo: 5, requiere_confirmacion: false }
 
@@ -60,5 +66,68 @@ describe('error de capacidad al enviar el pedido (HU-61)', () => {
     expect(errorDeCapacidad(error(409, { codigo: 'otro' }))).toBeNull()
     expect(errorDeCapacidad(new Error('sin respuesta'))).toBeNull()
     expect(errorDeCapacidad(undefined)).toBeNull()
+  })
+})
+
+describe('alerta de capacidad cercana al tope (HU-60)', () => {
+  const franja = { estado: 'disponible', activos: 16, maximo: 20, porcentaje: 80, umbral_alerta: 16, en_alerta: true }
+
+  it('muestra la ocupación contra el límite', () => {
+    expect(describirCapacidad(franja).texto).toBe('16 de 20 pedidos ocupados')
+  })
+
+  it('al llegar al umbral es una alerta (amarilla)', () => {
+    const r = describirCapacidad(franja)
+    expect(r.nivel).toBe('alerta')
+    expect(r.titulo).toBe('Capacidad cercana al tope')
+    expect(r.porcentaje).toBe(80)
+  })
+
+  it('por debajo del umbral es normal y la alerta se apaga', () => {
+    const r = describirCapacidad({ ...franja, activos: 15, porcentaje: 75, en_alerta: false })
+    expect(r.nivel).toBe('normal')
+    expect(r.texto).toBe('15 de 20 pedidos ocupados')
+  })
+
+  it('al 100% es saturada', () => {
+    const r = describirCapacidad({ ...franja, estado: 'saturada', activos: 20, porcentaje: 100 })
+    expect(r.nivel).toBe('saturada')
+    expect(r.texto).toBe('20 de 20 pedidos ocupados')
+  })
+
+  it('sin franja no hay barra ni cifras', () => {
+    const r = describirCapacidad({ estado: 'sin_franja', activos: 3, maximo: null, porcentaje: null })
+    expect(r.nivel).toBe('sin_franja')
+    expect(r.porcentaje).toBeNull()
+  })
+
+  it('sin datos no muestra nada', () => {
+    expect(describirCapacidad(null)).toBeNull()
+  })
+
+  it('solo toma el estado de los eventos de capacidad', () => {
+    expect(capacidadDeEvento({ tipo: 'capacidad_actualizada', capacidad: franja })).toBe(franja)
+    expect(capacidadDeEvento({ tipo: 'pedido_nuevo', pedido: {} })).toBeNull()
+    expect(capacidadDeEvento({ tipo: 'capacidad_actualizada' })).toBeNull()
+    expect(capacidadDeEvento(undefined)).toBeNull()
+  })
+
+  it('el umbral sugerido es el 80% del máximo, redondeado hacia arriba', () => {
+    expect(umbralSugerido(10)).toBe(8)
+    expect(umbralSugerido(20)).toBe(16)
+    expect(umbralSugerido(5)).toBe(4)
+    expect(umbralSugerido(7)).toBe(6)
+    expect(umbralSugerido(15)).toBe(12)
+    expect(umbralSugerido(1)).toBe(1)
+  })
+
+  it('el umbral sugerido nunca pasa del máximo ni baja de 1', () => {
+    for (let maximo = 1; maximo <= 200; maximo += 1) {
+      const umbral = umbralSugerido(maximo)
+      expect(umbral).toBeGreaterThanOrEqual(1)
+      expect(umbral).toBeLessThanOrEqual(maximo)
+    }
+    expect(umbralSugerido('')).toBe(1)
+    expect(umbralSugerido(0)).toBe(1)
   })
 })

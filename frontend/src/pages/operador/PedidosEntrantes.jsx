@@ -3,6 +3,9 @@ import api from '../../api/cliente.js'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
+import EstadoCapacidadSede from '../../components/pedidos/EstadoCapacidadSede.jsx'
+import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
+import { capacidadDeEvento } from '../../utils/capacidad.js'
 
 export default function PedidosEntrantes() {
   const [pedidos, setPedidos] = useState([])
@@ -13,6 +16,14 @@ export default function PedidosEntrantes() {
 
   const [pedidoAprobar, setPedidoAprobar] = useState(null)
   const wsRef = useRef(null)
+
+  // HU-60: capacity of the sede. The WebSocket updates it live, the request
+  // every minute covers what no order event shows (a change of slot by the clock)
+  const {
+    estado: capacidadSede,
+    refrescar: refrescarCapacidad,
+    actualizar: actualizarCapacidad,
+  } = useEstadoCapacidad({ cadaMs: 60000 })
 
   const cargar = useCallback(async () => {
     try {
@@ -62,11 +73,22 @@ export default function PedidosEntrantes() {
       const socket = new WebSocket(wsUrl)
       wsRef.current = socket
 
-      socket.onopen = () => setEstadoConexion('conectado')
+      socket.onopen = () => {
+        setEstadoConexion('conectado')
+        // events sent while the socket was down were lost
+        refrescarCapacidad()
+      }
 
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
+
+          const capacidadNueva = capacidadDeEvento(data)
+          if (capacidadNueva) {
+            actualizarCapacidad(capacidadNueva)
+            return
+          }
+
           const { tipo, pedido } = data
 
           if (tipo === 'pedido_nuevo') {
@@ -109,7 +131,7 @@ export default function PedidosEntrantes() {
       if (reconexionTimeout) window.clearTimeout(reconexionTimeout)
       if (wsRef.current) wsRef.current.close()
     }
-  }, [])
+  }, [actualizarCapacidad, refrescarCapacidad])
 
   const confirmarAprobacion = async () => {
     if (!pedidoAprobar) return
@@ -167,6 +189,8 @@ export default function PedidosEntrantes() {
           </Boton>
         </div>
       </header>
+
+      <EstadoCapacidadSede capacidad={capacidadSede} />
 
       {error && <Alerta tipo="error" titulo={error} />}
 
