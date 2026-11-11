@@ -6,6 +6,7 @@ from .views import (
     FeriadoViewSet,
     CiudadViewSet,
     CapacidadSedeViewSet,
+    ZonaCoberturaViewSet,
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'ciudades', CiudadViewSet, basename='ciudad')
 router.register(r'horarios', HorarioSedeViewSet, basename='horario')
 router.register(r'feriados', FeriadoViewSet, basename='feriado')
 router.register(r'capacidades', CapacidadSedeViewSet, basename='capacidad')
+router.register(r'zonas-cobertura', ZonaCoberturaViewSet, basename='zona-cobertura')
 
 urlpatterns = [
     path('', include(router.urls)),

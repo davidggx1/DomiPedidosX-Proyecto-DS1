@@ -4,8 +4,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Ciudad, Sede, HorarioSede, Feriado, ZonaCobertura, CapacidadSede
 from .serializers import (
-    SedeSerializer, CiudadSerializer, HorarioSedeSerializer, FeriadoSerializer, CapacidadSedeSerializer
+    SedeSerializer, CiudadSerializer, HorarioSedeSerializer, FeriadoSerializer, CapacidadSedeSerializer, ZonaCoberturaSerializer
 )
+from django.db.models import ProtectedError
+from drf_spectacular.utils import extend_schema
+from rest_framework.exceptions import APIException
+
+from usuarios.roles import ADMINISTRADOR, obtener_rol
 
 # Permiso personalizado
 class EsAdministradorPermission(permissions.BasePermission):
@@ -13,8 +18,7 @@ class EsAdministradorPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        rol = getattr(request.user, 'rol', None)
-        return request.user.is_staff or rol == 'ADMINISTRADOR'
+        return request.user.is_staff or obtener_rol(request.user) == ADMINISTRADOR
 
 
 # ---------------------------------------------------------------------------
@@ -256,3 +260,43 @@ class CapacidadSedeViewSet(viewsets.ModelViewSet):
         if sede_id:
             queryset = queryset.filter(sede_id=sede_id)
         return queryset
+
+
+
+
+class ZonaEnUso(APIException):
+    status_code = 409
+    default_code = "zona_en_uso"
+    default_detail = (
+        "Esta zona tiene pedidos asociados y no se puede eliminar. Desactívala en su lugar."
+    )
+
+
+@extend_schema(tags=["Zonas de cobertura"])
+class ZonaCoberturaViewSet(viewsets.ModelViewSet):
+    """HU-55: zonas de cobertura por radio o polígono (solo administrador).
+
+    Los cambios aplican a pedidos futuros: cada pedido conserva su tiempo estimado y la
+    factura su costo de domicilio. Una zona con pedidos no se elimina, se desactiva.
+    Filtros: `?sede=<id>` y `?activo=true|false`.
+    """
+
+    queryset = ZonaCobertura.objects.select_related("sede").order_by("sede_id", "id")
+    serializer_class = ZonaCoberturaSerializer
+    permission_classes = [EsAdministradorPermission]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        sede_id = self.request.query_params.get("sede")
+        if sede_id:
+            queryset = queryset.filter(sede_id=sede_id)
+        activo = self.request.query_params.get("activo")
+        if activo is not None:
+            queryset = queryset.filter(activo=str(activo).lower() in ["true", "1"])
+        return queryset
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ZonaEnUso()

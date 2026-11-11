@@ -141,6 +141,11 @@ class ZonaCobertura(models.Model):
     pedido_minimo = models.DecimalField(max_digits=10, decimal_places=2)
     activo = models.BooleanField(default=True)
 
+    # Polígono opcional: lista de [latitud, longitud]. Si existe, la zona es por
+    # polígono y centro_* y radio guardan el centro y el radio que lo envuelven
+    # (los calcula el serializer). Si es null, la zona es circular.
+    poligono_vertices = models.JSONField(null=True, blank=True)
+
     class Meta:
         constraints = [
             models.CheckConstraint(

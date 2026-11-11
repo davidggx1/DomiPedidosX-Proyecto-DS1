@@ -20,6 +20,7 @@ from menu.models import (
 )
 from promociones.models import Combo, ComboProducto, ComboSede
 from sedes.models import Sede, ZonaCobertura
+from sedes.geometria import contiene_punto
 from usuarios.models import DireccionEntrega
 from . import capacidad
 from .eventos import notificar_pedido
@@ -73,14 +74,14 @@ def _distancia_km(lat1, lon1, lat2, lon2):
 
 
 def _zona_de_cobertura(sede, direccion):
-    """Zona activa de la sede que contiene la dirección (la de menor radio si hay varias)."""
+    """Zona activa de la sede que contiene la dirección (radio o polígono)."""
     candidatas = [
         z
         for z in ZonaCobertura.objects.filter(sede=sede, activo=True)
-        if _distancia_km(
-            direccion.latitud, direccion.longitud, z.centro_latitud, z.centro_longitud
+        if contiene_punto(
+            direccion.latitud, direccion.longitud,
+            z.centro_latitud, z.centro_longitud, z.radio, z.poligono_vertices,
         )
-        <= z.radio
     ]
     return min(candidatas, key=lambda z: z.radio) if candidatas else None
 
