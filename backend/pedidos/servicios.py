@@ -465,3 +465,14 @@ def confirmar_pedido(*, usuario, cliente, datos):
     # si el pedido quedó guardado completo.
     notificar_pedido(pedido)
     return pedido, factura
+
+
+def validar_disponibilidad_cupo_sede(sede):
+    """
+    Old HU-59 helper, kept for the HU-25 test. The rule lives in capacidad.py now.
+    Raises ValidationError if the sede is at 100%, else returns (True, franja)
+    """
+    estado = capacidad.estado_capacidad(sede, puede_confirmar_manual=True)
+    if estado["estado"] == capacidad.SATURADA:
+        raise capacidad.ErrorCapacidad(estado, "capacidad_maxima_alcanzada")
+    return True, capacidad.franja_actual(sede)

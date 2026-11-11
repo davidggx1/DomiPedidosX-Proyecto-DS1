@@ -16,7 +16,7 @@ validar_cupo_nuevo_pedido before it is created.
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,7 +39,7 @@ SATURADA = "saturada"
 SIN_FRANJA = "sin_franja"
 
 
-class ErrorCapacidad(APIException):
+class ErrorCapacidad(ValidationError):
     """409 with the state of the sede, so the front can show a dynamic message."""
 
     status_code = 409
