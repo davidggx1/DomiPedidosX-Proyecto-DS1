@@ -3,7 +3,10 @@ import { crearPedidoOperador } from '../../api/pedidos.js'
 import { listarProductos } from '../../api/menu.js' // API de catálogo
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
+import Casilla from '../../components/ui/Casilla.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
+import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
+import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
 
 export default function CrearPedidoOperador() {
   const [origen, setOrigen] = useState('mostrador') // 'mostrador' o 'telefonico'
@@ -13,6 +16,11 @@ export default function CrearPedidoOperador() {
   const [carrito, setCarrito] = useState([])
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
+  const [confirmaSinFranja, setConfirmaSinFranja] = useState(false)
+
+  // HU-61: capacity of the operator's own sede
+  const { estado: estadoCapacidad, refrescar: refrescarCapacidad } = useEstadoCapacidad()
+  const capacidadInfo = interpretarCapacidad(estadoCapacidad)
 
   useEffect(() => {
     listarProductos().then(setProductos).catch(console.error)
@@ -49,6 +57,7 @@ export default function CrearPedidoOperador() {
         cliente_id: null,
         direccion_id: null,
         observaciones: '',
+        confirmar_sin_franja: capacidadInfo.requiereConfirmacion && confirmaSinFranja,
         items: carrito.map((item) => ({
           producto_id: item.producto_id,
           cantidad: item.cantidad,
@@ -61,12 +70,20 @@ export default function CrearPedidoOperador() {
       const res = await crearPedidoOperador(payload)
       setMensaje({ tipo: 'exito', texto: `¡Pedido #${res.numero_pedido} registrado con éxito!` })
       setCarrito([])
+      setConfirmaSinFranja(false)
+      refrescarCapacidad()
     } catch (err) {
       console.error('Error backend 400:', err.response?.data)
-      const detalleError = err.response?.data
-        ? JSON.stringify(err.response.data)
-        : 'Error al registrar el pedido.'
-      setMensaje({ tipo: 'error', texto: `Error: ${detalleError}` })
+      const errorCap = errorDeCapacidad(err)
+      if (errorCap) {
+        setMensaje({ tipo: 'error', texto: errorCap.detail })
+        refrescarCapacidad()
+      } else {
+        const detalleError = err.response?.data
+          ? JSON.stringify(err.response.data)
+          : 'Error al registrar el pedido.'
+        setMensaje({ tipo: 'error', texto: `Error: ${detalleError}` })
+      }
     } finally {
       setCargando(false)
     }
@@ -106,6 +123,17 @@ export default function CrearPedidoOperador() {
       <div className="rounded-xl border border-borde bg-superficie p-5 shadow-sm space-y-4">
         <h2 className="text-xl font-bold border-b pb-2">Resumen de Venta</h2>
         {mensaje && <Alerta tipo={mensaje.tipo} titulo={mensaje.texto} />}
+
+        {capacidadInfo.aviso && (
+          <Alerta tipo={capacidadInfo.aviso.tipo} titulo={capacidadInfo.aviso.texto} />
+        )}
+        {capacidadInfo.requiereConfirmacion && (
+          <Casilla
+            etiqueta="Crear el pedido sin franja de capacidad"
+            checked={confirmaSinFranja}
+            onChange={(e) => setConfirmaSinFranja(e.target.checked)}
+          />
+        )}
 
         <div>
           <label className="block text-sm font-semibold mb-1">Origen:</label>
@@ -161,7 +189,12 @@ export default function CrearPedidoOperador() {
         <Boton
           variante="primario"
           className="w-full mt-4"
-          disabled={cargando || carrito.length === 0}
+          disabled={
+            cargando ||
+            carrito.length === 0 ||
+            capacidadInfo.bloqueado ||
+            (capacidadInfo.requiereConfirmacion && !confirmaSinFranja)
+          }
           onClick={handleSubmit}
         >
           {cargando ? 'Procesando...' : 'Confirmar Pedido'}

@@ -51,3 +51,9 @@ export async function obtenerResumenDia() {
   const { data } = await api.get('/pedidos/resumen-dia/')
   return data
 }
+
+// HU-25: the customer cancels his order before the kitchen starts it
+export async function cancelarPedido(id) {
+  const { data } = await api.post(`/pedidos/${id}/cancelar/`)
+  return data
+}

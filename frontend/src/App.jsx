@@ -10,6 +10,8 @@ import Inicio from './pages/Inicio.jsx'
 import Login from './pages/Login.jsx'
 import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
+import RecuperarContrasena from './pages/RecuperarContrasena.jsx'
+import RestablecerContrasena from './pages/RestablecerContrasena.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
@@ -42,6 +44,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Inicio />} />
         <Route path="login" element={<Login />} />
+        <Route path="recuperar-contrasena" element={<RecuperarContrasena />} />
+        <Route path="restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="guia-estilo" element={<GuiaEstilo />} />
         <Route path="no-autorizado" element={<NoAutorizado />} />
 

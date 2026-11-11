@@ -8,12 +8,22 @@ import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { subtotalLinea } from '../../utils/carrito.js'
+import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
+import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
 
   // Hook del carrito
   const { sedeId, lineas = [], subtotal, costoDomicilio, total, vaciar } = useCarrito()
+
+  // HU-61: capacity of the sede, to block the button before sending
+  const sedeActual = sedeId || localStorage.getItem('domipedidosx.sede')
+  const { estado: estadoCapacidad, refrescar: refrescarCapacidad } = useEstadoCapacidad({
+    sedeId: sedeActual,
+    activo: Boolean(sedeActual),
+  })
+  const capacidadInfo = interpretarCapacidad(estadoCapacidad)
 
   const [direcciones, setDirecciones] = useState([])
   const [direccionId, setDireccionId] = useState('')
@@ -80,7 +90,12 @@ export default function ConfirmarPedido() {
       return
     }
 
-    const sedeFinal = sedeId || localStorage.getItem('domipedidosx.sede')
+    if (capacidadInfo.bloqueado) {
+      setMensaje({ tipo: 'error', texto: capacidadInfo.aviso.texto })
+      return
+    }
+
+    const sedeFinal = sedeActual
 
     if (!sedeFinal) {
       setMensaje({
@@ -154,8 +169,13 @@ export default function ConfirmarPedido() {
       console.error('Error al confirmar pedido:', err.response?.data)
       const dataError = err.response?.data
       const status = err.response?.status
+      const errorCap = errorDeCapacidad(err)
 
-      if (status === 403) {
+      if (errorCap) {
+        // the sede filled up after the page was opened
+        setMensaje({ tipo: 'error', texto: errorCap.detail })
+        refrescarCapacidad()
+      } else if (status === 403) {
         setMensaje({ tipo: 'error', texto: 'Solo los clientes pueden realizar pedidos.' })
       } else if (status === 400 && dataError?.items) {
         if (Array.isArray(dataError.items)) {
@@ -361,11 +381,21 @@ export default function ConfirmarPedido() {
           </div>
         </div>
 
+        {capacidadInfo.aviso && (
+          <Alerta tipo={capacidadInfo.aviso.tipo} titulo={capacidadInfo.aviso.texto} className="mt-4" />
+        )}
+
         <Boton
           tipo="submit"
           variante="primario"
           className="mt-4 w-full"
-          disabled={cargando || !direccionId || validandoCobertura || (coberturaInfo && !coberturaInfo.cubierto)}
+          disabled={
+            cargando ||
+            !direccionId ||
+            validandoCobertura ||
+            (coberturaInfo && !coberturaInfo.cubierto) ||
+            capacidadInfo.bloqueado
+          }
         >
           {cargando ? 'Procesando pedido...' : 'Confirmar y Pagar'}
         </Boton>
