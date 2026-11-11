@@ -15,6 +15,8 @@ class CrearPedidoOperadorSerializer(serializers.Serializer):
         max_length=200, required=False, allow_blank=True, default=""
     )
     items = ItemCarritoSerializer(many=True, allow_empty=False, max_length=50)
+    # HU-61: the operator accepts to create the order when the sede has no capacity slot
+    confirmar_sin_franja = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         origen = attrs.get("origen")

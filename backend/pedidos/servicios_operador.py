@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from menu.models import Producto, ProductoTamano, Adicion, Insumo
 from usuarios.models import Cliente, DireccionEntrega
+from . import capacidad
 from .models import (
     Pedido,
     DetallePedido,
@@ -47,6 +48,13 @@ def crear_pedido_operador(usuario_operador, datos):
         costo_domicilio = Decimal("4000.00")
 
     with transaction.atomic():
+        # HU-61: same rule as the web, the operator can confirm without a slot
+        capacidad.validar_cupo_nuevo_pedido(
+            sede,
+            puede_confirmar_manual=True,
+            confirmado_sin_franja=datos.get("confirmar_sin_franja", False),
+        )
+
         numero_pedido = f"PED-{uuid.uuid4().hex[:8].upper()}"
 
         pedido = Pedido.objects.create(

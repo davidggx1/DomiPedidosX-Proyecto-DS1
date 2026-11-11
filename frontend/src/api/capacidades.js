@@ -17,3 +17,9 @@ export async function guardarCapacidad(payload) {
 export async function eliminarCapacidad(id) {
   await api.delete(`/capacidades/${id}/`)
 }
+// HU-61: current capacity of a sede, the operator gets his own sede without params
+export async function obtenerEstadoCapacidad(sedeId) {
+  const params = sedeId ? { sede: sedeId } : {}
+  const { data } = await api.get('/pedidos/capacidad/', { params })
+  return data
+}
