@@ -36,3 +36,16 @@ export function aplicarEvento(seguimiento, evento) {
     ],
   }
 }
+
+// HU-25: the customer can cancel only before the kitchen starts the order.
+// Uses the current state (WebSocket events keep it fresh); the backend checks again
+const CANCELABLES = ['pendiente_aprobacion', 'recibido']
+
+export function puedeCancelar(estado) {
+  if (CANCELABLES.includes(estado)) return { puede: true, motivo: null }
+  if (estado === 'cancelado' || estado === 'entregado') return { puede: false, motivo: null }
+  return {
+    puede: false,
+    motivo: 'Ya no puedes cancelarlo: la cocina empezó a preparar tu pedido. Comunícate con la sede si necesitas ayuda.',
+  }
+}
