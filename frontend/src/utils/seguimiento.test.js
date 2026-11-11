@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PASOS_CLIENTE, aplicarEvento, pasosConProgreso } from './seguimiento.js'
+import { PASOS_CLIENTE, aplicarEvento, pasosConProgreso, puedeCancelar } from './seguimiento.js'
 
 describe('pasos de la barra de progreso', () => {
   it('marca los pasos hechos, el actual y los pendientes', () => {
@@ -56,5 +56,25 @@ describe('eventos en tiempo real', () => {
   it('un evento repetido u otro tipo de mensaje no cambia nada', () => {
     expect(aplicarEvento(seguimiento, { tipo: 'estado_pedido_cambiado', estado: 'recibido' })).toBe(seguimiento)
     expect(aplicarEvento(seguimiento, { tipo: 'otro' })).toBe(seguimiento)
+  })
+})
+
+describe('cancelar el pedido (HU-25)', () => {
+  it('se puede antes de que la cocina lo empiece', () => {
+    expect(puedeCancelar('pendiente_aprobacion')).toEqual({ puede: true, motivo: null })
+    expect(puedeCancelar('recibido')).toEqual({ puede: true, motivo: null })
+  })
+
+  it('desde en preparación no se puede y explica la causa', () => {
+    for (const estado of ['en_preparacion', 'listo_despacho', 'recogido', 'en_camino']) {
+      const resultado = puedeCancelar(estado)
+      expect(resultado.puede).toBe(false)
+      expect(resultado.motivo).toMatch(/cocina/)
+    }
+  })
+
+  it('un pedido cerrado no muestra causa porque no hay botón', () => {
+    expect(puedeCancelar('cancelado')).toEqual({ puede: false, motivo: null })
+    expect(puedeCancelar('entregado')).toEqual({ puede: false, motivo: null })
   })
 })
