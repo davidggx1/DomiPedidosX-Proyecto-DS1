@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import api from '../api/cliente.js'
 import { interpretarError } from '../api/errores.js'
 import { useAuth } from '../auth/useAuth.js'
@@ -69,6 +69,10 @@ export default function Login() {
       <Alerta tipo="info">
         El formulario de inicio de sesión se integra con HU-03 (clientes) y HU-04 (personal).
       </Alerta>
+
+      <Link to="/recuperar-contrasena" className="self-start text-marca-clara underline underline-offset-4">
+        ¿Olvidaste tu contraseña?
+      </Link>
 
       {import.meta.env.DEV && (
         <>
