@@ -194,3 +194,16 @@ ASGI_APPLICATION = "config.asgi.application"
 CHANNEL_LAYERS = {
     "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
 }
+
+# Correo (HU-25, HU-05). En desarrollo se imprime en la consola de Django;
+# en producción se cambia EMAIL_BACKEND a smtp y se configuran EMAIL_HOST, etc.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "DomiPedidosX <no-responder@domipedidosx.local>")
+
+# URL del frontend, para los enlaces que van en los correos.
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

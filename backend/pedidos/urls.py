@@ -10,12 +10,14 @@ from .views import (
     ConfirmarPedidoView,
     AprobarPedidoView, CrearPedidoOperadorView,
 )
+from .cancelacion import CancelarPedidoView
 from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
 from .resumen import ResumenDiaView
 from .seguimiento import MisPedidosView
 
 urlpatterns = [
     path("<int:pk>/estado/", EstadoPedidoView.as_view(), name="pedido-estado"),
+    path("<int:pk>/cancelar/", CancelarPedidoView.as_view(), name="pedido-cancelar"),
     path("<int:pk>/cocina/", ComandaCocinaView.as_view(), name="pedido-comanda"),
     path("cocina/tablero/", TableroCocinaView.as_view(), name="cocina-tablero"),
     path("<int:pk>/repartidor/", AsignacionRepartidorView.as_view(), name="pedido-repartidor"),
