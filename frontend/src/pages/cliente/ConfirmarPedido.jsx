@@ -7,15 +7,16 @@ import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
-import { subtotalLinea } from '../../utils/carrito.js'
+import { domicilioDeZona, subtotalLinea, totalCarrito } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
+import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
 
   // Hook del carrito
-  const { sedeId, lineas = [], subtotal, costoDomicilio, total, vaciar } = useCarrito()
+  const { sedeId, lineas = [], subtotal, vaciar } = useCarrito()
 
   // HU-61: capacity of the sede, to block the button before sending
   const sedeActual = sedeId || localStorage.getItem('domipedidosx.sede')
@@ -38,6 +39,15 @@ export default function ConfirmarPedido() {
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
   const [resumenExito, setResumenExito] = useState(null)
+
+  // HU-57: el mínimo de la zona de la dirección elegida, sobre el subtotal de productos.
+  const pedidoMinimo = coberturaInfo?.cubierto ? coberturaInfo.sede.pedido_minimo : null
+  const faltante = faltanteMinimo(subtotal, pedidoMinimo)
+
+  // HU-22: el domicilio es la tarifa real de la zona de la dirección elegida.
+  const tarifaDomicilio = coberturaInfo?.cubierto ? coberturaInfo.sede.tarifa_domicilio : null
+  const costoDomicilio = domicilioDeZona(subtotal, tarifaDomicilio)
+  const total = totalCarrito(subtotal, costoDomicilio ?? 0)
 
   const handleSeleccionarDireccion = useCallback(async (dirObj) => {
     setDireccionId(dirObj.id)
@@ -92,6 +102,14 @@ export default function ConfirmarPedido() {
 
     if (capacidadInfo.bloqueado) {
       setMensaje({ tipo: 'error', texto: capacidadInfo.aviso.texto })
+      return
+    }
+
+    if (faltante > 0) {
+      setMensaje({
+        tipo: 'error',
+        texto: `Te faltan ${formatearPrecio(faltante)} para llegar al pedido mínimo de ${formatearPrecio(pedidoMinimo)}.`,
+      })
       return
     }
 
@@ -368,18 +386,28 @@ export default function ConfirmarPedido() {
             <span>Subtotal:</span>
             <span>{formatearPrecio(subtotal)}</span>
           </div>
-          {costoDomicilio > 0 && (
-            <div className="flex justify-between text-xs text-texto-suave">
-              <span>Domicilio:</span>
-              <span>{formatearPrecio(costoDomicilio)}</span>
-            </div>
-          )}
+          <div className="flex justify-between text-xs text-texto-suave">
+            <span>Domicilio:</span>
+            <span>
+              {costoDomicilio === null ? 'Se calcula al elegir una dirección' : formatearPrecio(costoDomicilio)}
+            </span>
+          </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-borde text-base font-bold">
             <span>Total estimado:</span>
             <span className="text-marca">{formatearPrecio(total)}</span>
           </div>
         </div>
+
+        {faltante > 0 && (
+          <Alerta
+            tipo="aviso"
+            titulo={`Te faltan ${formatearPrecio(faltante)} para llegar al pedido mínimo de tu zona (${formatearPrecio(pedidoMinimo)}).`}
+            className="mt-4"
+          >
+            El mínimo se calcula sobre los productos, sin el domicilio. Vuelve al carrito para agregar más.
+          </Alerta>
+        )}
 
         {capacidadInfo.aviso && (
           <Alerta tipo={capacidadInfo.aviso.tipo} titulo={capacidadInfo.aviso.texto} className="mt-4" />
@@ -394,7 +422,8 @@ export default function ConfirmarPedido() {
             !direccionId ||
             validandoCobertura ||
             (coberturaInfo && !coberturaInfo.cubierto) ||
-            capacidadInfo.bloqueado
+            capacidadInfo.bloqueado ||
+            faltante > 0
           }
         >
           {cargando ? 'Procesando pedido...' : 'Confirmar y Pagar'}

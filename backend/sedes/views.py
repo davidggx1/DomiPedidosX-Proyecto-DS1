@@ -212,6 +212,7 @@ class SedeViewSet(viewsets.ModelViewSet):
                 "direccion": sede_asignada.direccion,
                 "distancia_km": round(ganadora['distancia_km'], 2),
                 "tarifa_domicilio": float(zona_asignada.tarifa_domicilio) if zona_asignada else 0.0,
+                "pedido_minimo": float(zona_asignada.pedido_minimo) if zona_asignada else 0.0,
                 "tiempo_estimado": zona_asignada.tiempo_estimado if zona_asignada else 30,
             }
         }, status=status.HTTP_200_OK)
