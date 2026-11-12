@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PanelStockBajo from '../../components/inventario/PanelStockBajo.jsx'
 import SeccionExistencias from '../../components/inventario/SeccionExistencias.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import { TIPOS_EXISTENCIAS } from '../../utils/existencias.js'
@@ -16,6 +17,8 @@ export default function Inventario() {
           cambio.
         </p>
       </header>
+
+      <PanelStockBajo />
 
       <div role="group" aria-label="Tipo de existencias" className="flex flex-wrap gap-2">
         {Object.entries(TIPOS_EXISTENCIAS).map(([clave, config]) => (

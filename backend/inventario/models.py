@@ -84,3 +84,69 @@ class InventarioInsumo(models.Model):
 
     def __str__(self):
         return f"{self.insumo.nombre} - {self.sede.nombre}"
+
+
+class AlertaInventario(models.Model):
+    """
+    Low stock alert (HU-16). While the stock of an item in a sede is at or under
+    its minimum there is exactly ONE active alert for it (the database enforces
+    it). When the stock goes over the minimum the alert is marked as resolved
+    """
+
+    class Estado(models.TextChoices):
+        ACTIVA = "activa", "Activa"
+        RESUELTA = "resuelta", "Resuelta"
+
+    sede = models.ForeignKey(
+        "sedes.Sede",
+        on_delete=models.CASCADE,
+        related_name="alertas_inventario",
+    )
+    # exactly one of producto / insumo is set
+    producto = models.ForeignKey(
+        "menu.Producto",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alertas_inventario",
+    )
+    insumo = models.ForeignKey(
+        "menu.Insumo",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alertas_inventario",
+    )
+    estado = models.CharField(
+        max_length=10, choices=Estado.choices, default=Estado.ACTIVA
+    )
+    stock_al_disparar = models.DecimalField(max_digits=12, decimal_places=3)
+    stock_minimo_al_disparar = models.DecimalField(max_digits=12, decimal_places=3)
+    creada_en = models.DateTimeField(auto_now_add=True)
+    resuelta_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-creada_en", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(producto__isnull=False, insumo__isnull=True)
+                    | Q(producto__isnull=True, insumo__isnull=False)
+                ),
+                name="alerta_inventario_un_solo_item",
+            ),
+            models.UniqueConstraint(
+                fields=["sede", "producto"],
+                condition=Q(estado="activa", producto__isnull=False),
+                name="alerta_activa_producto_unica",
+            ),
+            models.UniqueConstraint(
+                fields=["sede", "insumo"],
+                condition=Q(estado="activa", insumo__isnull=False),
+                name="alerta_activa_insumo_unica",
+            ),
+        ]
+
+    def __str__(self):
+        item = self.producto or self.insumo
+        return f"Alerta {self.estado}: {item} - {self.sede}"

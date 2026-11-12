@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
+import AlertasInventarioProvider from '../../alertas/AlertasInventarioProvider.jsx'
 import { useAuth } from '../../auth/useAuth.js'
 import { ENLACES_POR_ROL, ETIQUETA_ROL, ROLES } from '../../auth/roles.js'
 import { useCarrito } from '../../carrito/useCarrito.js'
@@ -21,6 +22,12 @@ export default function Layout() {
     setMenuAbierto(false)
     navegar('/login')
   }
+
+  const contenido = (
+    <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <Outlet />
+    </main>
+  )
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -94,9 +101,12 @@ export default function Layout() {
       {/* HU-40: avisos de pedidos asignados o retirados, en cualquier pantalla del repartidor */}
       {usuario?.rol === ROLES.REPARTIDOR && <AvisosRepartidor />}
 
-      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <Outlet />
-      </main>
+      {/* HU-16: alertas de stock bajo para el operador, en cualquier pantalla suya */}
+      {usuario?.rol === ROLES.OPERADOR ? (
+        <AlertasInventarioProvider>{contenido}</AlertasInventarioProvider>
+      ) : (
+        contenido
+      )}
 
       <footer className="border-t border-borde px-4 py-4 text-center text-sm text-texto-suave">
         DomiPedidosX · Universidad del Valle · Desarrollo de Software I

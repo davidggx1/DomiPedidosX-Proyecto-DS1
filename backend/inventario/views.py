@@ -2,11 +2,14 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from menu.disponibilidad import sedes_que_gestiona
 from menu.permissions import EsPersonalDeMenu
 
-from .models import InventarioInsumo, InventarioProducto
+from .alertas import datos_alerta
+from .models import AlertaInventario, InventarioInsumo, InventarioProducto
 from .serializers import InventarioInsumoSerializer, InventarioProductoSerializer
 
 PARAMETRO_SEDE = OpenApiParameter("sede", int, description="Filtra por id de sede.")
@@ -52,3 +55,46 @@ class InventarioInsumoViewSet(InventarioBaseViewSet):
     serializer_class = InventarioInsumoSerializer
     modelo = InventarioInsumo
     campo_item = "insumo"
+
+
+class AlertasInventarioView(APIView):
+    """
+    GET /api/inventario/alertas/ (HU-16)
+
+    Low stock alerts of the sede of the operator (an admin sees all, or one with
+    ?sede=<id>). ?estado=activa (default), resuelta (the last 50) or todas
+    """
+
+    permission_classes = [EsPersonalDeMenu]
+
+    @extend_schema(
+        parameters=[
+            PARAMETRO_SEDE,
+            OpenApiParameter("estado", str, enum=["activa", "resuelta", "todas"]),
+        ],
+        responses={200: None},
+    )
+    def get(self, request):
+        estado = request.query_params.get("estado", "activa")
+        if estado not in ("activa", "resuelta", "todas"):
+            raise ValidationError({"estado": "Usa activa, resuelta o todas."})
+
+        alertas = AlertaInventario.objects.select_related("producto", "insumo")
+        gestionables = sedes_que_gestiona(request.user)
+        if gestionables is not None:
+            alertas = alertas.filter(sede_id__in=gestionables)
+
+        sede = request.query_params.get("sede")
+        if sede not in (None, ""):
+            try:
+                alertas = alertas.filter(sede_id=int(sede))
+            except ValueError:
+                raise ValidationError({"sede": "La sede debe ser un id numérico."})
+
+        if estado != "todas":
+            alertas = alertas.filter(estado=estado)
+        if estado == "resuelta":
+            alertas = alertas.order_by("-resuelta_en", "-id")[:50]
+
+        alertas = list(alertas)
+        return Response([datos_alerta(alerta) for alerta in alertas])
