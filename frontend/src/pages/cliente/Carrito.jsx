@@ -7,9 +7,9 @@ import Contador from '../../components/carrito/Contador.jsx'
 import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
-import { lineaParaValidar, subtotalLinea } from '../../utils/carrito.js'
+import { domicilioDeZona, lineaParaValidar, subtotalLinea, totalCarrito } from '../../utils/carrito.js'
 import { formatearPrecio } from '../../utils/formato.js'
-import { usePedidoMinimo } from '../../carrito/usePedidoMinimo.js'
+import { useZonaEntrega } from '../../carrito/useZonaEntrega.js'
 import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
 
 function describirVariantes(linea) {
@@ -24,13 +24,15 @@ function describirVariantes(linea) {
 
 // HU-21 & HU-22 · Carrito del cliente: líneas personalizadas, subtotal, domicilio y total.
 export default function Carrito() {
-  // HU-22: Traemos costoDomicilio y total calculados dinámicamente desde el Contexto
-  const { sedeId, lineas, subtotal, costoDomicilio, total, cambiarCantidad, eliminar } = useCarrito()
+  const { sedeId, lineas, subtotal, cambiarCantidad, eliminar } = useCarrito()
   const [editando, setEditando] = useState(null)
   const [actualizando, setActualizando] = useState(null)
   const [aviso, setAviso] = useState(null)
-  const pedidoMinimo = usePedidoMinimo()
+  // HU-22: el domicilio sale de la zona de la dirección del cliente (no de una tarifa fija).
+  const { pedidoMinimo, tarifaDomicilio } = useZonaEntrega()
   const faltante = faltanteMinimo(subtotal, pedidoMinimo)
+  const costoDomicilio = domicilioDeZona(subtotal, tarifaDomicilio)
+  const total = totalCarrito(subtotal, costoDomicilio ?? 0)
 
   // Al subir la cantidad se revalida con el backend (stock de la sede).
   async function nuevaCantidad(linea, cantidad) {
@@ -131,7 +133,9 @@ export default function Carrito() {
           </div>
           <div className="flex justify-between text-sm text-texto-suave">
             <span>Costo de domicilio</span>
-            <span>{formatearPrecio(costoDomicilio)}</span>
+            <span>
+              {costoDomicilio === null ? 'Se calcula con tu dirección' : formatearPrecio(costoDomicilio)}
+            </span>
           </div>
           <div className="flex justify-between border-t border-borde pt-2 text-xl font-bold text-texto">
             <span>Total</span>

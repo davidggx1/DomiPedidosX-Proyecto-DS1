@@ -130,3 +130,12 @@ export function domicilioCarrito(subtotal, tarifaSede = TARIFA_DOMICILIO_PROVISI
 export function totalCarrito(subtotal, domicilio) {
   return subtotal + domicilio
 }
+
+/**
+ * Domicilio con la tarifa REAL de la zona de la dirección (HU-22).
+ * Si la zona aún no se conoce (tarifa null o undefined) devuelve null: no se inventa un valor.
+ */
+export function domicilioDeZona(subtotal, tarifaZona) {
+  if (tarifaZona == null) return null
+  return domicilioCarrito(subtotal, Number(tarifaZona))
+}

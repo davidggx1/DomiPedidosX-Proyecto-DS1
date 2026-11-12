@@ -6,12 +6,15 @@ import {
   claveCarrito,
   cantidadArticulos,
   claveVariante,
+  domicilioCarrito,
+  domicilioDeZona,
   eliminarLinea,
   lineaParaValidar,
   precioUnitario,
   reemplazarLinea,
   subtotalCarrito,
   subtotalLinea,
+  totalCarrito,
 } from './carrito.js'
 
 const producto = { id: 1, nombre: 'Hamburguesa', imagen: null, precio_base: '20000.00' }
@@ -166,5 +169,38 @@ describe('un carrito por cuenta', () => {
   it('sin sesión o con otro rol no hay carrito', () => {
     expect(claveCarrito(null)).toBeNull()
     expect(claveCarrito({ rol: 'operador', email: 'op@correo.com' })).toBeNull()
+  })
+})
+
+describe('domicilio según la zona (HU-22)', () => {
+  it('usa la tarifa de la zona y no la provisional de 4000', () => {
+    expect(domicilioDeZona(20000, 3000)).toBe(3000)
+    expect(domicilioDeZona(20000, 6500)).toBe(6500)
+  })
+
+  it('acepta la tarifa como texto o decimal', () => {
+    expect(domicilioDeZona(20000, '3500.00')).toBe(3500)
+  })
+
+  it('una zona con domicilio gratis cobra 0', () => {
+    expect(domicilioDeZona(20000, 0)).toBe(0)
+  })
+
+  it('sin subtotal no se cobra domicilio', () => {
+    expect(domicilioDeZona(0, 3000)).toBe(0)
+  })
+
+  it('sin zona conocida no inventa una tarifa', () => {
+    expect(domicilioDeZona(20000, null)).toBeNull()
+    expect(domicilioDeZona(20000, undefined)).toBeNull()
+  })
+
+  it('el total es subtotal más domicilio', () => {
+    expect(totalCarrito(20000, domicilioDeZona(20000, 3000))).toBe(23000)
+  })
+
+  it('domicilioCarrito conserva su comportamiento anterior', () => {
+    expect(domicilioCarrito(20000)).toBe(4000)
+    expect(domicilioCarrito(0)).toBe(0)
   })
 })
