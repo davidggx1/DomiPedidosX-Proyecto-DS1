@@ -8,6 +8,7 @@ import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Login from './pages/Login.jsx'
+import Registro from './pages/Registro.jsx'
 import NoAutorizado from './pages/NoAutorizado.jsx'
 import NoEncontrada from './pages/NoEncontrada.jsx'
 import RecuperarContrasena from './pages/RecuperarContrasena.jsx'
@@ -45,6 +46,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Inicio />} />
         <Route path="login" element={<Login />} />
+        <Route path="registro" element={<Registro />} />
         <Route path="recuperar-contrasena" element={<RecuperarContrasena />} />
         <Route path="restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="guia-estilo" element={<GuiaEstilo />} />
