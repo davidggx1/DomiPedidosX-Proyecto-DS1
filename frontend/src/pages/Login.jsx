@@ -74,6 +74,13 @@ export default function Login() {
         ¿Olvidaste tu contraseña?
       </Link>
 
+      <p className="text-sm text-texto-suave">
+        ¿No tienes cuenta?{' '}
+        <Link to="/registro" className="text-marca-clara underline underline-offset-4">
+          Crear cuenta
+        </Link>
+      </p>
+
       {import.meta.env.DEV && (
         <>
           <Tarjeta titulo="Modo desarrollo: conectar con el backend">
