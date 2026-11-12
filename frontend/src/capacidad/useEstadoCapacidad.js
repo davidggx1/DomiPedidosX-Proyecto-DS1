@@ -35,5 +35,6 @@ export function useEstadoCapacidad({ sedeId, activo = true, cadaMs = CADA_MS } =
     }
   }, [activo, sedeId, cadaMs, consulta])
 
-  return { estado, refrescar }
+  // `actualizar` lets a WebSocket event (HU-60) replace the state without asking again
+  return { estado, refrescar, actualizar: setEstado }
 }

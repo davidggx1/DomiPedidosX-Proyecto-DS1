@@ -6,5 +6,5 @@ class PedidosConfig(AppConfig):
     name = "pedidos"
 
     def ready(self):
-        from . import asignacion_automatica, signals  # noqa: F401
+        from . import alertas_capacidad, asignacion_automatica, signals  # noqa: F401
     verbose_name = "Pedidos"

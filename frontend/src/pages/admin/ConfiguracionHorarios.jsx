@@ -14,6 +14,7 @@ import {
   guardarCapacidad,
   eliminarCapacidad,
 } from '../../api/capacidades.js'
+import { umbralSugerido } from '../../utils/capacidad.js'
 import Selector from '../../components/ui/Selector.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Casilla from '../../components/ui/Casilla.jsx'
@@ -60,6 +61,8 @@ export default function ConfiguracionHorarios() {
   const [diasCapacidad, setDiasCapacidad] = useState('lunes,martes,miercoles,jueves,viernes')
   const [maxSimultaneos, setMaxSimultaneos] = useState(10)
   const [umbralAlerta, setUmbralAlerta] = useState(8)
+  // HU-60: while the admin does not type an umbral, it follows 80% of the limit
+  const [umbralManual, setUmbralManual] = useState(false)
 
   useEffect(() => {
     let activo = true
@@ -309,14 +312,23 @@ export default function ConfiguracionHorarios() {
                   tipo="number"
                   etiqueta="Max Pedidos"
                   value={maxSimultaneos}
-                  onChange={(e) => setMaxSimultaneos(e.target.value)}
+                  onChange={(e) => {
+                    setMaxSimultaneos(e.target.value)
+                    if (!umbralManual && Number(e.target.value) >= 1) {
+                      setUmbralAlerta(umbralSugerido(e.target.value))
+                    }
+                  }}
                   requerido
                 />
                 <CampoTexto
                   tipo="number"
                   etiqueta="Umbral Alerta"
                   value={umbralAlerta}
-                  onChange={(e) => setUmbralAlerta(e.target.value)}
+                  ayuda="Desde este número de pedidos se alerta al operador (sugerido: 80% del máximo)."
+                  onChange={(e) => {
+                    setUmbralManual(true)
+                    setUmbralAlerta(e.target.value)
+                  }}
                   requerido
                 />
               </div>
