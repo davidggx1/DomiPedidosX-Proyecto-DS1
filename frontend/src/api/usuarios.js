@@ -21,3 +21,9 @@ export async function actualizarPerfil(datos) {
   const { data } = await api.patch('/usuarios/perfil/', datos)
   return data
 }
+
+// HU-01 / HU-02: registro público del cliente
+export async function registrarCliente(datos) {
+  const { data } = await api.post('/usuarios/registro/', datos)
+  return data
+}
