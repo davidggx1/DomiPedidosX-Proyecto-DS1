@@ -135,9 +135,11 @@ class ZonaCobertura(models.Model):
     radio = models.FloatField()
     centro_latitud = models.FloatField()
     centro_longitud = models.FloatField()
-    tarifa_domicilio = models.DecimalField(max_digits=10, decimal_places=2)
-    # Minutos.
-    tiempo_estimado = models.IntegerField()
+    tarifa_domicilio = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    # Minutos. Null = aún sin configurar (la zona queda desactivada).
+    tiempo_estimado = models.IntegerField(null=True, blank=True)
     pedido_minimo = models.DecimalField(max_digits=10, decimal_places=2)
     activo = models.BooleanField(default=True)
 
@@ -171,6 +173,13 @@ class ZonaCobertura(models.Model):
             models.CheckConstraint(
                 condition=Q(tiempo_estimado__gt=0),
                 name="zona_tiempo_estimado_positivo",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(activo=False)
+                    | (Q(tarifa_domicilio__isnull=False) & Q(tiempo_estimado__isnull=False))
+                ),
+                name="zona_activa_requiere_tarifa_y_tiempo",
             ),
         ]
 
