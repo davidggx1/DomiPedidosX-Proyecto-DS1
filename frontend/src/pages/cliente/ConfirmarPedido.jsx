@@ -10,6 +10,7 @@ import { formatearPrecio } from '../../utils/formato.js'
 import { subtotalLinea } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
+import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
@@ -38,6 +39,10 @@ export default function ConfirmarPedido() {
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
   const [resumenExito, setResumenExito] = useState(null)
+
+  // HU-57: el mínimo de la zona de la dirección elegida, sobre el subtotal de productos.
+  const pedidoMinimo = coberturaInfo?.cubierto ? coberturaInfo.sede.pedido_minimo : null
+  const faltante = faltanteMinimo(subtotal, pedidoMinimo)
 
   const handleSeleccionarDireccion = useCallback(async (dirObj) => {
     setDireccionId(dirObj.id)
@@ -92,6 +97,14 @@ export default function ConfirmarPedido() {
 
     if (capacidadInfo.bloqueado) {
       setMensaje({ tipo: 'error', texto: capacidadInfo.aviso.texto })
+      return
+    }
+
+    if (faltante > 0) {
+      setMensaje({
+        tipo: 'error',
+        texto: `Te faltan ${formatearPrecio(faltante)} para llegar al pedido mínimo de ${formatearPrecio(pedidoMinimo)}.`,
+      })
       return
     }
 
@@ -381,6 +394,16 @@ export default function ConfirmarPedido() {
           </div>
         </div>
 
+        {faltante > 0 && (
+          <Alerta
+            tipo="aviso"
+            titulo={`Te faltan ${formatearPrecio(faltante)} para llegar al pedido mínimo de tu zona (${formatearPrecio(pedidoMinimo)}).`}
+            className="mt-4"
+          >
+            El mínimo se calcula sobre los productos, sin el domicilio. Vuelve al carrito para agregar más.
+          </Alerta>
+        )}
+
         {capacidadInfo.aviso && (
           <Alerta tipo={capacidadInfo.aviso.tipo} titulo={capacidadInfo.aviso.texto} className="mt-4" />
         )}
@@ -394,7 +417,8 @@ export default function ConfirmarPedido() {
             !direccionId ||
             validandoCobertura ||
             (coberturaInfo && !coberturaInfo.cubierto) ||
-            capacidadInfo.bloqueado
+            capacidadInfo.bloqueado ||
+            faltante > 0
           }
         >
           {cargando ? 'Procesando pedido...' : 'Confirmar y Pagar'}

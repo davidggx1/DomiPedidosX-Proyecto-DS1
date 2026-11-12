@@ -73,6 +73,7 @@ export default function FormularioZona({
           value={valores.pedido_minimo}
           onChange={poner('pedido_minimo')}
           error={errores.pedido_minimo}
+          ayuda="0 = sin pedido mínimo"
           requerido
         />
       </div>
