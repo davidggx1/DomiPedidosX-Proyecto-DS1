@@ -56,8 +56,8 @@ class ErrorConfirmacion(APIException):
     status_code = 400
     default_code = "confirmacion_invalida"
 
-    def __init__(self, mensaje, items=None):
-        self.detail = {"detail": mensaje, "items": items or []}
+    def __init__(self, mensaje, items=None, **extra):
+        self.detail = {"detail": mensaje, "items": items or [], **extra}
 
 
 def _redondear(valor):
@@ -374,9 +374,14 @@ def confirmar_pedido(*, usuario, cliente, datos):
         raise ErrorConfirmacion("Algunos ítems no se pueden confirmar.", errores)
 
     subtotal = sum((l["subtotal"] for l in lineas), CERO)
+    # HU-57: solo cuenta el subtotal de productos; el domicilio no entra.
     if subtotal < zona.pedido_minimo:
+        faltante = zona.pedido_minimo - subtotal
         raise ErrorConfirmacion(
-            f"El pedido mínimo para tu zona es ${zona.pedido_minimo:,.0f}."
+            f"Te faltan ${faltante:,.0f} para llegar al pedido mínimo de "
+            f"${zona.pedido_minimo:,.0f} de tu zona.",
+            pedido_minimo=str(zona.pedido_minimo),
+            faltante=str(faltante),
         )
 
     costo_domicilio = zona.tarifa_domicilio
