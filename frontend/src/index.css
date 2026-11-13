@@ -1,28 +1,82 @@
 @import "tailwindcss";
 
+/* Tipografías del rediseño: Poppins para títulos, Inter para el texto. */
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+@import "@fontsource/poppins/800.css";
+@import "@fontsource-variable/inter";
+
 /*
- * Tema de DomiPedidosX (basado en el prototipo de baja fidelidad).
- * Cada color define una utilidad de Tailwind: bg-marca, text-texto-suave,
- * border-borde, etc. Los contrastes cumplen WCAG AA sobre el fondo oscuro.
+ * Tema de DomiPedidosX con modo claro y oscuro.
+ *
+ * Cada color define una utilidad de Tailwind (bg-marca, text-texto-suave,
+ * border-borde...). Los valores de @theme son los del tema OSCURO; el tema
+ * CLARO los reemplaza más abajo con :root[data-tema="claro"]. Por eso las
+ * pantallas no necesitan saber qué tema está activo: solo usan los nombres.
+ *
+ * Los valores están medidos sobre el PDF del rediseño.
+ * El tema lo elige la persona con el botón del encabezado (src/tema/).
+ * Todos los textos cumplen contraste WCAG AA en los dos temas.
  */
 @theme {
-  --color-fondo: #161616;
-  --color-superficie: #222222;
-  --color-superficie-alta: #2d2d2d;
-  --color-borde: #3d3d3d;
-  --color-texto: #f2f2f2;
-  --color-texto-suave: #b8b8b8;
+  --color-fondo: #141215;
+  --color-superficie: #1c1a1d;
+  --color-superficie-alta: #29262a;
+  --color-borde: #3a353c;
+  --color-texto: #f5f1ec;
+  --color-texto-suave: #aba49d;
 
-  --color-marca: #b30000;
-  --color-marca-oscura: #8a0000;
-  --color-marca-clara: #ff6b6b;
+  --color-marca: #c9291d;
+  --color-marca-oscura: #a11f17;
+  --color-marca-clara: #ff8a6b;
+  /* Texto e íconos que van encima de un fondo de marca (botones primarios). */
+  --color-sobre-marca: #ffffff;
+
+  /* Barra superior de la app y cuadro del logo ("D"). */
+  --color-encabezado: #19171a;
+  --color-sobre-encabezado: #f5f1ec;
+  --color-logo: #c9291d;
+  --color-sobre-logo: #ffffff;
+
+  /* Destacados: "El más pedido", insignias y la pestaña activa del menú. */
+  --color-acento: #f6b94a;
+  --color-sobre-acento: #141215;
 
   --color-error: #ff8a80;
   --color-exito: #4ade80;
   --color-aviso: #fbbf24;
   --color-foco: #ffd166;
 
-  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter Variable", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --font-titulo: "Poppins", "Inter Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+/* Tema claro: crema y rojo vino, como las pantallas de escritorio del diseño. */
+:root[data-tema="claro"] {
+  --color-fondo: #fbf8f1;
+  --color-superficie: #ffffff;
+  --color-superficie-alta: #f6ebd7;
+  --color-borde: #e6dccd;
+  --color-texto: #2a1f1a;
+  --color-texto-suave: #6b5b4e;
+
+  --color-marca: #6e1b0d;
+  --color-marca-oscura: #561509;
+  --color-marca-clara: #9c2b17;
+  --color-sobre-marca: #ffffff;
+
+  --color-encabezado: #6e1b0d;
+  --color-sobre-encabezado: #ffffff;
+  --color-logo: #ffffff;
+  --color-sobre-logo: #6e1b0d;
+
+  --color-acento: #f2c27b;
+  --color-sobre-acento: #2a1f1a;
+
+  --color-error: #b42318;
+  --color-exito: #1f6b48;
+  --color-aviso: #8a5300;
+  --color-foco: #1d4ed8;
 }
 
 @layer base {
@@ -30,8 +84,18 @@
     color-scheme: dark;
   }
 
+  :root[data-tema="claro"] {
+    color-scheme: light;
+  }
+
   body {
     @apply bg-fondo font-sans text-texto antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-titulo tracking-tight;
   }
 
   /* Foco visible al navegar con teclado, en cualquier elemento interactivo. */
