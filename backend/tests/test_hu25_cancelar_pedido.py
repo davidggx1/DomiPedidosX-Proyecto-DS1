@@ -271,7 +271,8 @@ def test_si_falla_el_correo_la_cancelacion_se_mantiene(client, m, monkeypatch, d
     def falla(*args, **kwargs):
         raise ConnectionError("sin servidor de correo")
 
-    monkeypatch.setattr("pedidos.cancelacion.send_mail", falla)
+    # El envío pasó a la tarea de correo de Celery (SCRUM-119)
+    monkeypatch.setattr("usuarios.tasks.send_mail", falla)
     with django_capture_on_commit_callbacks(execute=True):
         r = client.post(cancelar(pedido.pk))
 
