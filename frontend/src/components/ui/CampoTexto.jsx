@@ -56,7 +56,7 @@ export default function CampoTexto({
         aria-required={requerido || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={descripcion}
-        className={`min-h-11 w-full rounded-lg border bg-fondo px-3 py-2 text-texto placeholder:text-texto-suave [color-scheme:dark] ${
+        className={`min-h-11 w-full rounded-xl border bg-fondo px-3 py-2 text-texto placeholder:text-texto-suave ${
           error ? 'border-error' : 'border-borde'
         } ${tipoFinal === 'date' || tipoFinal === 'time' ? 'cursor-pointer' : ''}`}
         {...props}

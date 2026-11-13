@@ -8,7 +8,7 @@ export default function TarjetaDireccion({ direccion, alEditar, alEliminar }) {
         <p className="font-medium">
           {direccion.alias}
           {direccion.es_principal && (
-            <span className="ml-2 rounded-full bg-marca px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="ml-2 rounded-full bg-marca px-2 py-0.5 text-xs font-semibold text-sobre-marca">
               Principal
             </span>
           )}

@@ -139,7 +139,7 @@ function MapaAbierto({ entrega }) {
         href={enlaceRuta(entrega, origenRuta)}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-marca px-4 py-2 font-medium text-white hover:bg-marca-oscura"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-marca px-4 py-2 font-medium text-sobre-marca hover:bg-marca-oscura"
       >
         Cómo llegar (abrir navegación)
       </a>

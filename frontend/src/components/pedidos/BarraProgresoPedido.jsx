@@ -2,7 +2,7 @@ import { horaCorta } from '../../utils/tiempo.js'
 
 const ESTILO_PUNTO = {
   hecho: 'border-exito bg-exito text-fondo',
-  actual: 'border-marca-clara bg-marca text-white ring-4 ring-marca/30',
+  actual: 'border-marca-clara bg-marca text-sobre-marca ring-4 ring-marca/30',
   pendiente: 'border-borde bg-superficie text-texto-suave',
 }
 

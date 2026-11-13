@@ -13,7 +13,7 @@ export default function Alerta({ tipo = 'info', titulo, children, className = ''
   return (
     <div
       role={estilo.rol}
-      className={`flex gap-3 rounded-lg border bg-superficie px-4 py-3 ${estilo.clases} ${className}`}
+      className={`flex gap-3 rounded-xl border bg-superficie px-4 py-3 ${estilo.clases} ${className}`}
     >
       <span aria-hidden="true" className="font-bold">
         {estilo.icono}

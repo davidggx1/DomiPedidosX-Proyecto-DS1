@@ -32,7 +32,7 @@ export default function Modal({ titulo, alCerrar, acciones, ancho = 'max-w-md', 
         aria-modal="true"
         aria-labelledby={idTitulo}
         tabIndex={-1}
-        className={`my-8 w-full ${ancho} rounded-xl border border-borde bg-superficie p-6 shadow-lg outline-none`}
+        className={`my-8 w-full ${ancho} rounded-2xl border border-borde bg-superficie p-6 shadow-lg outline-none`}
       >
         <h2 id={idTitulo} className="text-lg font-bold">
           {titulo}

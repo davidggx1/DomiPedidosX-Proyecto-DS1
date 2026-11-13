@@ -74,7 +74,7 @@ export default function AvisosRepartidor() {
               <button
                 type="button"
                 onClick={() => abrir(aviso)}
-                className="mt-2 min-h-11 rounded-lg bg-marca px-4 py-2 font-medium text-white hover:bg-marca-oscura"
+                className="mt-2 min-h-11 rounded-lg bg-marca px-4 py-2 font-medium text-sobre-marca hover:bg-marca-oscura"
               >
                 Ver pedido y dirección
               </button>
