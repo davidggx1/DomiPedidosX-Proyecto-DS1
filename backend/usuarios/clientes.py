@@ -12,7 +12,7 @@ Los serializers listan sus campos uno por uno: nunca salen la contraseña, su
 hash, el último inicio de sesión ni permisos (criterio 3).
 """
 from django.db.models import Count, Prefetch, Q
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, serializers
 
 from pedidos.models import Pedido
@@ -81,8 +81,20 @@ def clientes():
     return Cliente.objects.select_related("usuario").annotate(total_pedidos=Count("pedidos"))
 
 
+_SOLO_ADMIN = OpenApiResponse(description="No inició sesión o no es administrador.")
+
+
 @extend_schema(
-    parameters=[OpenApiParameter("buscar", str, description="Nombre, apellido, correo o celular.")]
+    tags=["Clientes"],
+    summary="Buscar clientes registrados (HU-69)",
+    description=(
+        "Lista de clientes, del más reciente al más antiguo, con contacto, estado de la cuenta, "
+        "fecha de registro y número de pedidos. Con `buscar`, cada palabra debe aparecer en el "
+        "nombre, apellido, correo o celular (\"ana perez\" encuentra a Ana Pérez). "
+        "Nunca devuelve contraseñas ni datos de autenticación."
+    ),
+    parameters=[OpenApiParameter("buscar", str, description="Nombre, apellido, correo o celular.")],
+    responses={200: ClienteSerializer(many=True), 403: _SOLO_ADMIN},
 )
 class ClientesView(generics.ListAPIView):
     """GET /api/usuarios/clientes/ · Clientes registrados, del más reciente al más antiguo."""
@@ -104,6 +116,12 @@ class ClientesView(generics.ListAPIView):
         return consulta
 
 
+@extend_schema(
+    tags=["Clientes"],
+    summary="Ver la ficha de un cliente (HU-69)",
+    description="Datos del cliente, sus direcciones activas y todo su historial de pedidos, incluidos los cancelados.",
+    responses={200: FichaClienteSerializer, 403: _SOLO_ADMIN, 404: OpenApiResponse(description="El cliente no existe.")},
+)
 class FichaClienteView(generics.RetrieveAPIView):
     """GET /api/usuarios/clientes/<id>/ · Ficha del cliente con su historial de pedidos."""
 

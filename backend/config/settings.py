@@ -83,7 +83,21 @@ SIMPLE_JWT = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "DomiPedidosX API",
     "VERSION": "0.1.0",
+    "DESCRIPTION": (
+        "API del sistema de pedidos y domicilios DomiPedidosX.\n\n"
+        "**Autenticación:** pide un token en `POST /api/auth/token/` con correo y contraseña, "
+        "copia el valor de `access`, pulsa **Authorize** y pégalo (sin escribir \"Bearer\"). "
+        "El token vence en pocos minutos; si recibes 401, pide uno nuevo.\n\n"
+        "Guía de uso con Swagger y Postman: `docs/api.md` en el repositorio."
+    ),
     "SERVE_INCLUDE_SCHEMA": False,
+    # Mantiene el token de Authorize al recargar la página.
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
+    "TAGS": [
+        {"name": "Cobertura", "description": "Zonas de cobertura por radio o polígono y validación de direcciones (HU-55 a HU-58)."},
+        {"name": "Capacidad", "description": "Franjas de capacidad por sede y estado de ocupación en tiempo real (HU-59 a HU-61)."},
+        {"name": "Clientes", "description": "Consulta de clientes registrados para el administrador (HU-69)."},
+    ],
 }
 
 CORS_ALLOWED_ORIGINS = os.getenv(

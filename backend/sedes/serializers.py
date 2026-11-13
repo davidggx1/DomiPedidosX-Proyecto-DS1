@@ -1,5 +1,6 @@
 import unicodedata
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .geometria import envolvente, normalizar_poligono, traslapan
 from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede, ZonaCobertura, DiaSemana
@@ -35,7 +36,7 @@ class SedeSerializer(serializers.ModelSerializer):
             'tiene_pedidos_pendientes',
         ]
 
-    def get_tiene_pedidos_pendientes(self, obj):
+    def get_tiene_pedidos_pendientes(self, obj) -> bool:
         # Chequeo preparado para cuando la app de 'pedidos' se integre en el Sprint 2
         # return obj.pedidos.filter(estado__in=['pendiente', 'recibido', 'en_preparacion']).exists()
         return False
@@ -202,6 +203,7 @@ class ZonaCoberturaSerializer(serializers.ModelSerializer):
             "centro_longitud": {"required": False},
         }
 
+    @extend_schema_field(serializers.ChoiceField(choices=["radio", "poligono"]))
     def get_tipo(self, obj):
         return "poligono" if obj.poligono_vertices else "radio"
 

@@ -14,13 +14,14 @@ validar_cupo_nuevo_pedido before it is created.
   customer is rejected and the operator gets a warning to confirm by hand
 """
 from django.utils import timezone
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import status
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from sedes.esquemas import ErrorDetalleSerializer
 from sedes.models import CapacidadSede, Sede
 from usuarios.roles import ADMINISTRADOR, OPERADOR, obtener_rol, obtener_sede
 
@@ -164,6 +165,23 @@ def validar_cupo_nuevo_pedido(
     return estado
 
 
+class EstadoCapacidadSerializer(serializers.Serializer):
+    """Shape of estado_capacidad(), for the API docs (SCRUM-120)."""
+
+    sede = serializers.IntegerField()
+    estado = serializers.ChoiceField(choices=[DISPONIBLE, SATURADA, SIN_FRANJA])
+    bloqueado = serializers.BooleanField(help_text="True: el cliente no puede confirmar el pedido ahora.")
+    requiere_confirmacion = serializers.BooleanField(
+        help_text="Solo personal: no hay franja configurada y debe confirmar a mano."
+    )
+    activos = serializers.IntegerField(help_text="Pedidos que ocupan cupo ahora.")
+    maximo = serializers.IntegerField(allow_null=True, help_text="Cupo de la franja actual; null sin franja.")
+    porcentaje = serializers.IntegerField(allow_null=True, help_text="Ocupación 0-100; null sin franja.")
+    umbral_alerta = serializers.IntegerField(allow_null=True)
+    en_alerta = serializers.BooleanField(help_text="True desde el umbral de alerta (HU-60).")
+    mensaje = serializers.CharField(help_text="Texto listo para mostrar al usuario.")
+
+
 class EstadoCapacidadView(APIView):
     """
     GET /api/pedidos/capacidad/?sede=<id>
@@ -175,8 +193,22 @@ class EstadoCapacidadView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        parameters=[OpenApiParameter("sede", int, required=False)],
-        responses={200: None},
+        tags=["Capacidad"],
+        summary="Consultar la capacidad actual de una sede (HU-61)",
+        description=(
+            "El frontend la usa para deshabilitar el botón de confirmar antes de enviar el pedido.\n\n"
+            "- **Operador:** siempre ve su propia sede; `sede` se ignora.\n"
+            "- **Cliente y administrador:** deben enviar `?sede=<id>`.\n\n"
+            "`estado` es `disponible`, `saturada` (100 % del cupo) o `sin_franja` (no hay franja para "
+            "este día y hora: el cliente queda bloqueado y el personal puede confirmar a mano)."
+        ),
+        parameters=[OpenApiParameter("sede", int, required=False, description="Sede a consultar (cliente y administrador).")],
+        responses={
+            200: EstadoCapacidadSerializer,
+            400: OpenApiResponse(ErrorDetalleSerializer, description="Falta `?sede=` o el operador no tiene sede."),
+            403: OpenApiResponse(ErrorDetalleSerializer, description="El rol no puede consultar la capacidad."),
+            404: OpenApiResponse(ErrorDetalleSerializer, description="La sede no existe o no está activa."),
+        },
     )
     def get(self, request):
         rol = obtener_rol(request.user)
