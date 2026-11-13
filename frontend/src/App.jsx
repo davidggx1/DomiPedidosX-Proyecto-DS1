@@ -4,7 +4,6 @@ import RutaProtegida from './auth/RutaProtegida.jsx'
 import Layout from './components/layout/Layout.jsx'
 import Carrito from './pages/cliente/Carrito.jsx'
 import CategoriasMenu from './pages/CategoriasMenu.jsx'
-import EnConstruccion from './pages/EnConstruccion.jsx'
 import GuiaEstilo from './pages/GuiaEstilo.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Login from './pages/Login.jsx'
@@ -27,6 +26,7 @@ import SeguimientoPedido from './pages/cliente/SeguimientoPedido.jsx'
 import Clientes from './pages/admin/Clientes.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
 import HistorialPedidos from './pages/admin/HistorialPedidos.jsx'
+import PanelIndicadores from './pages/admin/PanelIndicadores.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
 import Despacho from './pages/operador/Despacho.jsx'
@@ -85,7 +85,7 @@ export default function App() {
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
-          <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
+          <Route path="admin" element={<PanelIndicadores />} />
           <Route path="admin/pedidos" element={<PedidosDelDia />} />
           <Route path="admin/historial" element={<HistorialPedidos />} />
           <Route path="admin/sedes" element={<Sedes />} />

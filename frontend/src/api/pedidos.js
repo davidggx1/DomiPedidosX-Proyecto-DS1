@@ -70,3 +70,10 @@ export async function obtenerFichaPedido(id) {
   const { data } = await api.get(`/pedidos/historial/${id}/`)
   return data
 }
+
+// HU-70 · Indicadores del día. Sin sede: consolidado de las sedes activas.
+export async function obtenerIndicadoresDia(sede = '') {
+  const params = sede ? { sede } : {}
+  const { data } = await api.get('/pedidos/indicadores/', { params })
+  return data
+}
