@@ -50,11 +50,15 @@ class ErrorCapacidad(ValidationError):
 
 
 def franja_actual(sede, ahora=None):
-    """CapacidadSede of the sede for the current day and hour, or None."""
+    """CapacidadSede of the sede for the current day and hour, or None.
+
+    A slot covers [hora_inicio, hora_fin): with contiguous slots 11-14 and 14-17,
+    14:00 belongs to the afternoon one (SCRUM-121).
+    """
     ahora = ahora or timezone.localtime()
     dia = DIAS[ahora.weekday()]
     franjas = CapacidadSede.objects.filter(
-        sede=sede, hora_inicio__lte=ahora.time(), hora_fin__gte=ahora.time()
+        sede=sede, hora_inicio__lte=ahora.time(), hora_fin__gt=ahora.time()
     )
     for franja in franjas:
         dias = [d.strip().lower() for d in franja.dias_semana.split(",") if d.strip()]
