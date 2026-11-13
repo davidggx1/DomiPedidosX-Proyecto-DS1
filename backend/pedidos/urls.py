@@ -13,6 +13,7 @@ from .views import (
 from .cancelacion import CancelarPedidoView
 from .capacidad import EstadoCapacidadView
 from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
+from .historial import FichaPedidoView, HistorialPedidosView
 from .resumen import ResumenDiaView
 from .seguimiento import MisPedidosView
 
@@ -32,5 +33,7 @@ urlpatterns = [
     path("mis-entregas/<int:pk>/entrega/", ActualizarEntregaView.as_view(), name="mis-entregas-actualizar"),
     path("capacidad/", EstadoCapacidadView.as_view(), name="pedidos-capacidad"),
     path("resumen-dia/", ResumenDiaView.as_view(), name="resumen-dia"),
+    path("historial/", HistorialPedidosView.as_view(), name="historial-pedidos"),
+    path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
 ]

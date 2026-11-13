@@ -26,6 +26,7 @@ import Perfil from './pages/cliente/Perfil.jsx'
 import SeguimientoPedido from './pages/cliente/SeguimientoPedido.jsx'
 import Clientes from './pages/admin/Clientes.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
+import HistorialPedidos from './pages/admin/HistorialPedidos.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
 import Despacho from './pages/operador/Despacho.jsx'
@@ -86,6 +87,7 @@ export default function App() {
         <Route element={<RutaProtegida roles={[ROLES.ADMINISTRADOR]} />}>
           <Route path="admin" element={<EnConstruccion titulo="Dashboard" historias="HU-70" />} />
           <Route path="admin/pedidos" element={<PedidosDelDia />} />
+          <Route path="admin/historial" element={<HistorialPedidos />} />
           <Route path="admin/sedes" element={<Sedes />} />
           <Route path="admin/zonas" element={<ZonasCobertura />} />
           <Route path="admin/horarios" element={<ConfiguracionHorarios />} />
