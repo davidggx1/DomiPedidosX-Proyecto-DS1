@@ -57,3 +57,16 @@ export async function cancelarPedido(id) {
   const { data } = await api.post(`/pedidos/${id}/cancelar/`)
   return data
 }
+
+// HU-66 · Historial completo de pedidos (administrador), paginado de a 20.
+// Devuelve { count, next, previous, results }.
+export async function listarHistorialPedidos(pagina = 1) {
+  const { data } = await api.get('/pedidos/historial/', { params: { page: pagina } })
+  return data
+}
+
+// HU-66 · Ficha técnica: marcas de tiempo de cada estado, factura y productos.
+export async function obtenerFichaPedido(id) {
+  const { data } = await api.get(`/pedidos/historial/${id}/`)
+  return data
+}

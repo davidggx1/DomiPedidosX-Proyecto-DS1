@@ -40,6 +40,7 @@ export const ENLACES_POR_ROL = {
   [ROLES.ADMINISTRADOR]: [
     { ruta: '/admin', texto: 'Dashboard' },
     { ruta: '/admin/pedidos', texto: 'Pedidos del día' },
+    { ruta: '/admin/historial', texto: 'Historial de pedidos' },
     { ruta: '/admin/sedes', texto: 'Sedes' },
     { ruta: '/admin/zonas', texto: 'Zonas de cobertura' },
     { ruta: '/admin/personal', texto: 'Personal' },
