@@ -371,10 +371,10 @@ class DetalleEntregaSerializer(TarjetaEntregaSerializer):
             "valor_descuento",
         ]
 
-    def get_tiene_ubicacion(self, pedido):
+    def get_tiene_ubicacion(self, pedido) -> bool:
         return pedido.entrega_latitud is not None and pedido.entrega_longitud is not None
 
-    def get_direccion_completa(self, pedido):
+    def get_direccion_completa(self, pedido) -> str:
         """Dirección en texto, con barrio y ciudad: el respaldo si el mapa no carga."""
         ciudad = pedido.sede.ciudad.nombre if pedido.sede_id else ""
         partes = [pedido.entrega_direccion, pedido.entrega_barrio, ciudad]
