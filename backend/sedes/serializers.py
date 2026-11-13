@@ -1,6 +1,12 @@
+import unicodedata
+
 from rest_framework import serializers
 from .geometria import envolvente, normalizar_poligono, traslapan
-from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede, ZonaCobertura
+from .models import Sede, Ciudad, HorarioSede, Feriado, CapacidadSede, ZonaCobertura, DiaSemana
+
+
+def _sin_tildes(texto):
+    return "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
 
 class CiudadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -119,6 +125,26 @@ class CapacidadSedeSerializer(serializers.ModelSerializer):
         if value < 1:
             raise serializers.ValidationError("La capacidad máxima de pedidos debe ser al menos 1.")
         return value
+
+    def validate_dias_semana(self, value):
+        """Acepta tildes, mayúsculas y espacios ("Miércoles, SÁBADO") y guarda
+        los valores de DiaSemana ("miercoles,sabado"), que es lo que busca la
+        franja actual. Rechaza días que no existen (SCRUM-121)."""
+        validos = [dia.value for dia in DiaSemana]
+        dias = []
+        for parte in value.split(","):
+            dia = _sin_tildes(parte.strip().lower())
+            if not dia:
+                continue
+            if dia not in validos:
+                raise serializers.ValidationError(
+                    f'"{parte.strip()}" no es un día válido. Usa: {", ".join(validos)}.'
+                )
+            if dia not in dias:
+                dias.append(dia)
+        if not dias:
+            raise serializers.ValidationError("Indica al menos un día de la semana.")
+        return ",".join(dias)
 
     def validate(self, data):
         sede = data.get('sede', getattr(self.instance, 'sede', None))

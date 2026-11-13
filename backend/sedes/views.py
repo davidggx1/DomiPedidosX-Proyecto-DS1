@@ -12,6 +12,8 @@ from rest_framework.exceptions import APIException
 
 from usuarios.roles import ADMINISTRADOR, obtener_rol
 
+from .geometria import contiene_punto
+
 # Permiso personalizado
 class EsAdministradorPermission(permissions.BasePermission):
     """Permite mutaciones (POST, PUT, DELETE) solo a usuarios autenticados como Administrador."""
@@ -22,7 +24,7 @@ class EsAdministradorPermission(permissions.BasePermission):
 
 
 # ---------------------------------------------------------------------------
-# Algoritmo Geográfico de Cobertura (Haversine + Point-in-Polygon Ray-Casting)
+# Cobertura geográfica (HU-58): distancia Haversine + zonas de sedes/geometria.py
 # ---------------------------------------------------------------------------
 def calcular_distancia_haversine(lat1, lon1, lat2, lon2):
     """Calcula la distancia en kilómetros entre dos coordenadas usando Haversine."""
@@ -38,70 +40,28 @@ def calcular_distancia_haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 
-def punto_en_poligono(lat, lon, vertices):
-    """
-    Algoritmo Ray-Casting (Punto en Polígono).
-    vertices = [{'latitud': y, 'longitud': x}, ...] o [[lat, lon], ...]
-    """
-    dentro = False
-    n = len(vertices)
-    if n < 3:
-        return False
-
-    j = n - 1
-    for i in range(n):
-        v_i = vertices[i]
-        v_j = vertices[j]
-
-        lat_i = v_i['latitud'] if isinstance(v_i, dict) else v_i[0]
-        lon_i = v_i['longitud'] if isinstance(v_i, dict) else v_i[1]
-        lat_j = v_j['latitud'] if isinstance(v_j, dict) else v_j[0]
-        lon_j = v_j['longitud'] if isinstance(v_j, dict) else v_j[1]
-
-        if ((lon_i > lon) != (lon_j > lon)) and \
-                (lat < (lat_j - lat_i) * (lon - lon_i) / (lon_j - lon_i + 1e-12) + lat_i):
-            dentro = not dentro
-        j = i
-
-    return dentro
-
-
 def evaluar_cobertura_sede(lat, lon, sede):
     """
-    Evalúa si un punto (lat, lon) cae dentro de la cobertura de una sede.
-    Soporta polígonos explícitos o zonas circulares (ZonaCobertura / Radio Sede).
-    Retorna (esta_cubierto, distancia_km, zona_cobertura_obj)
+    Evalúa si un punto (lat, lon) cae dentro de alguna zona activa de la sede.
+    Retorna (esta_cubierto, distancia_km, zona_cobertura_obj).
+
+    Usa la misma regla que la confirmación del pedido (sedes/geometria.py, que
+    también usa pedidos/servicios.py), para que el cliente no reciba "con cobertura"
+    aquí y luego un rechazo al pagar (SCRUM-121). Sin zonas activas no hay cobertura.
     """
-    zonas = sede.zonas_cobertura.filter(activo=True)
+    coincidencias = [
+        (calcular_distancia_haversine(lat, lon, zona.centro_latitud, zona.centro_longitud), zona)
+        for zona in sede.zonas_cobertura.filter(activo=True)
+        if contiene_punto(
+            lat, lon, zona.centro_latitud, zona.centro_longitud, zona.radio, zona.poligono_vertices
+        )
+    ]
+    if not coincidencias:
+        return False, calcular_distancia_haversine(lat, lon, sede.latitud, sede.longitud), None
 
-    # 1. Si la sede posee zonas de cobertura configuradas
-    if zonas.exists():
-        mejores_coincidencias = []
-        for zona in zonas:
-            # Si la zona define polígono explícito
-            vertices = getattr(zona, 'poligono_vertices', None)
-            if vertices and len(vertices) >= 3:
-                if punto_en_poligono(lat, lon, vertices):
-                    dist = calcular_distancia_haversine(lat, lon, zona.centro_latitud, zona.centro_longitud)
-                    mejores_coincidencias.append((True, dist, zona))
-            else:
-                # Cobertura por Radio Circular
-                dist = calcular_distancia_haversine(lat, lon, zona.centro_latitud, zona.centro_longitud)
-                if dist <= zona.radio:
-                    mejores_coincidencias.append((True, dist, zona))
-
-        if mejores_coincidencias:
-            # Retorna la zona con menor distancia al centro
-            mejores_coincidencias.sort(key=lambda x: x[1])
-            return mejores_coincidencias[0]
-
-    # 2. Fallback: Proximidad directa al punto central de la Sede (Radio por defecto 5.0 km)
-    dist_sede = calcular_distancia_haversine(lat, lon, sede.latitud, sede.longitud)
-    radio_default = getattr(sede, 'radio_cobertura', 5.0)
-    if dist_sede <= radio_default:
-        return True, dist_sede, None
-
-    return False, dist_sede, None
+    # La zona con el centro más cercano al cliente
+    distancia, zona = min(coincidencias, key=lambda item: item[0])
+    return True, distancia, zona
 
 
 # ViewSet de Sedes
