@@ -124,7 +124,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Redis en producción; memoria local para desarrollo y pruebas.
+# Tiempo real: Redis en producción; memoria local (un solo proceso) para desarrollo y pruebas.
 if os.getenv('REDIS_URL'):
     CHANNEL_LAYERS = {
         'default': {
@@ -207,12 +207,6 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 
 ASGI_APPLICATION = "config.asgi.application"
 
-# En memoria solo sirve con un único proceso (desarrollo). Para producción
-# se cambia a channels_redis.core.RedisChannelLayer.
-CHANNEL_LAYERS = {
-    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
-}
-
 # Correo (HU-25, HU-05). En desarrollo se imprime en la consola de Django;
 # en producción se cambia EMAIL_BACKEND a smtp y se configuran EMAIL_HOST, etc.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
@@ -222,6 +216,24 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "DomiPedidosX <no-responder@domipedidosx.local>")
+
+# --- Tareas asíncronas (SCRUM-119) ---------------------------------------------
+# Sin broker las tareas corren en el momento, en el mismo proceso (desarrollo y pruebas).
+# Con Redis van a la cola y las ejecuta el worker. Ver docs/tareas-asincronas.md.
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL", "")
+CELERY_TASK_ALWAYS_EAGER = not CELERY_BROKER_URL
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "vencer-pedidos-pendientes": {
+        "task": "pedidos.tasks.vencer_pedidos_pendientes",
+        "schedule": 60.0,  # cada minuto
+    },
+}
+
+# Minutos que un pedido puede esperar la aprobación de la sede. Al vencer se
+# cancela solo y libera su cupo de capacidad y su stock. 0 desactiva el vencimiento.
+PEDIDO_PENDIENTE_MINUTOS = int(os.getenv("PEDIDO_PENDIENTE_MINUTOS", "20"))
 
 # URL del frontend, para los enlaces que van en los correos.
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

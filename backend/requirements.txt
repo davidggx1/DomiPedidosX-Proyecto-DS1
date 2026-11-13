@@ -13,6 +13,9 @@ daphne>=4.2,<5.0
 django-cors-headers>=4.7,<5.0
 drf-spectacular>=0.28,<1.0
 
+# Tareas asíncronas (SCRUM-119)
+celery[redis]>=5.5,<6.0
+
 # Pruebas
 pytest>=8.0
 pytest-django>=4.8

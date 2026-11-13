@@ -11,8 +11,6 @@ HU-25 · El cliente cancela su pedido antes de que entre a preparación.
 """
 import logging
 
-from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -21,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from usuarios.permissions import EsCliente
+from usuarios.tasks import encolar_correo
 
 from .estados import CLIENTE, ESTADOS_FINALES, TransicionInvalida, cambiar_estado, siguientes_estados
 from .models import EstadoFactura, EstadoPedido, Notificacion, TipoNotificacion
@@ -45,15 +44,8 @@ def enviar_correo_cancelacion(pedido):
     if factura is not None and factura.estado_factura == EstadoFactura.PAGADA:
         lineas.append("Como ya estaba pagado, comunícate con la sede para el reembolso.")
     lineas += ["", "DomiPedidosX"]
-    try:
-        send_mail(
-            subject=f"Pedido {pedido.numero_pedido} cancelado",
-            message="\n".join(lineas),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[usuario.email],
-        )
-    except Exception:
-        logger.exception("No se pudo enviar el correo de cancelación del pedido %s", pedido.pk)
+    # Va por la cola de correos (SCRUM-119); un fallo no deshace la cancelación.
+    encolar_correo(f"Pedido {pedido.numero_pedido} cancelado", "\n".join(lineas), [usuario.email])
 
 
 def cancelar_pedido_cliente(pedido, usuario):

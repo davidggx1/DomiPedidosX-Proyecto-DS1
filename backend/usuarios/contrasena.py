@@ -20,7 +20,6 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema
@@ -30,6 +29,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Usuario
+from .tasks import encolar_correo
 
 logger = logging.getLogger(__name__)
 
@@ -62,15 +62,8 @@ def enviar_correo_restablecer(usuario):
         "",
         "DomiPedidosX",
     ])
-    try:
-        send_mail(
-            subject="Restablece tu contraseña",
-            message=mensaje,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[usuario.email],
-        )
-    except Exception:
-        logger.exception("No se pudo enviar el correo para restablecer la contraseña de %s", usuario.pk)
+    # Va por la cola de correos (SCRUM-119); si falla, no cambia la respuesta.
+    encolar_correo("Restablece tu contraseña", mensaje, [usuario.email])
 
 
 class SolicitarRestablecimientoSerializer(serializers.Serializer):

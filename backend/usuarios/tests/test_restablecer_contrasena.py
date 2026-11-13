@@ -71,7 +71,7 @@ def test_mismo_mensaje_si_el_correo_no_existe_o_la_cuenta_esta_inactiva(client, 
 
 
 def test_si_falla_el_correo_la_respuesta_no_cambia(client, usuario):
-    with mock.patch("usuarios.contrasena.send_mail", side_effect=ConnectionError("sin servidor")):
+    with mock.patch("usuarios.tasks.send_mail", side_effect=ConnectionError("sin servidor")):
         r = client.post(SOLICITAR, {"email": "ana@correo.com"}, format="json")
     assert r.status_code == 200
 
