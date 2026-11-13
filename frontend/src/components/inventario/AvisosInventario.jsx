@@ -19,7 +19,7 @@ export default function AvisosInventario({ avisos, alAbrir, alCerrar }) {
             <button
               type="button"
               onClick={() => alAbrir(aviso)}
-              className="mt-2 min-h-11 rounded-lg bg-marca px-4 py-2 font-medium text-white hover:bg-marca-oscura"
+              className="mt-2 min-h-11 rounded-lg bg-marca px-4 py-2 font-medium text-sobre-marca hover:bg-marca-oscura"
             >
               Ver inventario
             </button>

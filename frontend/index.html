@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="DomiPedidosX: pedidos y domicilios para restaurantes." />
     <title>DomiPedidosX</title>
+    <!-- Aplica el tema claro u oscuro antes de pintar la página, para que no parpadee (ver src/tema/). -->
+    <script>
+      try {
+        var guardado = localStorage.getItem('domipedidosx:tema')
+        var oscuro = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.dataset.tema =
+          guardado === 'claro' || guardado === 'oscuro' ? guardado : oscuro ? 'oscuro' : 'claro'
+      } catch (e) {
+        document.documentElement.dataset.tema = 'oscuro'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

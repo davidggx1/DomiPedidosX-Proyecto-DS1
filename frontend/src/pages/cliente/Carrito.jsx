@@ -60,7 +60,7 @@ export default function Carrito() {
         <p className="text-texto-suave">Todavía no has agregado productos.</p>
         <Link
           to="/menu"
-          className="inline-flex min-h-11 items-center rounded-lg bg-marca px-4 font-medium text-white hover:bg-marca-oscura"
+          className="inline-flex min-h-11 items-center rounded-lg bg-marca px-4 font-medium text-sobre-marca hover:bg-marca-oscura"
         >
           Ver el menú
         </Link>
@@ -161,7 +161,7 @@ export default function Carrito() {
         ) : (
           <Link
             to="/checkout"
-            className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-marca px-6 font-bold text-white hover:bg-marca-oscura sm:w-auto"
+            className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-marca px-6 font-bold text-sobre-marca hover:bg-marca-oscura sm:w-auto"
           >
             Proceder a la compra
           </Link>

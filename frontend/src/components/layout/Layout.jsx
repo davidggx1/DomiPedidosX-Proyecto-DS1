@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/useAuth.js'
 import { ENLACES_POR_ROL, ETIQUETA_ROL, ROLES } from '../../auth/roles.js'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import AvisosRepartidor from '../repartidor/AvisosRepartidor.jsx'
+import BotonTema from './BotonTema.jsx'
 import Navegacion from './Navegacion.jsx'
 
 // Estructura común de todas las páginas: encabezado, navegación por rol,
@@ -38,55 +39,64 @@ export default function Layout() {
         Saltar al contenido
       </a>
 
-      <header className="bg-marca text-white">
+      <header className="bg-encabezado text-sobre-encabezado shadow-sm">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/" className="text-lg font-bold sm:text-xl">
-            DomiPedidosX
+          <Link to="/" className="flex items-center gap-2 rounded-lg" aria-label="DomiPedidosX, inicio">
+            <span
+              aria-hidden="true"
+              className="flex size-9 items-center justify-center rounded-xl bg-logo font-titulo text-lg font-extrabold text-sobre-logo"
+            >
+              D
+            </span>
+            <span className="font-titulo text-lg font-bold sm:text-xl">
+              DomiPedidos<span className="text-acento">X</span>
+            </span>
           </Link>
 
-          {usuario ? (
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            {usuario && (
               <p className="hidden text-sm sm:block">
                 {usuario.nombre}
                 <span className="opacity-80"> · {ETIQUETA_ROL[usuario.rol]}</span>
               </p>
-              {usuario.rol === ROLES.CLIENTE && (
-                <Link
-                  to="/carrito"
-                  aria-label={`Carrito, ${articulos} ${articulos === 1 ? 'producto' : 'productos'}`}
-                  className="flex min-h-11 items-center gap-2 rounded-lg border border-white/70 px-3 text-sm font-medium hover:bg-marca-oscura"
-                >
-                  Carrito
-                  <span className="rounded-full bg-white px-2 text-xs font-bold text-marca">{articulos}</span>
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={manejarCerrarSesion}
-                className="min-h-11 rounded-lg border border-white/70 px-3 text-sm font-medium hover:bg-marca-oscura"
-              >
-                Cerrar sesión
-              </button>
-              {enlaces.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setMenuAbierto((abierto) => !abierto)}
-                  aria-expanded={menuAbierto}
-                  aria-controls="menu-principal"
-                  className="min-h-11 rounded-lg border border-white/70 px-3 text-sm font-medium hover:bg-marca-oscura sm:hidden"
-                >
-                  {menuAbierto ? 'Cerrar menú' : 'Menú'}
+            )}
+            <BotonTema />
+            {usuario ? (
+              <>
+                {usuario.rol === ROLES.CLIENTE && (
+                  <Link
+                    to="/carrito"
+                    aria-label={`Carrito, ${articulos} ${articulos === 1 ? 'producto' : 'productos'}`}
+                    className="flex min-h-11 rounded-full border border-sobre-encabezado/40 px-4 text-sm font-medium transition-colors hover:bg-sobre-encabezado/10 items-center gap-2"
+                  >
+                    Carrito
+                    <span className="rounded-full bg-acento px-2 text-xs font-bold text-sobre-acento">{articulos}</span>
+                  </Link>
+                )}
+                <button type="button" onClick={manejarCerrarSesion} className="min-h-11 rounded-full border border-sobre-encabezado/40 px-4 text-sm font-medium transition-colors hover:bg-sobre-encabezado/10">
+                  Cerrar sesión
                 </button>
-              )}
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="flex min-h-11 items-center rounded-lg border border-white/70 px-3 text-sm font-medium hover:bg-marca-oscura"
-            >
-              Iniciar sesión
-            </Link>
-          )}
+                {enlaces.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMenuAbierto((abierto) => !abierto)}
+                    aria-expanded={menuAbierto}
+                    aria-controls="menu-principal"
+                    className="min-h-11 rounded-full border border-sobre-encabezado/40 px-4 text-sm font-medium transition-colors hover:bg-sobre-encabezado/10 sm:hidden"
+                  >
+                    {menuAbierto ? 'Cerrar menú' : 'Menú'}
+                  </button>
+                )}
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="flex min-h-11 items-center rounded-full bg-sobre-encabezado px-4 text-sm font-semibold text-encabezado transition-opacity hover:opacity-90"
+              >
+                Iniciar sesión
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

@@ -1,5 +1,5 @@
 const VARIANTES = {
-  primario: 'bg-marca text-white hover:bg-marca-oscura',
+  primario: 'bg-marca text-sobre-marca shadow-sm hover:bg-marca-oscura',
   secundario: 'border border-borde bg-superficie-alta text-texto hover:bg-borde',
   peligro: 'border border-error bg-transparent text-error hover:bg-error/10',
   fantasma: 'bg-transparent text-texto hover:bg-superficie-alta',
@@ -20,7 +20,7 @@ export default function Boton({
       type={tipo}
       disabled={disabled || cargando}
       aria-busy={cargando || undefined}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTES[variante]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTES[variante]} ${className}`}
       {...props}
     >
       {cargando ? 'Procesando…' : children}

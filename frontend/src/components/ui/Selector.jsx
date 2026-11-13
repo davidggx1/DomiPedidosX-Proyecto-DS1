@@ -30,7 +30,7 @@ export default function Selector({
         aria-required={requerido || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? idError : undefined}
-        className={`min-h-11 rounded-lg border bg-fondo px-3 py-2 text-texto ${error ? 'border-error' : 'border-borde'}`}
+        className={`min-h-11 rounded-xl border bg-fondo px-3 py-2 text-texto ${error ? 'border-error' : 'border-borde'}`}
         {...props}
       >
         <option value="">{textoVacio}</option>

@@ -69,7 +69,7 @@ export default function RestablecerContrasena() {
         <Alerta tipo="exito" titulo={listo} />
         <Link
           to="/login"
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-marca px-4 py-2 font-medium text-white hover:bg-marca-oscura"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-marca px-4 py-2 font-medium text-sobre-marca hover:bg-marca-oscura"
         >
           Iniciar sesión
         </Link>
