@@ -9,7 +9,7 @@ export default function Navegacion({ enlaces, abierto, alNavegar }) {
       aria-label="Navegación principal"
       className={`border-b border-borde bg-superficie ${abierto ? 'block' : 'hidden'} sm:block`}
     >
-      <ul className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:flex-wrap">
+      <ul className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-2 sm:flex-row sm:flex-wrap">
         {enlaces.map((enlace) => (
           <li key={enlace.ruta}>
             <NavLink
@@ -17,10 +17,10 @@ export default function Navegacion({ enlaces, abierto, alNavegar }) {
               end
               onClick={alNavegar}
               className={({ isActive }) =>
-                `flex min-h-11 items-center rounded-lg border px-4 transition-colors ${
+                `flex min-h-11 items-center rounded-full px-4 text-sm transition-colors ${
                   isActive
-                    ? 'border-white bg-marca font-semibold text-white'
-                    : 'border-borde bg-fondo text-texto hover:bg-superficie-alta'
+                    ? 'bg-marca font-semibold text-sobre-marca'
+                    : 'text-texto-suave hover:bg-superficie-alta hover:text-texto'
                 }`
               }
             >
