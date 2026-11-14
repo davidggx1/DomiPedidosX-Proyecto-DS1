@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '../api/cliente.js'
 import { interpretarError } from '../api/errores.js'
+import { eliminarCategoria } from '../api/menu.js'
 import Alerta from '../components/ui/Alerta.jsx'
 import Boton from '../components/ui/Boton.jsx'
 import CampoTexto from '../components/ui/CampoTexto.jsx'
 import Casilla from '../components/ui/Casilla.jsx'
+import Modal from '../components/ui/Modal.jsx'
 import Tarjeta from '../components/ui/Tarjeta.jsx'
+import { motivoNoEliminar, textoProductos } from '../utils/categorias.js'
 
 const FORMULARIO_VACIO = { nombre: '', descripcion: '', activa: true }
 const SIN_ERRORES = { general: null, campos: {} }
-
-function textoProductos(total) {
-  return total === 1 ? '1 producto' : `${total} productos`
-}
 
 // Category management screen for the operator (HU-10)
 export default function CategoriasMenu() {
@@ -28,6 +27,9 @@ export default function CategoriasMenu() {
   const campoNombre = useRef(null)
 
   const [recarga, setRecarga] = useState(0) // bump it to load the list again
+  const [porEliminar, setPorEliminar] = useState(null) // HU-78: category in the confirmation modal
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState(null)
 
   useEffect(() => {
     let activo = true
@@ -71,6 +73,35 @@ export default function CategoriasMenu() {
     setEditando(null)
     setFormulario(FORMULARIO_VACIO)
     setErrores(SIN_ERRORES)
+  }
+
+  const cerrarModal = useCallback(() => {
+    setPorEliminar(null)
+    setErrorEliminar(null)
+  }, [])
+
+  function pedirEliminar(categoria) {
+    setExito(null)
+    setErrorEliminar(null)
+    setPorEliminar(categoria)
+  }
+
+  // HU-78: the server checks again, a product may have been added meanwhile
+  async function eliminar() {
+    setEliminando(true)
+    setErrorEliminar(null)
+    try {
+      await eliminarCategoria(porEliminar.id)
+      setExito(`La categoría "${porEliminar.nombre}" se eliminó correctamente.`)
+      if (editando?.id === porEliminar.id) cancelarEdicion()
+      setPorEliminar(null)
+      setRecarga((numero) => numero + 1)
+    } catch (error) {
+      setErrorEliminar(interpretarError(error).general)
+      setRecarga((numero) => numero + 1)
+    } finally {
+      setEliminando(false)
+    }
   }
 
   async function guardar(evento) {
@@ -198,18 +229,61 @@ export default function CategoriasMenu() {
                   <p className="text-sm text-texto-suave">{textoProductos(categoria.total_productos)}</p>
                 </div>
 
-                <Boton
-                  variante="secundario"
-                  onClick={() => empezarEdicion(categoria)}
-                  aria-label={`Editar la categoría ${categoria.nombre}`}
-                >
-                  Editar
-                </Boton>
+                <div className="flex gap-2">
+                  <Boton
+                    variante="secundario"
+                    onClick={() => empezarEdicion(categoria)}
+                    aria-label={`Editar la categoría ${categoria.nombre}`}
+                  >
+                    Editar
+                  </Boton>
+                  <Boton
+                    variante="peligro"
+                    onClick={() => pedirEliminar(categoria)}
+                    aria-label={`Eliminar la categoría ${categoria.nombre}`}
+                  >
+                    Eliminar
+                  </Boton>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </Tarjeta>
+
+      {porEliminar && (
+        <Modal
+          titulo="Eliminar categoría"
+          alCerrar={cerrarModal}
+          acciones={
+            <>
+              <Boton variante="secundario" onClick={cerrarModal} disabled={eliminando}>
+                {motivoNoEliminar(porEliminar) ? 'Cerrar' : 'Cancelar'}
+              </Boton>
+              <Boton
+                variante="peligro"
+                onClick={eliminar}
+                cargando={eliminando}
+                disabled={Boolean(motivoNoEliminar(porEliminar))}
+              >
+                Eliminar
+              </Boton>
+            </>
+          }
+        >
+          {motivoNoEliminar(porEliminar) ? (
+            <Alerta tipo="aviso">
+              No se puede eliminar "{porEliminar.nombre}". {motivoNoEliminar(porEliminar)}
+            </Alerta>
+          ) : (
+            <p>
+              ¿Seguro que quieres eliminar la categoría <strong>{porEliminar.nombre}</strong>? Esta
+              acción no se puede deshacer.
+            </p>
+          )}
+          {errorEliminar && <Alerta tipo="error">{errorEliminar}</Alerta>}
+        </Modal>
+      )}
     </div>
   )
 }
