@@ -5,6 +5,8 @@ from channels.layers import get_channel_layer
 from django.dispatch import receiver
 from django.utils import timezone
 
+from sedes.notificaciones import avisar_cancelacion
+
 from .asignacion import asignacion_cambiada
 from .consumers import grupo_repartidor
 from .estados import estado_pedido_cambiado
@@ -97,3 +99,15 @@ def avisar_cambio_estado_al_repartidor(sender, pedido, estado_anterior, usuario,
         return
     aviso = aviso_retirado(pedido, 'cancelado') if pedido.estado == EstadoPedido.CANCELADO else None
     avisar_repartidor(pedido.repartidor_id, pedido.pk, aviso)
+
+
+# --- Sede: correo a los suscritos cuando se cancela un pedido (HU-83) -----------
+
+
+@receiver(estado_pedido_cambiado)
+def avisar_cancelacion_a_la_sede(sender, pedido, estado_anterior, usuario, **kwargs):
+    """Cualquier cancelación (cliente, sede o sistema) avisa a los suscritos de la sede."""
+    if pedido.estado != EstadoPedido.CANCELADO:
+        return
+    # La señal ya llega después del commit (estados.cambiar_estado)
+    avisar_cancelacion(pedido, usuario)

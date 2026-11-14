@@ -26,6 +26,7 @@ import SeguimientoPedido from './pages/cliente/SeguimientoPedido.jsx'
 import Clientes from './pages/admin/Clientes.jsx'
 import Cuentas from './pages/admin/Cuentas.jsx'
 import HistorialPedidos from './pages/admin/HistorialPedidos.jsx'
+import NotificacionesSede from './pages/admin/NotificacionesSede.jsx'
 import PanelIndicadores from './pages/admin/PanelIndicadores.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="admin/historial" element={<HistorialPedidos />} />
           <Route path="admin/sedes" element={<Sedes />} />
           <Route path="admin/zonas" element={<ZonasCobertura />} />
+          <Route path="admin/notificaciones" element={<NotificacionesSede />} />
           <Route path="admin/horarios" element={<ConfiguracionHorarios />} />
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />

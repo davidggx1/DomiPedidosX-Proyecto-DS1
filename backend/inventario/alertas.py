@@ -16,7 +16,9 @@ only has its own stock when its tipo_control_stock is PRODUCTO, the others do
 not alert. A minimum of 0 alerts when the item runs out
 
 The event goes to the operators of the sede (group pedidos_sede_<id>), through
-the same socket of the panel, and never breaks the save that caused it
+the same socket of the panel, and never breaks the save that caused it. A new
+alert ("creada") is also mailed to the people subscribed to "stock_bajo" in that
+sede (HU-83, sedes/notificaciones.py)
 """
 import logging
 from decimal import Decimal
@@ -29,6 +31,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from menu.models import Producto
+from sedes.notificaciones import avisar_stock_bajo
 
 from .models import AlertaInventario, InventarioInsumo, InventarioProducto
 
@@ -102,6 +105,10 @@ def _avisar(alerta, inventario, transicion):
             async_to_sync(get_channel_layer().group_send)(grupo_sede(sede_id), evento)
         except Exception:
             logger.exception("No se pudo enviar la alerta de inventario %s", alerta.pk)
+
+        # HU-83: only a new alert is mailed, its updates would flood the inbox
+        if transicion == CREADA:
+            avisar_stock_bajo(evento["data"]["alerta"])
 
     transaction.on_commit(enviar)
 

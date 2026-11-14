@@ -16,7 +16,9 @@ A sede without a slot for the current day and hour sends no order events (there
 is no limit to compare). The panel learns it when the admin changes the slots,
 when it reconnects, and in its request every minute
 
-Only the operators of the sede receive it (the group is pedidos_sede_<id>)
+Only the operators of the sede receive it (the group is pedidos_sede_<id>).
+When the alert turns on, the people subscribed to "sobrecupo" in that sede also
+get a mail (HU-83, sedes/notificaciones.py)
 """
 import logging
 
@@ -27,6 +29,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from sedes.models import CapacidadSede, Sede
+from sedes.notificaciones import avisar_sobrecupo
 
 from . import capacidad
 from .consumers import grupo_sede
@@ -83,6 +86,12 @@ def emitir_estado_capacidad(sede_id, cambio=0):
         async_to_sync(get_channel_layer().group_send)(grupo_sede(sede_id), evento)
     except Exception:
         logger.exception("No se pudo avisar la capacidad de la sede %s", sede_id)
+        return
+
+    # HU-83: the subscribers of the sede get a mail, only when the alert turns
+    # on (not on every order while it stays over the umbral)
+    if transicion == ALERTA_ACTIVADA:
+        avisar_sobrecupo(sede_id, estado)
 
 
 @receiver(pre_save, sender=Pedido)
