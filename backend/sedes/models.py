@@ -224,3 +224,61 @@ class CapacidadSede(models.Model):
 
     def __str__(self):
         return f"Capacidad de {self.sede.nombre}"
+
+
+class EventoSede(models.TextChoices):
+    """HU-83: avisos operativos de una sede a los que se puede suscribir."""
+
+    STOCK_BAJO = "stock_bajo", "Alerta de stock bajo"
+    CANCELACION = "cancelacion", "Pedido cancelado"
+    SOBRECUPO = "sobrecupo", "Sobrecupo de capacidad"
+
+
+class RolSuscrito(models.TextChoices):
+    # Mismos valores que usuarios/roles.py (sedes no depende de usuarios).
+    ADMINISTRADOR = "administrador", "Administradores"
+    OPERADOR = "operador", "Operadores de la sede"
+    COCINA = "cocina", "Cocina de la sede"
+    REPARTIDOR = "repartidor", "Repartidores de la sede"
+
+
+class SuscripcionNotificacion(models.Model):
+    """
+    HU-83: quién recibe por correo un evento de una sede.
+
+    Cada fila es UN destinatario: un rol (todo el personal activo con ese rol en
+    la sede; los administradores no tienen sede, así que son todos) o un correo
+    suelto (p. ej. el del gerente). Nunca los dos a la vez.
+    """
+
+    sede = models.ForeignKey(
+        Sede,
+        on_delete=models.CASCADE,
+        related_name="suscripciones",
+    )
+    evento = models.CharField(max_length=20, choices=EventoSede.choices)
+    rol = models.CharField(max_length=20, choices=RolSuscrito.choices, blank=True, default="")
+    correo = models.EmailField(blank=True, default="")
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sede", "evento", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(rol="") & ~Q(correo="")) | (~Q(rol="") & Q(correo="")),
+                name="suscripcion_rol_o_correo",
+            ),
+            models.UniqueConstraint(
+                fields=["sede", "evento", "rol"],
+                condition=~Q(rol=""),
+                name="suscripcion_rol_unica",
+            ),
+            models.UniqueConstraint(
+                fields=["sede", "evento", "correo"],
+                condition=~Q(correo=""),
+                name="suscripcion_correo_unica",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_evento_display()} de {self.sede.nombre} → {self.rol or self.correo}"
