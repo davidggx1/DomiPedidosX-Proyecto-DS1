@@ -11,6 +11,7 @@ from .asignacion import asignacion_cambiada
 from .consumers import grupo_repartidor
 from .estados import estado_pedido_cambiado
 from .models import EstadoPedido
+from .repartidores_estado import avisar_estado_repartidores
 
 logger = logging.getLogger(__name__)
 
@@ -111,3 +112,18 @@ def avisar_cancelacion_a_la_sede(sender, pedido, estado_anterior, usuario, **kwa
         return
     # La señal ya llega después del commit (estados.cambiar_estado)
     avisar_cancelacion(pedido, usuario)
+
+
+# --- Operador: tablero de repartidores en tiempo real (HU-37) ---------------------
+
+
+@receiver(asignacion_cambiada)
+def avisar_tablero_por_asignacion(sender, pedido, **kwargs):
+    avisar_estado_repartidores(pedido.sede_id)
+
+
+@receiver(estado_pedido_cambiado)
+def avisar_tablero_por_estado(sender, pedido, **kwargs):
+    # Si el pedido no tiene repartidor, no cambia la carga de nadie.
+    if pedido.repartidor_id is not None:
+        avisar_estado_repartidores(pedido.sede_id)

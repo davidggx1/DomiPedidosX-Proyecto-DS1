@@ -18,6 +18,7 @@ from .indicadores import IndicadoresDiaView
 from .reportes_tiempos import ReporteTiemposView
 from .resumen import ResumenDiaView
 from .seguimiento import MisPedidosView
+from .repartidores_estado import EstadoRepartidoresView
 
 urlpatterns = [
     path("<int:pk>/estado/", EstadoPedidoView.as_view(), name="pedido-estado"),
@@ -40,4 +41,5 @@ urlpatterns = [
     path("historial/", HistorialPedidosView.as_view(), name="historial-pedidos"),
     path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
+    path("repartidores/estado/", EstadoRepartidoresView.as_view(), name="repartidores-estado"),
 ]

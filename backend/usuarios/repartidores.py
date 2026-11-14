@@ -18,7 +18,12 @@ from .roles import ADMINISTRADOR, OPERADOR
 
 def poner_no_disponible(usuario):
     """Al iniciar sesión, el repartidor arranca "No disponible" (HU-41, criterio 4)."""
-    Repartidor.objects.filter(empleado__usuario=usuario).update(disponible=False)
+    perfiles = Repartidor.objects.filter(empleado__usuario=usuario)
+    sede_id = perfiles.values_list("empleado__sede_id", flat=True).first()
+    perfiles.update(disponible=False)
+    from pedidos.repartidores_estado import avisar_estado_repartidores
+
+    avisar_estado_repartidores(sede_id)
 
 
 class DisponibilidadSerializer(serializers.ModelSerializer):
@@ -74,6 +79,14 @@ class MiDisponibilidadView(generics.RetrieveUpdateAPIView):
         if perfil is None:
             raise NotFound("Tu cuenta no tiene un perfil de repartidor.")
         return perfil
+
+
+    def perform_update(self, serializer):
+        perfil = serializer.save()
+        # Import local: pedidos importa usuarios, así que arriba habría un ciclo.
+        from pedidos.repartidores_estado import avisar_estado_repartidores
+
+        avisar_estado_repartidores(perfil.empleado.sede_id)
 
 
 @extend_schema(responses=RepartidorSerializer(many=True))
