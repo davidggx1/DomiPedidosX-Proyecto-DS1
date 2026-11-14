@@ -15,6 +15,7 @@ from .capacidad import EstadoCapacidadView
 from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
 from .historial import FichaPedidoView, HistorialPedidosView
 from .indicadores import IndicadoresDiaView
+from .reportes_tiempos import ReporteTiemposView
 from .resumen import ResumenDiaView
 from .seguimiento import MisPedidosView
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("capacidad/", EstadoCapacidadView.as_view(), name="pedidos-capacidad"),
     path("resumen-dia/", ResumenDiaView.as_view(), name="resumen-dia"),
     path("indicadores/", IndicadoresDiaView.as_view(), name="indicadores-dia"),
+    path("reportes/tiempos/", ReporteTiemposView.as_view(), name="reporte-tiempos"),  # HU-72
     path("historial/", HistorialPedidosView.as_view(), name="historial-pedidos"),
     path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
