@@ -77,3 +77,11 @@ export async function obtenerIndicadoresDia(sede = '') {
   const { data } = await api.get('/pedidos/indicadores/', { params })
   return data
 }
+
+// HU-72: tiempos promedio por fase y desempeño de repartidores (solo pedidos entregados)
+export async function obtenerReporteTiempos({ desde, hasta, sede = '' }) {
+  const params = { desde, hasta }
+  if (sede) params.sede = sede
+  const { data } = await api.get('/pedidos/reportes/tiempos/', { params })
+  return data
+}
