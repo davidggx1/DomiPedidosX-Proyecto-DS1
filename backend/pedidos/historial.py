@@ -20,6 +20,11 @@ from usuarios.roles import ADMINISTRADOR
 from .models import HistorialEstadoPedido, Pedido
 from .serializers import HistorialEstadoSerializer, PedidoEntranteSerializer
 
+from datetime import datetime, time
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from rest_framework.exceptions import ValidationError
+
 def dinero():
     """Un campo de dinero nuevo cada vez: DRF no permite compartir una instancia de campo."""
     return serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
@@ -160,14 +165,97 @@ _SOLO_ADMIN = OpenApiResponse(description="No inició sesión o no es administra
     ],
     responses={200: FilaHistorialPedidoSerializer(many=True), 403: _SOLO_ADMIN},
 )
+
+def _parsear_int_param(valor, nombre_param):
+    if not valor:
+        return None
+    if not str(valor).isdigit():
+        raise ValidationError({nombre_param: f"El filtro '{nombre_param}' debe ser un ID numérico válido."})
+    return int(valor)
+
+
+def _parsear_fecha_param(valor, nombre_param, fin_del_dia=False):
+    if not valor:
+        return None
+    fecha = parse_date(str(valor))
+    if fecha is None:
+        raise ValidationError({nombre_param: f"Formato inválido en '{nombre_param}'. Use YYYY-MM-DD."})
+    dt = datetime.combine(fecha, time.max if fin_del_dia else time.min)
+    return timezone.make_aware(dt, timezone.get_current_timezone())
+
+
+@extend_schema(
+    tags=["Pedidos"],
+    summary="Historial y búsqueda de pedidos con filtros (HU-66 / HU-68)",
+    description=(
+        "Todos los pedidos de todas las sedes, del más reciente al más antiguo, en páginas "
+        "de 20. Permite filtrar de forma combinable por rango de fechas (`fecha_inicio`, "
+        "`fecha_fin`), `sede`, `estado`, `repartidor`, `zona` y texto (`q`). Solo administrador."
+    ),
+    parameters=[
+        OpenApiParameter("page", int, description="Número de página (desde 1)."),
+        OpenApiParameter("tamano", int, description="Pedidos por página (por defecto 20, máximo 100)."),
+        OpenApiParameter("fecha_inicio", str, description="Fecha inicial (YYYY-MM-DD)."),
+        OpenApiParameter("fecha_fin", str, description="Fecha final (YYYY-MM-DD)."),
+        OpenApiParameter("sede", int, description="ID de la sede."),
+        OpenApiParameter("estado", str, description="Código de estado del pedido (ej. entregado, cancelado)."),
+        OpenApiParameter("repartidor", int, description="ID del repartidor asignado."),
+        OpenApiParameter("zona", int, description="ID de la zona de cobertura."),
+        OpenApiParameter("q", str, description="Búsqueda parcial por número de pedido."),
+    ],
+    responses={200: FilaHistorialPedidoSerializer(many=True), 403: _SOLO_ADMIN},
+)
 class HistorialPedidosView(generics.ListAPIView):
     permission_classes = [rol_requerido(ADMINISTRADOR)]
     serializer_class = FilaHistorialPedidoSerializer
     pagination_class = PaginacionHistorial
 
     def get_queryset(self):
-        return pedidos_del_historial()
+        queryset = pedidos_del_historial()
+        params = self.request.query_params
 
+        # 1. Rango de fechas (inclusive en zona horaria local)
+        fecha_inicio = _parsear_fecha_param(params.get("fecha_inicio"), "fecha_inicio", fin_del_dia=False)
+        fecha_fin = _parsear_fecha_param(params.get("fecha_fin"), "fecha_fin", fin_del_dia=True)
+
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+            raise ValidationError({"fecha_fin": "La fecha final no puede ser anterior a la fecha inicial."})
+
+        if fecha_inicio:
+            queryset = queryset.filter(fecha_creacion__gte=fecha_inicio)
+        if fecha_fin:
+            queryset = queryset.filter(fecha_creacion__lte=fecha_fin)
+
+        # 2. Sede (soporta uno o varios IDs separados por coma, ej. ?sede=1 o ?sede=1,2)
+        sede_param = params.get("sede")
+        if sede_param:
+            sedes_ids = [_parsear_int_param(s.strip(), "sede") for s in sede_param.split(",") if s.strip()]
+            if sedes_ids:
+                queryset = queryset.filter(sede_id__in=sedes_ids)
+
+        # 3. Estado (soporta uno o varios separados por coma, ej. ?estado=entregado,cancelado)
+        estado_param = params.get("estado")
+        if estado_param:
+            estados = [e.strip() for e in estado_param.split(",") if e.strip()]
+            if estados:
+                queryset = queryset.filter(estado__in=estados)
+
+        # 4. Repartidor
+        repartidor_id = _parsear_int_param(params.get("repartidor"), "repartidor")
+        if repartidor_id is not None:
+            queryset = queryset.filter(repartidor_id=repartidor_id)
+
+        # 5. Zona de cobertura / envío
+        zona_id = _parsear_int_param(params.get("zona"), "zona")
+        if zona_id is not None:
+            queryset = queryset.filter(zona_cobertura_id=zona_id)
+
+        # 6. Búsqueda opcional por número de pedido
+        numero_q = params.get("q", "").strip()
+        if numero_q:
+            queryset = queryset.filter(numero_pedido__icontains=numero_q)
+
+        return queryset
 
 @extend_schema(
     tags=["Pedidos"],
