@@ -43,6 +43,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/historial', texto: 'Historial de pedidos' },
     { ruta: '/admin/sedes', texto: 'Sedes' },
     { ruta: '/admin/zonas', texto: 'Zonas de cobertura' },
+    { ruta: '/admin/notificaciones', texto: 'Notificaciones' },
     { ruta: '/admin/personal', texto: 'Personal' },
     { ruta: '/admin/cuentas', texto: 'Cuentas' },
     { ruta: '/admin/clientes', texto: 'Clientes' },
