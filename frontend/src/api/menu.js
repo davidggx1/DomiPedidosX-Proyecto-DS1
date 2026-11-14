@@ -142,8 +142,10 @@ export async function listarSedesMenu() {
 }
 
 // Devuelve { sede, categorias: [{ id, nombre, productos: [...] }] }.
-export async function obtenerMenuSede(sedeId) {
-  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`)
+// Soporta búsqueda por nombre (HU-19) vía { q } sin romper llamadas previas.
+export async function obtenerMenuSede(sedeId, { q = '' } = {}) {
+  const params = q.trim() ? { q: q.trim() } : {}
+  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`, { params })
   return data
 }
 

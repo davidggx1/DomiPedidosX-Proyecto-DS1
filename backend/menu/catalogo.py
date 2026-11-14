@@ -6,9 +6,11 @@ reciben a la vez los cambios de gestión del menú (HU-11, HU-13, HU-75...).
 Así se evitan conflictos entre ramas.
 """
 from decimal import Decimal
+import unicodedata
 
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
+from django.db import connection
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_field
 from rest_framework import generics, serializers
@@ -21,6 +23,8 @@ from inventario.models import InventarioProducto
 from sedes.models import Sede
 
 from .models import CategoriaMenu, Producto
+
+
 
 
 def producto_disponible(producto, inventario, inventarios_insumos=None):
@@ -95,14 +99,32 @@ class SedesMenuView(generics.ListAPIView):
     queryset = Sede.objects.filter(activa=True).order_by("nombre")
 
 
+def _normalizar_texto(texto: str) -> str:
+    """Elimina tildes/diacríticos y pasa a minúsculas para comparación insensible."""
+    nfkd = unicodedata.normalize("NFKD", texto)
+    sin_tildes = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return sin_tildes.casefold()
+
+
+def _soporta_unaccent() -> bool:
+    """Verifica si PostgreSQL tiene habilitada la extensión unaccent."""
+    if connection.vendor != "postgresql":
+        return False
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM pg_extension WHERE extname = 'unaccent';")
+            return cursor.fetchone() is not None
+    except Exception:
+        return False
+
+
 class MenuSedeView(APIView):
     """
     GET /api/menu/sedes/<id>/menu/
 
     Menú de una sede activa: categorías activas con sus productos activos y si
-    cada uno se puede pedir en esa sede. Las categorías sin productos también se
-    devuelven, para que el cliente vea que están vacías.
-    Es público: no exige sesión, y así un token vencido no bloquea el menú.
+    cada uno se puede pedir en esa sede. Soporta filtro por `?categoria=<id>` y
+    búsqueda insensible a mayúsculas y tildes mediante `?q=<texto>` (HU-19).
     """
 
     permission_classes = [AllowAny]
@@ -114,12 +136,24 @@ class MenuSedeView(APIView):
                 "categoria",
                 int,
                 description="Id de una categoría para devolver solo esa.",
-            )
+            ),
+            OpenApiParameter(
+                "q",
+                str,
+                description="Texto a buscar en el nombre del producto (ignora mayúsculas y tildes).",
+            ),
         ],
         responses=MenuSedeSerializer,
     )
     def get(self, request, sede_pk):
         sede = get_object_or_404(Sede, pk=sede_pk, activa=True)
+
+        busqueda = (request.query_params.get("q") or "").strip()
+        usar_unaccent_sql = bool(busqueda) and _soporta_unaccent()
+
+        productos_qs = Producto.objects.filter(activo=True).order_by("nombre")
+        if busqueda and usar_unaccent_sql:
+            productos_qs = productos_qs.filter(nombre__unaccent__icontains=busqueda)
 
         categorias = (
             CategoriaMenu.objects.filter(activa=True)
@@ -127,7 +161,7 @@ class MenuSedeView(APIView):
             .prefetch_related(
                 Prefetch(
                     "productos",
-                    queryset=Producto.objects.filter(activo=True).order_by("nombre"),
+                    queryset=productos_qs,
                     to_attr="productos_activos",
                 )
             )
@@ -138,6 +172,16 @@ class MenuSedeView(APIView):
             if not categoria.isdigit():
                 raise ValidationError({"categoria": "Debe ser el id numérico de una categoría."})
             categorias = categorias.filter(pk=int(categoria))
+
+        categorias_lista = list(categorias)
+
+        # Fallback en Python si PostgreSQL aún no tiene instalada la extensión unaccent
+        if busqueda and not usar_unaccent_sql:
+            termino = _normalizar_texto(busqueda)
+            for cat in categorias_lista:
+                cat.productos_activos = [
+                    p for p in cat.productos_activos if termino in _normalizar_texto(p.nombre)
+                ]
 
         inventarios = {
             inventario.producto_id: inventario
@@ -151,7 +195,7 @@ class MenuSedeView(APIView):
         }
 
         serializer = MenuSedeSerializer(
-            {"sede": sede, "categorias": categorias},
+            {"sede": sede, "categorias": categorias_lista},
             context={
                 "request": request,
                 "inventarios": inventarios,

@@ -6,6 +6,7 @@ import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.
 import TarjetaProducto from '../../components/menu/TarjetaProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
+import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 
 const CLAVE_SEDE = 'domipedidosx.sede'
@@ -28,19 +29,28 @@ function guardarSede(sedeId) {
   }
 }
 
-// HU-18 · Consultar el menú por categorías (vista del cliente).
-// En el PMV el cliente elige la sede; la asignación por zona llega con HU-58.
+// HU-18 & HU-19 · Consultar el menú por categorías y buscar productos por nombre.
 export default function Menu() {
   const [sedes, setSedes] = useState([])
   const [sedesCargadas, setSedesCargadas] = useState(false)
   const [sedeId, setSedeId] = useState(leerSedeGuardada)
   const [resultado, setResultado] = useState(null)
   const [categoriaId, setCategoriaId] = useState(TODAS)
+  const [busqueda, setBusqueda] = useState('')
+  const [busquedaDebounced, setBusquedaDebounced] = useState('')
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [recargaMenu, setRecargaMenu] = useState(0)
   const [personalizando, setPersonalizando] = useState(null)
   const carrito = useCarrito()
+
+  // Debounce de 300ms para evitar peticiones por cada tecla (HU-19)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBusquedaDebounced(busqueda.trim())
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [busqueda])
 
   // Sedes activas. Si la sede guardada ya no está activa, se descarta.
   useEffect(() => {
@@ -65,25 +75,24 @@ export default function Menu() {
     }
   }, [])
 
-  // Menú de la sede elegida.
+  // Menú de la sede elegida + búsqueda debounced.
   useEffect(() => {
     if (!sedesCargadas || !sedeId) return undefined
     let vigente = true
-    obtenerMenuSede(sedeId)
+    obtenerMenuSede(sedeId, { q: busquedaDebounced })
       .then((menu) => {
-        if (vigente) setResultado({ sedeId, menu })
+        if (vigente) setResultado({ sedeId, q: busquedaDebounced, menu })
       })
       .catch((err) => {
-        if (vigente) setResultado({ sedeId, error: interpretarError(err).general })
+        if (vigente) setResultado({ sedeId, q: busquedaDebounced, error: interpretarError(err).general })
       })
     return () => {
       vigente = false
     }
-  }, [sedeId, sedesCargadas, recargaMenu])
+  }, [sedeId, sedesCargadas, recargaMenu, busquedaDebounced])
 
   function cambiarSede(evento) {
     const nueva = evento.target.value
-    // El carrito es de una sede: cambiarla lo vacía (disponibilidad y stock cambian).
     const otraSede = carrito.lineas.length > 0 && String(carrito.sedeId) !== nueva
     if (otraSede) {
       const confirmado = window.confirm(
@@ -94,12 +103,17 @@ export default function Menu() {
     }
     setSedeId(nueva)
     setCategoriaId(TODAS)
+    setBusqueda('')
+    setBusquedaDebounced('')
     setAviso(null)
     if (nueva) guardarSede(nueva)
   }
 
-  // Hook del carrito (HU-13): antes de personalizar se confirma que el producto siga
-  // disponible en la sede. HU-23 repetirá esta validación al confirmar el pedido.
+  function limpiarBusqueda() {
+    setBusqueda('')
+    setBusquedaDebounced('')
+  }
+
   async function agregar(producto) {
     setAviso(null)
     try {
@@ -123,13 +137,18 @@ export default function Menu() {
     etiqueta: `${sede.nombre} · ${sede.barrio}`,
   }))
 
-  const actual = resultado?.sedeId === sedeId ? resultado : null
+  const actual =
+    resultado?.sedeId === sedeId && resultado?.q === busquedaDebounced ? resultado : null
   const cargandoMenu = Boolean(sedeId) && sedesCargadas && !actual
   const categorias = actual?.menu?.categorias ?? []
+  const hayBusqueda = busquedaDebounced.length > 0
+
+  // Cuando hay búsqueda activa o estamos en "Todas", ocultamos categorías sin coincidencias
   const filtradas =
     categoriaId === TODAS
       ? categorias.filter((categoria) => categoria.productos.length > 0)
       : categorias.filter((categoria) => String(categoria.id) === categoriaId)
+
   const opcionesFiltro = [{ id: TODAS, nombre: 'Todas' }, ...categorias]
 
   return (
@@ -139,17 +158,43 @@ export default function Menu() {
           <h1 className="text-2xl font-bold">
             Menú{actual?.menu ? ` · ${actual.menu.sede.nombre}` : ''}
           </h1>
-          <p className="text-texto-suave">Elige la sede y explora los productos por categoría.</p>
+          <p className="text-texto-suave">Elige la sede, busca tu plato o explora por categoría.</p>
         </div>
-        <Selector
-          etiqueta="Sede"
-          opciones={opcionesSede}
-          value={sedeId}
-          onChange={cambiarSede}
-          textoVacio={sedesCargadas ? 'Selecciona una sede' : 'Cargando sedes…'}
-          disabled={!sedesCargadas}
-          className="sm:w-72"
-        />
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          {sedeId && (
+            <div className="flex items-end gap-2">
+              <CampoTexto
+                etiqueta="Buscar producto"
+                placeholder="Ej. Hamburguesa, limonada…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                aria-label="Buscar productos por nombre"
+                className="sm:w-64"
+              />
+              {busqueda && (
+                <Boton
+                  type="button"
+                  variante="secundario"
+                  onClick={limpiarBusqueda}
+                  aria-label="Limpiar búsqueda"
+                >
+                  Limpiar
+                </Boton>
+              )}
+            </div>
+          )}
+
+          <Selector
+            etiqueta="Sede"
+            opciones={opcionesSede}
+            value={sedeId}
+            onChange={cambiarSede}
+            textoVacio={sedesCargadas ? 'Selecciona una sede' : 'Cargando sedes…'}
+            disabled={!sedesCargadas}
+            className="sm:w-64"
+          />
+        </div>
       </header>
 
       {error && <Alerta tipo="error" titulo={error} />}
@@ -185,8 +230,21 @@ export default function Menu() {
             })}
           </div>
 
-          {filtradas.length === 0 && categoriaId === TODAS && (
-            <Alerta tipo="info">El menú de esta sede todavía no tiene productos.</Alerta>
+          {filtradas.length === 0 && (
+            <div className="flex flex-col items-start gap-3">
+              <Alerta tipo="info">
+                {hayBusqueda
+                  ? `No encontramos productos que coincidan con "${busquedaDebounced}"${
+                      categoriaId !== TODAS ? ' en esta categoría' : ''
+                    }.`
+                  : 'El menú de esta sede todavía no tiene productos.'}
+              </Alerta>
+              {hayBusqueda && (
+                <Boton variante="secundario" onClick={limpiarBusqueda}>
+                  Mostrar todo el menú
+                </Boton>
+              )}
+            </div>
           )}
 
           {filtradas.map((categoria) => (
@@ -195,7 +253,11 @@ export default function Menu() {
                 {categoria.nombre}
               </h2>
               {categoria.productos.length === 0 ? (
-                <Alerta tipo="info">Esta categoría todavía no tiene productos.</Alerta>
+                <Alerta tipo="info">
+                  {hayBusqueda
+                    ? `No hay coincidencias para "${busquedaDebounced}" en ${categoria.nombre}.`
+                    : 'Esta categoría todavía no tiene productos.'}
+                </Alerta>
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {categoria.productos.map((producto) => (
