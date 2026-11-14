@@ -58,10 +58,20 @@ export async function cancelarPedido(id) {
   return data
 }
 
-// HU-66 · Historial completo de pedidos (administrador), paginado de a 20.
+// HU-66 & HU-68 · Historial completo con filtros combinables y paginación.
 // Devuelve { count, next, previous, results }.
-export async function listarHistorialPedidos(pagina = 1) {
-  const { data } = await api.get('/pedidos/historial/', { params: { page: pagina } })
+export async function listarHistorialPedidos(pagina = 1, filtros = {}) {
+  const params = { page: pagina }
+
+  if (filtros.fechaInicio) params.fecha_inicio = filtros.fechaInicio
+  if (filtros.fechaFin) params.fecha_fin = filtros.fechaFin
+  if (filtros.sede) params.sede = filtros.sede
+  if (filtros.estado) params.estado = filtros.estado
+  if (filtros.repartidor) params.repartidor = filtros.repartidor
+  if (filtros.zona) params.zona = filtros.zona
+  if (filtros.q?.trim()) params.q = filtros.q.trim()
+
+  const { data } = await api.get('/pedidos/historial/', { params })
   return data
 }
 
