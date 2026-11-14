@@ -38,13 +38,14 @@ const FILTROS_INICIALES = {
 export default function HistorialPedidos() {
   const [pagina, setPagina] = useState(1)
   const [datos, setDatos] = useState({ count: 0, results: [] })
-  const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [seleccionado, setSeleccionado] = useState(null)
 
   // Estado de los filtros (borrador en formulario y aplicados en consulta)
   const [filtrosForm, setFiltrosForm] = useState(FILTROS_INICIALES)
   const [filtrosActivos, setFiltrosActivos] = useState(FILTROS_INICIALES)
+  const [consultaCompleta, setConsultaCompleta] = useState(null)
+  const claveConsulta = JSON.stringify([pagina, filtrosActivos])
 
   // Catálogos para los selectores
   const [sedes, setSedes] = useState([])
@@ -78,22 +79,26 @@ export default function HistorialPedidos() {
   // Consultar historial con página + filtros activos
   useEffect(() => {
     let vigente = true
-    setCargando(true)
     listarHistorialPedidos(pagina, filtrosActivos)
       .then((respuesta) => {
         if (!vigente) return
         setDatos(respuesta)
         setError(null)
+        setConsultaCompleta(claveConsulta)
       })
-      .catch((fallo) => vigente && setError(interpretarError(fallo).general))
-      .finally(() => vigente && setCargando(false))
+      .catch((fallo) => {
+        if (!vigente) return
+        setError(interpretarError(fallo).general)
+        setConsultaCompleta(claveConsulta)
+      })
     return () => {
       vigente = false
     }
-  }, [pagina, filtrosActivos])
+  }, [pagina, filtrosActivos, claveConsulta])
 
   const cerrarFicha = useCallback(() => setSeleccionado(null), [])
   const paginas = totalPaginas(datos.count)
+  const cargando = consultaCompleta !== claveConsulta
 
   // Zonas filtradas por la sede elegida en el formulario (si seleccionó una)
   const zonasDisponibles = filtrosForm.sede
