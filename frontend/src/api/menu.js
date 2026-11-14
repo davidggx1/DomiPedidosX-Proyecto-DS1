@@ -71,6 +71,11 @@ export async function listarCategorias() {
   return data
 }
 
+// HU-78: the server refuses (409) if the category still has products
+export async function eliminarCategoria(id) {
+  await api.delete(`/menu/categorias/${id}/`)
+}
+
 export async function listarProductosOpciones() {
   const { data } = await api.get('/menu/productos-opciones/')
   return data

@@ -174,11 +174,6 @@ def test_categoria_inexistente_devuelve_404(operador):
     assert respuesta.status_code == 404
 
 
-def test_no_se_puede_borrar_categorias(operador, categoria):
-    assert operador.delete(f"{URL}{categoria.id}/").status_code == 405
-    assert CategoriaMenu.objects.filter(pk=categoria.pk).exists()
-
-
 # --- rename with products ---
 
 def test_renombrar_mantiene_vinculados_sus_productos(operador, categoria):
