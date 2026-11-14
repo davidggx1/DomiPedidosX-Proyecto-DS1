@@ -1,7 +1,7 @@
 from django.urls import re_path
 from django.urls import path
 from .consumers import EstadoPedidoConsumer
-from .consumers import MisEntregasConsumer, PedidosEntrantesConsumer
+from .consumers import EstadoRepartidoresConsumer, MisEntregasConsumer, PedidosEntrantesConsumer
 
 websocket_urlpatterns = [
     re_path(
@@ -15,6 +15,10 @@ websocket_urlpatterns = [
     path(
         "ws/pedidos/mis-entregas/",
         MisEntregasConsumer.as_asgi(),
+    ),
+    path(
+        "ws/pedidos/repartidores/",
+        EstadoRepartidoresConsumer.as_asgi(),
     ),
 ]
 

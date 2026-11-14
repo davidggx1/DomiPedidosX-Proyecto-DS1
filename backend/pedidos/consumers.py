@@ -116,3 +116,45 @@ class MisEntregasConsumer(AsyncJsonWebsocketConsumer):
         if obtener_rol(usuario) != REPARTIDOR:
             return None
         return Repartidor.objects.filter(empleado__usuario=usuario).values_list("pk", flat=True).first()
+
+
+GRUPO_ADMIN_REPARTIDORES = "repartidores_admin"
+
+
+def grupo_repartidores_sede(sede_id):
+    return f"repartidores_sede_{sede_id}"
+
+
+class EstadoRepartidoresConsumer(AsyncJsonWebsocketConsumer):
+    """HU-37: el tablero de repartidores del operador (su sede) o del administrador (todas)."""
+
+    async def connect(self):
+        usuario = self.scope["user"]
+        if not usuario.is_authenticated:
+            await self.close(code=4401)
+            return
+
+        rol, sede_id = await self._rol_y_sede(usuario)
+        if rol == ADMINISTRADOR:
+            self.grupo = GRUPO_ADMIN_REPARTIDORES
+        elif rol == OPERADOR and sede_id is not None:
+            self.grupo = grupo_repartidores_sede(sede_id)
+        else:
+            await self.close(code=4403)
+            return
+
+        await self.channel_layer.group_add(self.grupo, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, code):
+        grupo = getattr(self, "grupo", None)
+        if grupo:
+            await self.channel_layer.group_discard(grupo, self.channel_name)
+
+    async def repartidores_evento(self, event):
+        await self.send_json(event["data"])
+
+    @database_sync_to_async
+    def _rol_y_sede(self, usuario):
+        sede = obtener_sede(usuario)
+        return obtener_rol(usuario), (sede.pk if sede else None)

@@ -40,6 +40,7 @@ import ConfirmarPedido from "./pages/cliente/ConfirmarPedido.jsx";
 import ConfiguracionHorarios from "./pages/admin/ConfiguracionHorarios.jsx";
 import Sedes from "./pages/admin/Sedes.jsx";
 import ZonasCobertura from "./pages/admin/ZonasCobertura.jsx";
+import EstadoRepartidores from './pages/operador/EstadoRepartidores.jsx';
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="operador/inventario" element={<Inventario />} />
           <Route path="operador/repartidores" element={<Despacho />} />
           <Route path="operador/pedidos-del-dia" element={<PedidosDelDia />} />
+          <Route path="operador/repartidores/estado" element={<EstadoRepartidores />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
