@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { obtenerComanda } from '../../api/cocina.js'
 import { interpretarError } from '../../api/errores.js'
-import { AVANCE_COCINA, textoTiempoEnCocina } from '../../utils/cocina.js'
+import { AVANCE_COCINA, estadoCronometroCocina } from '../../utils/cocina.js'
 import { horaCorta } from '../../utils/tiempo.js'
 import Alerta from '../ui/Alerta.jsx'
 import Boton from '../ui/Boton.jsx'
 import DetalleComanda from './DetalleComanda.jsx'
 
-// Card of the kitchen board. It expands to show the full order (HU-30)
-// and has the button that moves the order to the next column (HU-31)
+// Card of the kitchen board. It expands to show the full order (HU-30),
+// moves the order to the next column (HU-31) and shows elapsed time (HU-32).
 export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
   const [abierta, setAbierta] = useState(false)
   const [comanda, setComanda] = useState(null)
@@ -19,6 +19,7 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
   // the API tells which steps this role can give
   const puedeAvanzar = avance && tarjeta.siguientes_estados.includes(avance.estado)
   const idDetalle = `detalle-pedido-${tarjeta.id}`
+  const cronometro = estadoCronometroCocina(tarjeta, ahora)
 
   async function alternarDetalle() {
     const abrir = !abierta
@@ -42,10 +43,29 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-bold">{tarjeta.numero_pedido}</p>
-          <p className="text-sm text-texto-suave">
-            Llegó a las {horaCorta(tarjeta.recibido_en)} · {textoTiempoEnCocina(tarjeta, ahora)}
-          </p>
+          <p className="text-xs text-texto-suave">Recibido: {horaCorta(tarjeta.recibido_en)}</p>
         </div>
+
+        {/* HU-32 · Cronómetro dinámico en minutos con semáforo de color (se detiene en listo_despacho) */}
+        <span
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${cronometro.clases}`}
+          aria-label={
+            cronometro.detenido
+              ? `Temporizador detenido: ${cronometro.etiqueta}`
+              : `Tiempo en cocina: ${cronometro.etiqueta}`
+          }
+          title={
+            cronometro.detenido
+              ? 'Temporizador detenido al marcar listo para despacho'
+              : 'Tiempo transcurrido desde la recepción en cocina'
+          }
+        >
+          <span aria-hidden="true">{cronometro.detenido ? '✓' : '⏱'}</span>
+          {cronometro.etiqueta}
+        </span>
+      </div>
+
+      {(tarjeta.tiene_notas || tarjeta.tiene_cambios) && (
         <div className="flex flex-wrap gap-1">
           {tarjeta.tiene_notas && (
             <span className="rounded-full border border-aviso px-2 py-0.5 text-xs font-medium text-aviso">
@@ -58,7 +78,7 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
             </span>
           )}
         </div>
-      </div>
+      )}
 
       <ul className="flex flex-col gap-1 text-sm">
         {tarjeta.resumen.map((linea, indice) => (

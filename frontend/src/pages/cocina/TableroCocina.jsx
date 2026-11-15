@@ -4,12 +4,12 @@ import { cambiarEstadoPedido, obtenerTableroCocina } from '../../api/pedidos.js'
 import TarjetaPedido from '../../components/cocina/TarjetaPedido.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
-import { AVANCE_COCINA, COLUMNAS_COCINA } from '../../utils/cocina.js'
+import { AVANCE_COCINA, COLUMNAS_COCINA, ordenarPorAntiguedad } from '../../utils/cocina.js'
 
 // how often the board asks the server for changes
 const INTERVALO_MS = 10000
 
-// HU-29, HU-30 y HU-31 · Kitchen board with three columns
+// HU-29, HU-30, HU-31 y HU-32 · Kitchen board with three columns and live order timers
 export default function TableroCocina() {
   const [tablero, setTablero] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -18,6 +18,14 @@ export default function TableroCocina() {
   const [ahora, setAhora] = useState(() => Date.now())
   const [moviendo, setMoviendo] = useState(null) // id of the order being moved
   const [mensaje, setMensaje] = useState(null)
+
+  // HU-32 · Reloj dinámico en tiempo real para que el cronómetro en minutos avance sin esperar al polling
+  useEffect(() => {
+    const reloj = setInterval(() => {
+      setAhora(Date.now())
+    }, 1000)
+    return () => clearInterval(reloj)
+  }, [])
 
   useEffect(() => {
     let vigente = true
@@ -68,7 +76,7 @@ export default function TableroCocina() {
         <div>
           <h1 className="text-2xl font-bold">Tablero de cocina</h1>
           <p className="text-texto-suave">
-            Se actualiza solo cada {INTERVALO_MS / 1000} segundos.
+            Se actualiza solo cada {INTERVALO_MS / 1000} segundos · Ordenado del más antiguo al más reciente.
           </p>
         </div>
         <Boton variante="secundario" onClick={() => setRecarga((numero) => numero + 1)}>
@@ -83,7 +91,7 @@ export default function TableroCocina() {
       {tablero && (
         <div className="grid gap-4 md:grid-cols-3">
           {COLUMNAS_COCINA.map(({ estado, titulo }) => {
-            const tarjetas = tablero[estado] ?? []
+            const tarjetas = ordenarPorAntiguedad(tablero[estado] ?? [])
             return (
               <section
                 key={estado}
