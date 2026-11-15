@@ -6,11 +6,12 @@ import {
   DURACION_AVISO_MS,
   alertaDeEvento,
   aplicarEvento,
+  avisoDeAgotado,
   avisoDeEvento,
 } from '../utils/alertasInventario.js'
 import { AlertasInventarioContext } from './AlertasInventarioContext.js'
 
-// HU-16 · Low stock alerts for the operator, on any of his screens.
+// HU-16 · Low stock alerts for the operator, on any of his screens (and HU-17 sold out reports).
 // One socket keeps the list of active alerts live (the panel of Inventario reads
 // it with useAlertasInventario) and a new alert also shows a popup
 export default function AlertasInventarioProvider({ children }) {
@@ -35,22 +36,29 @@ export default function AlertasInventarioProvider({ children }) {
     }
     cargar()
 
+    // shows a popup that closes by itself after a while
+    function mostrar(aviso) {
+      if (!aviso) return
+      setAvisos((lista) => [...lista.filter((actual) => actual.id !== aviso.id), aviso])
+      const temporizador = setTimeout(() => {
+        temporizadores.delete(temporizador)
+        setAvisos((lista) => lista.filter((actual) => actual.id !== aviso.id))
+      }, DURACION_AVISO_MS)
+      temporizadores.add(temporizador)
+    }
+
     const cerrar = conectarAlertasInventario({
       // events sent while the socket was down were lost
       alReconectar: cargar,
       alMensaje: (datos) => {
         const evento = alertaDeEvento(datos)
-        if (!evento) return
-        setAlertas((lista) => aplicarEvento(lista, evento))
-
-        const aviso = avisoDeEvento(evento)
-        if (!aviso) return
-        setAvisos((lista) => [...lista.filter((actual) => actual.id !== aviso.id), aviso])
-        const temporizador = setTimeout(() => {
-          temporizadores.delete(temporizador)
-          setAvisos((lista) => lista.filter((actual) => actual.id !== aviso.id))
-        }, DURACION_AVISO_MS)
-        temporizadores.add(temporizador)
+        if (evento) {
+          setAlertas((lista) => aplicarEvento(lista, evento))
+          mostrar(avisoDeEvento(evento))
+          return
+        }
+        // HU-17: the kitchen reported a product as sold out
+        mostrar(avisoDeAgotado(datos))
       },
     })
 

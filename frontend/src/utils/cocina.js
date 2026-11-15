@@ -60,3 +60,17 @@ export function textoTiempoEnCocina(tarjeta, ahora) {
   }
   return `En cocina hace ${textoDuracion(minutos)}`
 }
+
+// "Clásica" -> "clasica", to search without caring about accents or case
+function normalizar(texto) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+// HU-17 · Products whose name or category contain the search. Sold out ones go last
+export function filtrarProductosCocina(productos, busqueda) {
+  const termino = normalizar(busqueda)
+  const encontrados = termino
+    ? productos.filter((p) => normalizar(`${p.nombre} ${p.categoria}`).includes(termino))
+    : productos
+  return [...encontrados].sort((a, b) => Number(b.disponible) - Number(a.disponible))
+}

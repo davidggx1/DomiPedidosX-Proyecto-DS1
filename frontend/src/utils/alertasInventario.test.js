@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { alertaDeEvento, aplicarEvento, avisoDeEvento, textoStock } from './alertasInventario.js'
+import {
+  alertaDeEvento,
+  aplicarEvento,
+  avisoDeAgotado,
+  avisoDeEvento,
+  textoStock,
+} from './alertasInventario.js'
 
 const hamburguesa = {
   id: 1,
@@ -73,5 +79,28 @@ describe('alertas de inventario mínimo (HU-16)', () => {
   it('el aviso de un producto en cero dice agotado', () => {
     const aviso = avisoDeEvento({ transicion: 'creada', alerta: { ...hamburguesa, stock_actual: 0 } })
     expect(aviso.titulo).toBe('Agotado: Hamburguesa')
+  })
+})
+
+describe('aviso de agotado reportado por cocina (HU-17)', () => {
+  const reporte = {
+    id: 7,
+    producto_nombre: 'Clásica',
+    usuario_nombre: 'Carla Gómez',
+    fecha_hora: '2026-11-15T14:05:09-05:00',
+  }
+
+  it('muestra producto, usuario y hora exacta', () => {
+    const aviso = avisoDeAgotado({ tipo: 'producto_agotado', reporte })
+    expect(aviso.id).toBe('agotado-7')
+    expect(aviso.titulo).toBe('Agotado por cocina: Clásica')
+    expect(aviso.texto).toContain('Carla Gómez')
+    expect(aviso.texto).toMatch(/\d{2}:\d{2}:\d{2}/)
+    expect(aviso.enlace).toBe('/operador/productos')
+  })
+
+  it('ignora cualquier otro mensaje', () => {
+    expect(avisoDeAgotado({ tipo: 'alerta_inventario', alerta: {} })).toBeNull()
+    expect(avisoDeAgotado({ tipo: 'producto_agotado' })).toBeNull()
   })
 })

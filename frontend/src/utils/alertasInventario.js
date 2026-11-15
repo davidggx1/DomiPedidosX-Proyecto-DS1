@@ -1,3 +1,5 @@
+import { horaExacta } from './tiempo.js'
+
 // HU-16: low stock alerts. Pure helpers for the panel and the popup of the operator
 
 export const TIPO_EVENTO_ALERTA = 'alerta_inventario'
@@ -45,5 +47,20 @@ export function avisoDeEvento(evento) {
     titulo: `${alerta.stock_actual === 0 ? 'Agotado' : 'Stock bajo'}: ${alerta.nombre}`,
     texto: textoStock(alerta),
     enlace: '/operador/inventario',
+  }
+}
+
+// HU-17 · Popup when the kitchen reports a product as sold out, or null for any other message
+export const TIPO_EVENTO_AGOTADO = 'producto_agotado'
+
+export function avisoDeAgotado(datos) {
+  if (datos?.tipo !== TIPO_EVENTO_AGOTADO || !datos.reporte) return null
+  const { reporte } = datos
+  return {
+    id: `agotado-${reporte.id}`,
+    titulo: `Agotado por cocina: ${reporte.producto_nombre}`,
+    texto: `Ya no aparece disponible en el menú. Reportado por ${reporte.usuario_nombre} a las ${horaExacta(reporte.fecha_hora)}`,
+    enlace: '/operador/productos',
+    accion: 'Ver productos',
   }
 }
