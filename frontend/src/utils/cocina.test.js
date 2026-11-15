@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtrarProductosCocina, validarJustificacion } from './cocina.js'
+import { filtrarProductosCocina, productosReactivados, validarJustificacion } from './cocina.js'
 
 const productos = [
   { id: 1, nombre: 'Clásica', categoria: 'Hamburguesas', disponible: false },
@@ -26,5 +26,26 @@ describe('justificación del error de cocina (HU-33)', () => {
     expect(validarJustificacion('abc')).toMatch(/al menos 5/)
     expect(validarJustificacion('x'.repeat(501))).toMatch(/superar 500/)
     expect(validarJustificacion('  Se quemó la carne ')).toBeNull()
+  })
+})
+
+describe('productos que vuelven a estar disponibles (HU-17)', () => {
+  const antes = [
+    { id: 1, nombre: 'Clásica', disponible: false },
+    { id: 2, nombre: 'Doble', disponible: true },
+    { id: 3, nombre: 'Pepperoni', disponible: false },
+  ]
+
+  it('devuelve solo los que pasaron de no disponible a disponible', () => {
+    const despues = [
+      { id: 1, nombre: 'Clásica', disponible: true },
+      { id: 2, nombre: 'Doble', disponible: false },
+      { id: 3, nombre: 'Pepperoni', disponible: false },
+    ]
+    expect(productosReactivados(antes, despues)).toEqual(['Clásica'])
+  })
+
+  it('no avisa nada en la primera carga', () => {
+    expect(productosReactivados(null, antes)).toEqual([])
   })
 })

@@ -91,3 +91,11 @@ export function validarJustificacion(texto) {
   }
   return null
 }
+
+// HU-17 · Names of the products that were unavailable and now can be ordered
+// again (the operator enabled them). Empty on the first load
+export function productosReactivados(antes, despues) {
+  if (!antes) return []
+  const noDisponibles = new Set(antes.filter((p) => !p.disponible).map((p) => p.id))
+  return despues.filter((p) => p.disponible && noDisponibles.has(p.id)).map((p) => p.nombre)
+}

@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { listarProductosCocina, marcarAgotado } from '../../api/cocina.js'
 import { interpretarError } from '../../api/errores.js'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Modal from '../../components/ui/Modal.jsx'
-import { filtrarProductosCocina } from '../../utils/cocina.js'
+import { filtrarProductosCocina, productosReactivados } from '../../utils/cocina.js'
 import { horaExacta } from '../../utils/tiempo.js'
 
+// how often the list asks the server for changes (same as the kitchen board)
+const INTERVALO_MS = 10000
+
 // HU-17 · Products of the kitchen's sede. Cocina marks one as sold out when
-// an ingredient runs out: it leaves the menu of the sede and the operator is warned
+// an ingredient runs out: it leaves the menu of the sede and the operator is warned.
+// The list refreshes by itself and warns when the operator enables a product again
 export default function ProductosCocina() {
   const [productos, setProductos] = useState(null)
   const [errorCarga, setErrorCarga] = useState(null)
@@ -19,20 +23,34 @@ export default function ProductosCocina() {
   const [mensaje, setMensaje] = useState(null)
 
   const [recarga, setRecarga] = useState(0) // bump it to load the list again
+  const [reactivados, setReactivados] = useState([]) // names enabled again by the operator
+  const anteriores = useRef(null) // last list received, to compare with the next one
 
   useEffect(() => {
     let vigente = true
-    listarProductosCocina()
-      .then((datos) => {
-        if (!vigente) return
-        setProductos(datos)
-        setErrorCarga(null)
-      })
-      .catch((error) => {
-        if (vigente) setErrorCarga(interpretarError(error).general)
-      })
+
+    function cargar() {
+      listarProductosCocina()
+        .then((datos) => {
+          if (!vigente) return
+          const nuevos = productosReactivados(anteriores.current, datos)
+          anteriores.current = datos
+          setProductos(datos)
+          setErrorCarga(null)
+          if (nuevos.length > 0) {
+            setReactivados((lista) => [...lista.filter((nombre) => !nuevos.includes(nombre)), ...nuevos])
+          }
+        })
+        .catch((error) => {
+          if (vigente) setErrorCarga(interpretarError(error).general)
+        })
+    }
+
+    cargar()
+    const temporizador = setInterval(cargar, INTERVALO_MS)
     return () => {
       vigente = false
+      clearInterval(temporizador)
     }
   }, [recarga])
 
@@ -63,9 +81,25 @@ export default function ProductosCocina() {
         <h1 className="text-2xl font-bold">Productos de la sede</h1>
         <p className="text-texto-suave">
           Si se acabó un insumo, marca el producto como agotado: sale del menú de tu sede y el operador recibe el
-          aviso. El operador lo vuelve a habilitar cuando haya existencias.
+          aviso. El operador lo vuelve a habilitar cuando haya existencias. La lista se actualiza sola cada{' '}
+          {INTERVALO_MS / 1000} segundos.
         </p>
       </header>
+
+      {reactivados.length > 0 && (
+        <Alerta
+          tipo="exito"
+          titulo={
+            reactivados.length === 1
+              ? `"${reactivados[0]}" vuelve a estar disponible.`
+              : `Vuelven a estar disponibles: ${reactivados.join(', ')}.`
+          }
+        >
+          <button type="button" onClick={() => setReactivados([])} className="mt-1 text-sm font-medium underline">
+            Entendido
+          </button>
+        </Alerta>
+      )}
 
       <CampoTexto
         etiqueta="Buscar producto"
