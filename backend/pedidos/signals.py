@@ -139,3 +139,20 @@ def avisar_tablero_por_estado(sender, pedido, **kwargs):
     # Si el pedido no tiene repartidor, no cambia la carga de nadie.
     if pedido.repartidor_id is not None:
         avisar_estado_repartidores(pedido.sede_id)
+
+# --- Operador: un pendiente cancelado sale de "Pedidos entrantes" ------------------
+
+
+@receiver(estado_pedido_cambiado)
+def avisar_pendiente_cancelado(sender, pedido, estado_anterior, **kwargs):
+    """
+    La lista de pedidos entrantes solo se enteraba de la aprobación (aprobacion.py).
+    Si el pendiente se cancela (el cliente en HU-25, el vencimiento automático o el
+    operador en HU-34), se envía el mismo "pedido_actualizado" para que su tarjeta
+    desaparezca sin recargar.
+    """
+    if estado_anterior == EstadoPedido.PENDIENTE_APROBACION and pedido.estado == EstadoPedido.CANCELADO:
+        # Importado aquí: eventos importa serializers, que no hace falta al cargar las señales.
+        from .eventos import notificar_pedido
+
+        notificar_pedido(pedido)
