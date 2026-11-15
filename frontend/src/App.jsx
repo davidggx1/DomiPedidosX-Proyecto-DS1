@@ -103,6 +103,7 @@ export default function App() {
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
           <Route path="admin/cuentas" element={<Cuentas />} />
           <Route path="admin/clientes" element={<Clientes />} />
+          <Route path="admin/promociones" element={<Promociones />} />
         </Route>
 
         <Route path="*" element={<NoEncontrada />} />

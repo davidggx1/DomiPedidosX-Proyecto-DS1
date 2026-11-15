@@ -145,6 +145,8 @@ class Promocion(models.Model):
     # Borrado lógico: una promoción desactivada no se usa, pero su historial se conserva.
     activa = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    # HU-64: máximo de pedidos por día que pueden usar la promoción. NULL = sin cupo.
+    cupo_max_diario = models.PositiveIntegerField(null=True, blank=True)
 
     objects = PromocionQuerySet.as_manager()
 
@@ -161,6 +163,10 @@ class Promocion(models.Model):
             models.CheckConstraint(
                 condition=Q(fecha_inicio__lte=models.F("fecha_fin")),
                 name="promocion_vigencia_valida",
+            ),
+            models.CheckConstraint(
+                condition=Q(cupo_max_diario__isnull=True) | Q(cupo_max_diario__gt=0),
+                name="promocion_cupo_positivo",
             ),
         ]
 
@@ -179,3 +185,26 @@ class Promocion(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.sede.nombre}"
+
+
+class ConsumoCupoPromocion(models.Model):
+    """HU-64: un uso de una promoción en un pedido.
+
+    El pedido es OneToOne: un pedido usa como máximo una promoción (HU-65). El cupo del
+    día se calcula contando estas filas por fecha, así que no hay contador que reiniciar.
+    """
+
+    promocion = models.ForeignKey(
+        Promocion,
+        on_delete=models.PROTECT,
+        related_name="consumos",
+    )
+    pedido = models.OneToOneField(
+        "pedidos.Pedido",
+        on_delete=models.CASCADE,
+        related_name="consumo_cupo_promocion",
+    )
+    fecha_consumo = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.promocion_id} - {self.pedido_id}"

@@ -90,6 +90,15 @@ export function validarPromocion(datos) {
     }
   }
 
+  const cupo = String(datos.cupo_max_diario ?? '').trim()
+  if (cupo && !/^\d+$/.test(cupo)) {
+    errores.cupo_max_diario = 'El cupo debe ser un número entero.'
+  } else if (cupo && Number(cupo) <= 0) {
+    errores.cupo_max_diario = 'El cupo debe ser mayor que 0 (vacío = sin límite).'
+  } else if (cupo.length > 9) {
+    errores.cupo_max_diario = 'El cupo es demasiado grande.'
+  }
+
   if (!datos.fecha_inicio) errores.fecha_inicio = 'Elige la fecha de inicio.'
   if (!datos.fecha_fin) errores.fecha_fin = 'Elige la fecha de fin.'
   else if (datos.fecha_inicio && datos.fecha_fin < datos.fecha_inicio) {
@@ -109,6 +118,10 @@ export function armarCuerpoPromocion(datos) {
     fecha_inicio: datos.fecha_inicio,
     fecha_fin: datos.fecha_fin,
     condiciones: String(datos.condiciones ?? '').trim(),
+    // HU-64: vacío = sin límite; el backend recibe null.
+    cupo_max_diario: String(datos.cupo_max_diario ?? '').trim()
+      ? Number(String(datos.cupo_max_diario).trim())
+      : null,
   }
 }
 
@@ -123,6 +136,7 @@ export function datosIniciales(promocion, hoy = new Date()) {
       fecha_inicio: fechaLocal(hoy),
       fecha_fin: '',
       condiciones: '',
+      cupo_max_diario: '',
     }
   }
   return {
@@ -133,6 +147,7 @@ export function datosIniciales(promocion, hoy = new Date()) {
     fecha_inicio: promocion.fecha_inicio,
     fecha_fin: promocion.fecha_fin,
     condiciones: promocion.condiciones ?? '',
+    cupo_max_diario: promocion.cupo_max_diario == null ? '' : String(promocion.cupo_max_diario),
   }
 }
 
@@ -154,4 +169,21 @@ export function claseEstado(estado) {
   if (estado === 'vigente') return 'border-exito text-exito'
   if (estado === 'programada') return 'border-aviso text-aviso'
   return 'border-borde text-texto-suave'
+}
+
+// HU-64 · Texto del cupo diario para el administrador. null = sin límite.
+export function textoCupo(promocion) {
+  if (promocion.cupo_max_diario == null) return null
+  const restante = promocion.cupo_restante ?? promocion.cupo_max_diario
+  if (restante <= 0) return `Cupo de hoy agotado (${promocion.cupo_max_diario} de ${promocion.cupo_max_diario} usos)`
+  return `Hoy: ${promocion.usos_hoy ?? 0} de ${promocion.cupo_max_diario} usos · quedan ${restante}`
+}
+
+export function cupoAgotado(promocion) {
+  return promocion.cupo_max_diario != null && (promocion.cupo_restante ?? 1) <= 0
+}
+
+// HU-64 · Mensaje que ve el cliente en el carrito cuando la oferta agotó su cupo de hoy.
+export function mensajeCupoAgotado(nombre) {
+  return `«${nombre}» agotó su cupo de usos de hoy. El descuento no se aplicó; vuelve a intentarlo mañana.`
 }

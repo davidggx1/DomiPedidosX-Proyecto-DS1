@@ -1,6 +1,9 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { actualizarPromocion, crearPromocion } from '../../api/promociones.js'
 import { interpretarError } from '../../api/errores.js'
+import { listarSedes } from '../../api/sedes.js'
+import { useAuth } from '../../auth/useAuth.js'
+import { ROLES } from '../../auth/roles.js'
 import Alerta from '../ui/Alerta.jsx'
 import Boton from '../ui/Boton.jsx'
 import CampoTexto from '../ui/CampoTexto.jsx'
@@ -21,8 +24,26 @@ export default function FormularioPromocion({ promocion = null, alGuardar, alCan
   const [errores, setErrores] = useState({})
   const [errorGeneral, setErrorGeneral] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  // El administrador elige la sede al crear; el operador siempre crea en la suya.
+  const { usuario } = useAuth()
+  const debeElegirSede = !editando && usuario?.rol === ROLES.ADMINISTRADOR
+  const [sedes, setSedes] = useState([])
+  const [sedeId, setSedeId] = useState('')
   const idCondiciones = useId()
   const idDescripcion = useId()
+
+  useEffect(() => {
+    if (!debeElegirSede) return undefined
+    let activo = true
+    listarSedes()
+      .then((lista) => {
+        if (activo) setSedes(lista.filter((sede) => sede.activa))
+      })
+      .catch(() => {})
+    return () => {
+      activo = false
+    }
+  }, [debeElegirSede])
 
   function cambiar(evento) {
     const { name, value } = evento.target
@@ -41,6 +62,7 @@ export default function FormularioPromocion({ promocion = null, alGuardar, alCan
     setErrorGeneral(null)
 
     const erroresLocales = validarPromocion(datos)
+    if (debeElegirSede && !sedeId) erroresLocales.sede = 'Elige la sede de la promoción.'
     setErrores(erroresLocales)
     if (Object.keys(erroresLocales).length > 0) {
       setErrorGeneral('Revisa los campos marcados.')
@@ -50,10 +72,14 @@ export default function FormularioPromocion({ promocion = null, alGuardar, alCan
     setGuardando(true)
     try {
       const cuerpo = armarCuerpoPromocion(datos)
+      if (debeElegirSede) cuerpo.sede = Number(sedeId)
       const guardada = editando
         ? await actualizarPromocion(promocion.id, cuerpo)
         : await crearPromocion(cuerpo)
-      if (!editando) setDatos(datosIniciales(null))
+      if (!editando) {
+        setDatos(datosIniciales(null))
+        setSedeId('')
+      }
       alGuardar(guardada, editando)
     } catch (error) {
       const { general, campos } = interpretarError(error)
@@ -70,6 +96,23 @@ export default function FormularioPromocion({ promocion = null, alGuardar, alCan
       <h2 className="text-lg font-bold">{editando ? 'Editar promoción' : 'Nueva promoción'}</h2>
 
       {errorGeneral && <Alerta tipo="error" titulo={errorGeneral} />}
+
+      {debeElegirSede && (
+        <Selector
+          etiqueta="Sede"
+          opciones={[
+            { valor: '', etiqueta: 'Elige una sede…' },
+            ...sedes.map((sede) => ({ valor: String(sede.id), etiqueta: sede.nombre })),
+          ]}
+          requerido
+          value={sedeId}
+          onChange={(evento) => {
+            setSedeId(evento.target.value)
+            setErrores((actuales) => ({ ...actuales, sede: undefined }))
+          }}
+          error={errores.sede}
+        />
+      )}
 
       <CampoTexto
         etiqueta="Nombre"
@@ -138,6 +181,16 @@ export default function FormularioPromocion({ promocion = null, alGuardar, alCan
           error={errores.fecha_fin}
         />
       </div>
+
+      <CampoTexto
+        etiqueta="Cupo diario de usos"
+        name="cupo_max_diario"
+        inputMode="numeric"
+        ayuda="Máximo de pedidos por día que pueden usarla. Vacío = sin límite. Se reinicia a las 00:00."
+        value={datos.cupo_max_diario}
+        onChange={cambiar}
+        error={errores.cupo_max_diario}
+      />
 
       <div className="flex flex-col gap-1">
         <label htmlFor={idCondiciones} className="text-sm font-medium">
