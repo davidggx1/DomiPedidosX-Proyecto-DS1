@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import api from '../../api/cliente.js'
+import { conectarSocket } from '../../api/tiempoReal.js'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
@@ -15,7 +16,6 @@ export default function PedidosEntrantes() {
   const [estadoConexion, setEstadoConexion] = useState('conectando')
 
   const [pedidoAprobar, setPedidoAprobar] = useState(null)
-  const wsRef = useRef(null)
 
   // HU-60: capacity of the sede. The WebSocket updates it live, the request
   // every minute covers what no order event shows (a change of slot by the clock)
@@ -55,83 +55,48 @@ export default function PedidosEntrantes() {
     return () => { activo = false }
   }, [])
 
+  // Live orders of the sede. Same socket helper as the rest of the app: it reads
+  // the saved session and reconnects by itself
   useEffect(() => {
-    let reconexionTimeout = null
-
-    function conectarWS() {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-
-      if (!token) {
-        setEstadoConexion('desconectado')
-        return
-      }
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = window.location.hostname === 'localhost' ? '127.0.0.1:8000' : window.location.host
-      const wsUrl = `${protocol}//${host}/ws/pedidos/entrantes/?token=${token}`
-
-      const socket = new WebSocket(wsUrl)
-      wsRef.current = socket
-
-      socket.onopen = () => {
-        setEstadoConexion('conectado')
+    return conectarSocket('/ws/pedidos/entrantes/', {
+      alCambiarConexion: (conectado) => {
+        setEstadoConexion(conectado ? 'conectado' : 'desconectado')
         // events sent while the socket was down were lost
-        refrescarCapacidad()
-      }
-
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-
-          const capacidadNueva = capacidadDeEvento(data)
-          if (capacidadNueva) {
-            actualizarCapacidad(capacidadNueva)
-            return
-          }
-
-          const { tipo, pedido } = data
-
-          if (tipo === 'pedido_nuevo') {
-            setPedidos((prev) => {
-              if (prev.some((p) => p.id === pedido.id)) return prev
-              return [...prev, pedido]
-            })
-          } else if (tipo === 'pedido_actualizado') {
-            setPedidos((prev) => {
-              if (pedido.estado !== 'pendiente_aprobacion') {
-                return prev.filter((p) => p.id !== pedido.id)
-              }
-              return prev.map((p) => (p.id === pedido.id ? pedido : p))
-            })
-          }
-        } catch (e) {
-          console.error('Error procesando evento WS:', e)
-        }
-      }
-
-      socket.onerror = () => setEstadoConexion('desconectado')
-
-      socket.onclose = (event) => {
-        setEstadoConexion('desconectado')
-        if (event.code === 4401) {
-          setError('Tu sesión o token ha expirado (4401). Intenta recargar la página.')
+        if (conectado) refrescarCapacidad()
+      },
+      alReconectar: cargar,
+      alRechazar: (codigo) => {
+        setError(
+          codigo === 4401
+            ? 'Tu sesión expiró. Inicia sesión de nuevo para recibir pedidos en vivo.'
+            : 'No tienes permisos o sede asignada para ver pedidos entrantes.',
+        )
+      },
+      alMensaje: (data) => {
+        const capacidadNueva = capacidadDeEvento(data)
+        if (capacidadNueva) {
+          actualizarCapacidad(capacidadNueva)
           return
         }
-        if (event.code === 4403) {
-          setError('No tienes permisos o sede asignada para ver pedidos entrantes (4403).')
-          return
+
+        const { tipo, pedido } = data
+
+        if (tipo === 'pedido_nuevo') {
+          setPedidos((prev) => {
+            if (prev.some((p) => p.id === pedido.id)) return prev
+            return [...prev, pedido]
+          })
+        } else if (tipo === 'pedido_actualizado') {
+          setPedidos((prev) => {
+            if (pedido.estado !== 'pendiente_aprobacion') {
+              return prev.filter((p) => p.id !== pedido.id)
+            }
+            return prev.map((p) => (p.id === pedido.id ? pedido : p))
+          })
         }
-        reconexionTimeout = window.setTimeout(conectarWS, 5000)
-      }
-    }
-
-    conectarWS()
-
-    return () => {
-      if (reconexionTimeout) window.clearTimeout(reconexionTimeout)
-      if (wsRef.current) wsRef.current.close()
-    }
-  }, [actualizarCapacidad, refrescarCapacidad])
+      },
+    })
+  }, [actualizarCapacidad, refrescarCapacidad, cargar])
 
   const confirmarAprobacion = async () => {
     if (!pedidoAprobar) return

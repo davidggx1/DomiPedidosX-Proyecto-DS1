@@ -25,7 +25,8 @@ export function urlSocket(ruta, token, base = api.defaults.baseURL) {
 // - alMensaje(datos): every message, already parsed
 // - alReconectar(): the connection came back; reload so no change is lost
 // - alCambiarConexion(conectado): to show the user if the page is live
-export function conectarSocket(ruta, { alMensaje, alReconectar, alCambiarConexion } = {}) {
+// - alRechazar(codigo): the server refused it (4401 no session, 4403 no permission)
+export function conectarSocket(ruta, { alMensaje, alReconectar, alCambiarConexion, alRechazar } = {}) {
   let socket
   let temporizador
   let intento = 0
@@ -41,7 +42,11 @@ export function conectarSocket(ruta, { alMensaje, alReconectar, alCambiarConexio
     socket.addEventListener('message', (evento) => alMensaje?.(JSON.parse(evento.data)))
     socket.addEventListener('close', (evento) => {
       alCambiarConexion?.(false)
-      if (cerrado || SIN_PERMISO.includes(evento.code)) return
+      if (cerrado) return
+      if (SIN_PERMISO.includes(evento.code)) {
+        alRechazar?.(evento.code)
+        return
+      }
       temporizador = setTimeout(abrir, esperaReconexion(intento))
       intento += 1
     })
