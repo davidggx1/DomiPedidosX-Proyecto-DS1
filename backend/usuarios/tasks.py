@@ -20,13 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def enviar_correo(self, asunto, mensaje, destinatarios):
+def enviar_correo(self, asunto, mensaje, destinatarios, html=None):
     try:
         send_mail(
             subject=asunto,
             message=mensaje,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=list(destinatarios),
+            html_message=html,
         )
     except Exception as error:
         if self.request.is_eager or self.request.retries >= self.max_retries:
@@ -36,10 +37,13 @@ def enviar_correo(self, asunto, mensaje, destinatarios):
         raise self.retry(exc=error)
 
 
-def encolar_correo(asunto, mensaje, destinatarios):
-    """Manda el correo a la cola (o lo envía en el momento si no hay Redis)."""
+def encolar_correo(asunto, mensaje, destinatarios, html=None):
+    """
+    Manda el correo a la cola (o lo envía en el momento si no hay Redis).
+    `mensaje` es el texto plano; `html` (opcional) es la versión con formato (HU-50).
+    """
     try:
-        enviar_correo.delay(asunto, mensaje, list(destinatarios))
+        enviar_correo.delay(asunto, mensaje, list(destinatarios), html)
     except Exception:
         logger.exception("No se pudo encolar el correo %r; se envía en el momento", asunto)
-        enviar_correo.apply(args=(asunto, mensaje, list(destinatarios)))
+        enviar_correo.apply(args=(asunto, mensaje, list(destinatarios), html))

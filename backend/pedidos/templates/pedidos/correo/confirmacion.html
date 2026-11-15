@@ -1,0 +1,28 @@
+{% extends "pedidos/correo/base.html" %}
+{% block titular %}¡Recibimos tu pedido!{% endblock %}
+{% block contenido %}
+<p style="margin:0 0 12px;">Tu número de orden es <strong>{{ numero }}</strong>. {{ sede }} lo revisará y te avisaremos cuando lo aprueben.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
+  {% for item in items %}
+  <tr>
+    <td style="padding:6px 0;border-bottom:1px solid #e4e4e7;">
+      {{ item.cantidad }} x {{ item.nombre }}
+      {% for adicion in item.adiciones %}<br><span style="color:#71717a;font-size:13px;">+ {{ adicion }}</span>{% endfor %}
+      {% if item.observaciones %}<br><span style="color:#71717a;font-size:13px;">{{ item.observaciones }}</span>{% endif %}
+    </td>
+    <td align="right" style="padding:6px 0;border-bottom:1px solid #e4e4e7;white-space:nowrap;">{{ item.subtotal }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if factura %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0;">
+  <tr><td>Subtotal</td><td align="right">{{ factura.subtotal }}</td></tr>
+  <tr><td>IVA</td><td align="right">{{ factura.iva }}</td></tr>
+  {% if factura.descuento %}<tr><td>Descuento</td><td align="right">-{{ factura.descuento }}</td></tr>{% endif %}
+  <tr><td>Domicilio</td><td align="right">{{ factura.domicilio }}</td></tr>
+  <tr><td style="padding-top:6px;"><strong>Total</strong></td><td align="right" style="padding-top:6px;"><strong>{{ factura.total }}</strong></td></tr>
+</table>
+<p style="margin:8px 0;color:#52525b;">Pago: {{ factura.metodo_pago }}{% if factura.pagada %} (pagado){% endif %}</p>
+{% endif %}
+{% if direccion %}<p style="margin:8px 0;color:#52525b;">Entrega en: {{ direccion }}{% if tiempo_estimado %} · tiempo estimado: {{ tiempo_estimado }} min{% endif %}</p>{% endif %}
+{% endblock %}

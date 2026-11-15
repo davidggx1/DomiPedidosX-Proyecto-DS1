@@ -22,7 +22,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from usuarios.roles import ADMINISTRADOR
-from usuarios.tasks import encolar_correo
 
 from .estados import TransicionInvalida, cambiar_estado
 from .models import EstadoPedido, Notificacion, Pedido, TipoNotificacion
@@ -55,18 +54,7 @@ def _avisar_al_cliente(pedido, motivo):
         mensaje=f"Tu pedido {pedido.numero_pedido} fue cancelado porque la sede no lo aprobó a tiempo.",
         tipo=TipoNotificacion.PEDIDO_CANCELADO,
     )
-    mensaje = "\n".join([
-        f"Hola {cliente.nombres},",
-        "",
-        f"Tu pedido {pedido.numero_pedido} de {pedido.sede.nombre} fue cancelado porque la sede "
-        f"no lo aprobó en {settings.PEDIDO_PENDIENTE_MINUTOS} minutos.",
-        "No se te cobrará nada. Puedes volver a pedir cuando quieras.",
-        "",
-        "DomiPedidosX",
-    ])
-    transaction.on_commit(
-        lambda: encolar_correo(f"Pedido {pedido.numero_pedido} cancelado", mensaje, [cliente.usuario.email])
-    )
+    # El correo lo envía pedidos/correos.py (HU-50) al pasar a "cancelado".
 
 
 def vencer_pendientes(ahora=None):

@@ -1,0 +1,10 @@
+{% autoescape off %}Hola {{ cliente }},
+
+{{ titular }}
+{{ mensaje }}
+{% if cancelado %}Motivo: {{ motivo|default:"No se indicó un motivo." }}
+{% if factura.pagada %}Como ya estaba pagado, comunícate con la sede para el reembolso.
+{% endif %}{% endif %}
+Sigue tu pedido: {{ enlace }}
+
+DomiPedidosX{% endautoescape %}

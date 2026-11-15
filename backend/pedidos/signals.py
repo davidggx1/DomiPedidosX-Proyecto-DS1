@@ -9,6 +9,7 @@ from sedes.notificaciones import avisar_cancelacion
 
 from .asignacion import asignacion_cambiada
 from .consumers import grupo_repartidor
+from .correos import enviar_correo_estado
 from .estados import estado_pedido_cambiado
 from .models import EstadoPedido
 from .repartidores_estado import avisar_estado_repartidores
@@ -112,6 +113,17 @@ def avisar_cancelacion_a_la_sede(sender, pedido, estado_anterior, usuario, **kwa
         return
     # La señal ya llega después del commit (estados.cambiar_estado)
     avisar_cancelacion(pedido, usuario)
+
+
+# --- Cliente: correo en cada cambio de estado relevante (HU-50) ------------------
+
+
+@receiver(estado_pedido_cambiado)
+def avisar_estado_al_cliente_por_correo(sender, pedido, estado_anterior, usuario, **kwargs):
+    """Aprobado, en preparación, en camino, entregado y cancelado (con su motivo)."""
+    # La señal ya llega después del commit (estados.cambiar_estado); el correo va a la
+    # cola y un fallo solo queda en el log (correos.enviar_correo_estado no lanza).
+    enviar_correo_estado(pedido)
 
 
 # --- Operador: tablero de repartidores en tiempo real (HU-37) ---------------------

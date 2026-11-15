@@ -1,0 +1,20 @@
+{% autoescape off %}Hola {{ cliente }},
+
+¡Recibimos tu pedido! Tu número de orden es {{ numero }}.
+{{ sede }} lo revisará y te avisaremos cuando lo aprueben.
+
+{% for item in items %}- {{ item.cantidad }} x {{ item.nombre }}: {{ item.subtotal }}
+{% for adicion in item.adiciones %}    + {{ adicion }}
+{% endfor %}{% endfor %}{% if factura %}
+Subtotal: {{ factura.subtotal }}
+IVA: {{ factura.iva }}
+{% if factura.descuento %}Descuento: -{{ factura.descuento }}
+{% endif %}Domicilio: {{ factura.domicilio }}
+Total: {{ factura.total }}
+Pago: {{ factura.metodo_pago }}{% if factura.pagada %} (pagado){% endif %}
+{% endif %}{% if direccion %}
+Entrega en: {{ direccion }}{% if tiempo_estimado %} (tiempo estimado: {{ tiempo_estimado }} min){% endif %}
+{% endif %}
+Sigue tu pedido: {{ enlace }}
+
+DomiPedidosX{% endautoescape %}

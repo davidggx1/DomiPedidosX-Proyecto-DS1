@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from menu.models import Producto, ProductoTamano, Adicion, Insumo
 from usuarios.models import Cliente, DireccionEntrega
 from . import capacidad
+from .correos import enviar_correo_confirmacion
 from .models import (
     Pedido,
     DetallePedido,
@@ -133,5 +134,8 @@ def crear_pedido_operador(usuario_operador, datos):
             metodo_pago=datos["metodo_pago"],
             estado_factura=EstadoFactura.PAGADA if origen == OrigenPedido.MOSTRADOR else EstadoFactura.PENDIENTE,
         )
+
+        # HU-50: si el pedido tiene cliente con correo, recibe la confirmación.
+        transaction.on_commit(lambda: enviar_correo_confirmacion(pedido))
 
         return pedido, factura
