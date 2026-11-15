@@ -164,6 +164,8 @@ def _preparar_carrito(items, sede):
     cant_producto, cant_cupo = defaultdict(int), defaultdict(int)
     cant_insumo = defaultdict(lambda: CERO)
     insumos_adicion = {}
+    # Nombre que el cliente eligió (p. ej. "Queso extra") por insumo que consume.
+    nombres_adicion = defaultdict(set)
     quien = defaultdict(set)
     nombres_item = {}
 
@@ -232,6 +234,7 @@ def _preparar_carrito(items, sede):
 
             for adicion, _ in extras:
                 insumos_adicion[adicion.insumo_id] = adicion.insumo.nombre
+                nombres_adicion[adicion.insumo_id].add(adicion.nombre)
                 quien[("a", adicion.insumo_id)].add(idx)
             pedir_producto(idx, producto, cantidad, {i.pk for i in excluidos})
 
@@ -312,7 +315,9 @@ def _preparar_carrito(items, sede):
     for iid in insumos_adicion:
         inv = inv_insumo.get(iid)
         if inv is None or not inv.disponible or inv.stock_actual <= 0:
-            error_para(("a", iid), "Una adición está agotada.")
+            nombres = sorted(nombres_adicion[iid])
+            etiqueta = "Adición agotada" if len(nombres) == 1 else "Adiciones agotadas"
+            error_para(("a", iid), f"{etiqueta}: {', '.join(nombres)}.")
 
     # Cupo diario de combos (no cuenta pedidos cancelados: el cupo se devuelve).
     consumos = []
