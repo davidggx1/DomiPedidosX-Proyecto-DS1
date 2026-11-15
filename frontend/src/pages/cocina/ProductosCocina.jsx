@@ -10,6 +10,9 @@ import { horaExacta } from '../../utils/tiempo.js'
 
 // how often the list asks the server for changes (same as the kitchen board)
 const INTERVALO_MS = 10000
+// how long the confirmation and the "available again" notice stay on screen
+const DURACION_MENSAJE_MS = 6000
+const DURACION_REACTIVADOS_MS = 10000
 
 // HU-17 · Products of the kitchen's sede. Cocina marks one as sold out when
 // an ingredient runs out: it leaves the menu of the sede and the operator is warned.
@@ -39,6 +42,7 @@ export default function ProductosCocina() {
           setErrorCarga(null)
           if (nuevos.length > 0) {
             setReactivados((lista) => [...lista.filter((nombre) => !nuevos.includes(nombre)), ...nuevos])
+            setMensaje(null) // an old "sold out" confirmation would contradict this notice
           }
         })
         .catch((error) => {
@@ -54,6 +58,20 @@ export default function ProductosCocina() {
     }
   }, [recarga])
 
+  // the success confirmation closes by itself; errors stay until the next action
+  useEffect(() => {
+    if (mensaje?.tipo !== 'exito') return
+    const temporizador = setTimeout(() => setMensaje(null), DURACION_MENSAJE_MS)
+    return () => clearTimeout(temporizador)
+  }, [mensaje])
+
+  // the "available again" notice also closes by itself (or with "Entendido")
+  useEffect(() => {
+    if (reactivados.length === 0) return
+    const temporizador = setTimeout(() => setReactivados([]), DURACION_REACTIVADOS_MS)
+    return () => clearTimeout(temporizador)
+  }, [reactivados])
+
   const visibles = useMemo(() => filtrarProductosCocina(productos ?? [], busqueda), [productos, busqueda])
   const cerrarConfirmacion = useCallback(() => setConfirmando(null), [])
 
@@ -64,7 +82,7 @@ export default function ProductosCocina() {
       const reporte = await marcarAgotado(producto.id)
       setMensaje({
         tipo: 'exito',
-        texto: `"${reporte.producto_nombre}" salió del menú y se avisó al operador. Reportado a las ${horaExacta(reporte.fecha_hora)}`,
+        texto: `${reporte.producto_nombre} salió del menú y se avisó al operador. Reportado a las ${horaExacta(reporte.fecha_hora)}`,
       })
     } catch (error) {
       setMensaje({ tipo: 'error', texto: interpretarError(error).general })
@@ -91,7 +109,7 @@ export default function ProductosCocina() {
           tipo="exito"
           titulo={
             reactivados.length === 1
-              ? `"${reactivados[0]}" vuelve a estar disponible.`
+              ? `${reactivados[0]} vuelve a estar disponible.`
               : `Vuelven a estar disponibles: ${reactivados.join(', ')}.`
           }
         >

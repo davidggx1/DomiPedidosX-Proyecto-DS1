@@ -203,7 +203,7 @@ class MarcarAgotadoView(APIView):
             )
             if not disponibilidad_en_sede(sede, [producto])[producto.pk]:
                 return Response(
-                    {"detail": f'"{producto.nombre}" ya no está disponible en esta sede.', "codigo": "ya_agotado"},
+                    {"detail": f"{producto.nombre} ya no está disponible en esta sede.", "codigo": "ya_agotado"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             # Disponible implica que la fila existe (sin fila no se vende en la sede).
