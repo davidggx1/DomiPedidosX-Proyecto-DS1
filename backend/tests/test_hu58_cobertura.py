@@ -93,3 +93,33 @@ class TestHU58ValidacionCobertura:
         assert response.data["cubierto"] is True
         # Debe asignar a Sede Norte por ser más cercana al punto (dist ~0.55km vs ~1.1km)
         assert response.data["sede"]["id"] == self.sede_norte.id
+    # --- Con la sede del carrito (sede_id): la respuesta es sobre esa sede ---------
+
+    def test_con_sede_del_carrito_que_cubre_responde_por_ella_aunque_no_sea_la_mas_cercana(self):
+        # Cubierto por ambas; la más cercana es Norte, pero el carrito es de San Fernando
+        payload = {"latitud": 3.460, "longitud": -76.529, "sede_id": self.sede_san_fernando.id}
+        response = self.client.post('/api/sedes/validar-cobertura/', payload)
+
+        assert response.data["cubierto"] is True
+        assert response.data["sede"]["id"] == self.sede_san_fernando.id
+        assert response.data["sede"]["tarifa_domicilio"] == 3000.0
+
+    def test_con_sede_del_carrito_que_no_cubre_sugiere_la_que_si(self):
+        # A ~2.5 km de San Fernando (radio 3) y ~4.1 km de Norte (radio 4)
+        payload = {"latitud": 3.428, "longitud": -76.531, "sede_id": self.sede_norte.id}
+        response = self.client.post('/api/sedes/validar-cobertura/', payload)
+
+        assert response.data["cubierto"] is False
+        assert response.data["codigo"] == "otra_sede"
+        assert response.data["sede_sugerida"] == {"id": self.sede_san_fernando.id, "nombre": "Sede San Fernando"}
+        assert response.data["mensaje"].startswith(
+            "Tu carrito es de Sede Norte, pero esta dirección la atiende Sede San Fernando."
+        )
+
+    def test_con_sede_del_carrito_y_ninguna_sede_cubre_se_mantiene_el_mensaje(self):
+        payload = {"latitud": 3.600, "longitud": -76.700, "sede_id": self.sede_norte.id}
+        response = self.client.post('/api/sedes/validar-cobertura/', payload)
+
+        assert response.data["cubierto"] is False
+        assert "fuera de nuestra zona" in response.data["mensaje"]
+        assert "codigo" not in response.data

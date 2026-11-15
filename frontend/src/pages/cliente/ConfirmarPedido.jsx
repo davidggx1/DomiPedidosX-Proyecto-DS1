@@ -61,7 +61,8 @@ export default function ConfirmarPedido() {
     if (dirObj.latitud && dirObj.longitud) {
       setValidandoCobertura(true)
       try {
-        const res = await validarCoberturaDireccion(dirObj.latitud, dirObj.longitud)
+        // against the sede of the cart: it is the one the order goes to
+        const res = await validarCoberturaDireccion(dirObj.latitud, dirObj.longitud, sedeActual)
         setCoberturaInfo(res)
         if (!res.cubierto) {
           setMensaje({ tipo: 'error', texto: res.mensaje })
@@ -72,7 +73,7 @@ export default function ConfirmarPedido() {
         setValidandoCobertura(false)
       }
     }
-  }, [])
+  }, [sedeActual])
 
   useEffect(() => {
     let activo = true
@@ -335,6 +336,12 @@ export default function ConfirmarPedido() {
 
           {validandoCobertura && (
             <p className="mt-1 text-xs text-texto-suave">Validando cobertura de la dirección...</p>
+          )}
+
+          {coberturaInfo?.codigo === 'otra_sede' && (
+            <Link to="/menu" className="mt-2 inline-block text-sm font-medium text-marca-clara underline">
+              Ir al menú para cambiar a {coberturaInfo.sede_sugerida.nombre}
+            </Link>
           )}
 
           {coberturaInfo && coberturaInfo.cubierto && (

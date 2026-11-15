@@ -32,7 +32,7 @@ export default function Carrito() {
   const [actualizando, setActualizando] = useState(null)
   const [aviso, setAviso] = useState(null)
   // HU-22: el domicilio sale de la zona de la dirección del cliente (no de una tarifa fija).
-  const { pedidoMinimo, tarifaDomicilio } = useZonaEntrega()
+  const { pedidoMinimo, tarifaDomicilio } = useZonaEntrega(sedeId)
   const faltante = faltanteMinimo(subtotal, pedidoMinimo)
   const costoDomicilio = domicilioDeZona(subtotal, tarifaDomicilio)
   const total = totalCarrito(subtotal, costoDomicilio ?? 0)
