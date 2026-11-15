@@ -7,7 +7,7 @@ HU-25 · El cliente cancela su pedido antes de que entre a preparación.
   "Cancelado", criterio 4) y devuelve el stock retenido (criterio 3).
 - El cupo de la sede se libera solo: la capacidad cuenta los pedidos
   "recibido" y "en preparación", y el cupo de combos ignora los cancelados.
-- Al confirmarse la transacción se envía el correo de confirmación.
+- El correo de cancelación lo envía pedidos/correos.py (HU-50) al cambiar el estado.
 """
 import logging
 
@@ -19,10 +19,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from usuarios.permissions import EsCliente
-from usuarios.tasks import encolar_correo
 
 from .estados import CLIENTE, ESTADOS_FINALES, TransicionInvalida, cambiar_estado, siguientes_estados
-from .models import EstadoFactura, EstadoPedido, Notificacion, TipoNotificacion
+from .models import EstadoPedido, Notificacion, TipoNotificacion
 from .serializers import EstadoPedidoSerializer
 from .stock import reintegrar_stock
 from .views import pedidos_visibles
@@ -30,22 +29,6 @@ from .views import pedidos_visibles
 logger = logging.getLogger(__name__)
 
 MOTIVO_CLIENTE = "Cancelado por el cliente."
-
-
-def enviar_correo_cancelacion(pedido):
-    """Correo de confirmación de la cancelación. Un fallo del correo no deshace la cancelación."""
-    usuario = pedido.cliente.usuario
-    lineas = [
-        f"Hola {pedido.cliente.nombres},",
-        "",
-        f"Tu pedido {pedido.numero_pedido} de {pedido.sede.nombre} fue cancelado como lo pediste.",
-    ]
-    factura = getattr(pedido, "factura", None)
-    if factura is not None and factura.estado_factura == EstadoFactura.PAGADA:
-        lineas.append("Como ya estaba pagado, comunícate con la sede para el reembolso.")
-    lineas += ["", "DomiPedidosX"]
-    # Va por la cola de correos (SCRUM-119); un fallo no deshace la cancelación.
-    encolar_correo(f"Pedido {pedido.numero_pedido} cancelado", "\n".join(lineas), [usuario.email])
 
 
 def cancelar_pedido_cliente(pedido, usuario):
@@ -68,7 +51,6 @@ def cancelar_pedido_cliente(pedido, usuario):
             mensaje=f"Cancelaste el pedido {pedido.numero_pedido}.",
             tipo=TipoNotificacion.PEDIDO_CANCELADO,
         )
-        transaction.on_commit(lambda: enviar_correo_cancelacion(pedido))
     return pedido
 
 

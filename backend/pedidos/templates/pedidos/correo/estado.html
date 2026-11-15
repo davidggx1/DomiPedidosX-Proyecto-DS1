@@ -1,0 +1,9 @@
+{% extends "pedidos/correo/base.html" %}
+{% block titular %}{{ titular }}{% endblock %}
+{% block contenido %}
+<p style="margin:0 0 12px;">{{ mensaje }}</p>
+{% if cancelado %}
+<p style="margin:0 0 12px;"><strong>Motivo:</strong> {{ motivo|default:"No se indicó un motivo." }}</p>
+{% if factura.pagada %}<p style="margin:0 0 12px;">Como ya estaba pagado, comunícate con la sede para el reembolso.</p>{% endif %}
+{% endif %}
+{% endblock %}

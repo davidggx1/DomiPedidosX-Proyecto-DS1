@@ -23,6 +23,7 @@ from sedes.models import Sede, ZonaCobertura
 from sedes.geometria import contiene_punto
 from usuarios.models import DireccionEntrega
 from . import capacidad
+from .correos import enviar_correo_confirmacion
 from .eventos import notificar_pedido
 from .models import (
     ConsumoCupoCombo,
@@ -470,6 +471,8 @@ def confirmar_pedido(*, usuario, cliente, datos):
     # Se envía al confirmarse la transacción (on_commit): el operador solo lo ve
     # si el pedido quedó guardado completo.
     notificar_pedido(pedido)
+    # HU-50: correo de confirmación al cliente, también después del commit.
+    transaction.on_commit(lambda: enviar_correo_confirmacion(pedido))
     return pedido, factura
 
 

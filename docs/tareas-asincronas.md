@@ -4,10 +4,25 @@ El backend usa **Celery** para el trabajo que no debe hacer esperar al usuario, 
 
 | Tarea | Qué hace | Cuándo |
 |---|---|---|
-| `usuarios.tasks.enviar_correo` | Envía un correo. Si el servidor de correo falla, reintenta 3 veces (cada minuto). | Restablecer contraseña (HU-05), cancelación (HU-25), base de los correos de estado (HU-50) |
+| `usuarios.tasks.enviar_correo` | Envía un correo. Si el servidor de correo falla, reintenta 3 veces (cada minuto). | Restablecer contraseña (HU-05), cancelación (HU-25), correos de estado del pedido (HU-50) |
 | `pedidos.tasks.vencer_pedidos_pendientes` | Cancela los pedidos que llevan más de `PEDIDO_PENDIENTE_MINUTOS` sin que la sede los apruebe. Devuelve su stock y libera su cupo de capacidad. Avisa al cliente. | Cada minuto (Celery beat) |
 
 Un correo que falla **nunca** rompe la acción que lo pidió: solo queda en el log.
+
+## Correos de estado del pedido (HU-50)
+
+El cliente recibe un correo (texto y HTML) cuando su pedido:
+
+| Momento | Asunto |
+|---|---|
+| Se confirma (con productos, domicilio, total y número de orden) | `Recibimos tu pedido PED-...` |
+| La sede lo aprueba | `Pedido ... aprobado` |
+| Pasa a preparación | `Pedido ... en preparación` |
+| Sale a entregarse | `Pedido ... en camino` |
+| Se entrega | `Pedido ... entregado` |
+| Se cancela (cliente, sede o por vencimiento), con el motivo | `Pedido ... cancelado` |
+
+Los pasos internos (listo para despacho, recogido) no se avisan. El código está en `backend/pedidos/correos.py` y las plantillas en `backend/pedidos/templates/pedidos/correo/`. Los pedidos de mostrador sin cliente no envían nada.
 
 ## Sin Redis (lo normal en desarrollo)
 
