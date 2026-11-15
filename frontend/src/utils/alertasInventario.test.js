@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   alertaDeEvento,
   aplicarEvento,
+  aplicarEventoAgotado,
   avisoDeAgotado,
   avisoDeCancelacionCocina,
   avisoDeEvento,
@@ -97,7 +98,7 @@ describe('aviso de agotado reportado por cocina (HU-17)', () => {
     expect(aviso.titulo).toBe('Agotado por cocina: Clásica')
     expect(aviso.texto).toContain('Carla Gómez')
     expect(aviso.texto).toMatch(/\d{2}:\d{2}:\d{2}/)
-    expect(aviso.enlace).toBe('/operador/productos')
+    expect(aviso.enlace).toBe('/operador/inventario')
   })
 
   it('ignora cualquier otro mensaje', () => {
@@ -127,5 +128,26 @@ describe('aviso de pedido cancelado por error de cocina (HU-33)', () => {
   it('ignora cualquier otro mensaje', () => {
     expect(avisoDeCancelacionCocina({ tipo: 'producto_agotado', reporte: {} })).toBeNull()
     expect(avisoDeCancelacionCocina({ tipo: 'pedido_cancelado_cocina' })).toBeNull()
+  })
+})
+
+describe('lista de agotados pendientes (HU-17)', () => {
+  const clasica = { id: 1, producto_nombre: 'Clásica' }
+  const doble = { id: 2, producto_nombre: 'Doble' }
+
+  it('agrega el reporte nuevo primero y sin repetir', () => {
+    const lista = aplicarEventoAgotado([clasica], { tipo: 'producto_agotado', reporte: doble })
+    expect(lista).toEqual([doble, clasica])
+    expect(aplicarEventoAgotado(lista, { tipo: 'producto_agotado', reporte: doble })).toEqual([doble, clasica])
+  })
+
+  it('saca los reportes resueltos', () => {
+    const lista = aplicarEventoAgotado([doble, clasica], { tipo: 'agotado_resuelto', reportes: [2] })
+    expect(lista).toEqual([clasica])
+  })
+
+  it('ignora otros mensajes', () => {
+    const lista = [clasica]
+    expect(aplicarEventoAgotado(lista, { tipo: 'pedido_nuevo', pedido: {} })).toBe(lista)
   })
 })

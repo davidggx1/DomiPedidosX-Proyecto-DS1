@@ -184,3 +184,77 @@ def test_cocina_sin_sede_no_puede_reportar(producto, avisos):
 
 def test_sin_sesion_no_puede_reportar(producto):
     assert APIClient().post(url_agotado(producto)).status_code == 401
+
+
+# --- Lista de agotados pendientes del operador -----------------------------------
+
+AGOTADOS = "/api/inventario/agotados/"
+
+
+def test_el_operador_ve_los_agotados_pendientes_de_su_sede(cocina, producto, centro, sur, avisos):
+    reporte = cocina.post(url_agotado(producto)).data
+    operador = api_de(crear_usuario("op.centro@correo.com", "operador", centro, "401"))
+    operador_sur = api_de(crear_usuario("op.sur@correo.com", "operador", sur, "402"))
+
+    respuesta = operador.get(AGOTADOS)
+
+    assert respuesta.status_code == 200
+    assert respuesta.data == [reporte]
+    assert respuesta.data[0]["resuelto_en"] is None
+    assert operador_sur.get(AGOTADOS).data == []
+
+
+def test_cocina_y_clientes_no_ven_la_lista(cocina, avisos):
+    assert cocina.get(AGOTADOS).status_code == 403
+    assert APIClient().get(AGOTADOS).status_code == 401
+
+
+def test_al_reactivar_el_producto_el_reporte_se_resuelve_y_se_avisa(
+    cocina, producto, centro, avisos, django_capture_on_commit_callbacks
+):
+    reporte = cocina.post(url_agotado(producto)).data
+    operador = api_de(crear_usuario("op.centro@correo.com", "operador", centro, "401"))
+
+    with django_capture_on_commit_callbacks(execute=True):
+        r = operador.patch(
+            f"/api/menu/productos/{producto.id}/disponibilidad/",
+            {"sede": centro.id, "disponible": True},
+            format="json",
+        )
+
+    assert r.status_code == 200
+    assert ReporteAgotado.objects.get().resuelto_en is not None
+    assert operador.get(AGOTADOS).data == []
+    grupo, evento = avisos.return_value.call_args.args
+    assert grupo == f"pedidos_sede_{centro.id}"
+    assert evento["data"] == {
+        "tipo": "agotado_resuelto", "reportes": [reporte["id"]], "producto": producto.id, "sede": centro.id,
+    }
+    # Ya se puede volver a reportar
+    assert cocina.post(url_agotado(producto)).status_code == 201
+
+
+def test_otros_guardados_del_inventario_no_resuelven_el_reporte(cocina, producto, centro, avisos):
+    cocina.post(url_agotado(producto))
+    inventario = InventarioProducto.objects.get(sede=centro, producto=producto)
+    inventario.stock_minimo = 3
+    inventario.save(update_fields=["stock_minimo"])
+
+    assert ReporteAgotado.objects.get().resuelto_en is None
+
+
+def test_un_producto_eliminado_sale_de_la_lista(cocina, producto, centro, avisos):
+    cocina.post(url_agotado(producto))
+    Producto.objects.filter(pk=producto.pk).update(activo=False)
+    operador = api_de(crear_usuario("op.centro@correo.com", "operador", centro, "401"))
+
+    assert operador.get(AGOTADOS).data == []
+
+
+def test_un_producto_con_varios_reportes_pendientes_aparece_una_vez(cocina, cocinero, producto, centro, avisos):
+    viejo = ReporteAgotado.objects.create(sede=centro, producto=producto, usuario=cocinero)
+    nuevo = cocina.post(url_agotado(producto)).data
+    operador = api_de(crear_usuario("op.centro@correo.com", "operador", centro, "401"))
+
+    assert [r["id"] for r in operador.get(AGOTADOS).data] == [nuevo["id"]]
+    assert nuevo["id"] != viejo.pk

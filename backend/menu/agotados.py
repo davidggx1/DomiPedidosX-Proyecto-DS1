@@ -12,16 +12,23 @@ chocar con los cambios de gestión del menú en views.py.
   confirmarse la transacción, se avisa por WebSocket a los operadores de la sede
   por el mismo socket del panel (criterio 2).
 - Volver a habilitarlo es tarea del operador con la disponibilidad (HU-13).
+  Cuando la fila vuelve a quedar disponible, el reporte se marca resuelto y
+  los operadores reciben "agotado_resuelto" para sacarlo de su lista.
+- El operador ve los reportes pendientes en su Inventario, aunque no estuviera
+  conectado cuando llegó el aviso.
 
-API (solo rol cocina con sede asignada):
-    GET  /api/menu/cocina/productos/?q=<texto>
-    POST /api/menu/cocina/productos/<id>/agotado/
+API:
+    GET  /api/menu/cocina/productos/?q=<texto>       cocina
+    POST /api/menu/cocina/productos/<id>/agotado/    cocina
+    GET  /api/inventario/agotados/?sede=<id>         operador (su sede) / administrador
 """
 import logging
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db import transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -33,11 +40,14 @@ from inventario.models import InventarioInsumo, InventarioProducto, ReporteAgota
 from usuarios.roles import COCINA, nombre_para_mostrar, obtener_rol, obtener_sede
 
 from .catalogo import producto_disponible
+from .disponibilidad import sedes_que_gestiona
 from .models import Producto
+from .permissions import EsPersonalDeMenu
 
 logger = logging.getLogger(__name__)
 
 TIPO_EVENTO = "producto_agotado"
+TIPO_EVENTO_RESUELTO = "agotado_resuelto"
 
 
 class EsCocinaConSede(permissions.BasePermission):
@@ -62,13 +72,13 @@ def datos_reporte(reporte):
         "usuario": reporte.usuario_id,
         "usuario_nombre": nombre_para_mostrar(reporte.usuario),
         "fecha_hora": timezone.localtime(reporte.fecha_hora).isoformat(),
+        "resuelto_en": timezone.localtime(reporte.resuelto_en).isoformat() if reporte.resuelto_en else None,
     }
 
 
-def avisar_operadores(reporte):
-    """Envía el reporte a los operadores de la sede. Un fallo del canal no deshace el reporte."""
-    evento = {"type": "pedido.evento", "data": {"tipo": TIPO_EVENTO, "reporte": datos_reporte(reporte)}}
-    sede_id = reporte.sede_id
+def enviar_a_operadores(sede_id, datos):
+    """Envía `datos` a los operadores de la sede al confirmarse la transacción. Nunca rompe la acción."""
+    evento = {"type": "pedido.evento", "data": datos}
 
     def enviar():
         try:
@@ -77,9 +87,33 @@ def avisar_operadores(reporte):
 
             async_to_sync(get_channel_layer().group_send)(grupo_sede(sede_id), evento)
         except Exception:
-            logger.exception("No se pudo avisar el agotado %s", reporte.pk)
+            logger.exception("No se pudo enviar el aviso %s a la sede %s", datos.get("tipo"), sede_id)
 
     transaction.on_commit(enviar)
+
+
+def avisar_operadores(reporte):
+    """Envía el reporte nuevo a los operadores de la sede (criterio 2)."""
+    enviar_a_operadores(reporte.sede_id, {"tipo": TIPO_EVENTO, "reporte": datos_reporte(reporte)})
+
+
+@receiver(post_save, sender=InventarioProducto)
+def resolver_agotados(sender, instance, **kwargs):
+    """Si el producto vuelve a estar disponible en la sede, sus reportes pendientes se resuelven."""
+    campos = kwargs.get("update_fields")
+    if not instance.disponible or (campos is not None and "disponible" not in campos):
+        return
+    pendientes = ReporteAgotado.objects.filter(
+        sede_id=instance.sede_id, producto_id=instance.producto_id, resuelto_en__isnull=True
+    )
+    ids = list(pendientes.values_list("pk", flat=True))
+    if not ids:
+        return
+    ReporteAgotado.objects.filter(pk__in=ids).update(resuelto_en=timezone.now())
+    enviar_a_operadores(
+        instance.sede_id,
+        {"tipo": TIPO_EVENTO_RESUELTO, "reportes": ids, "producto": instance.producto_id, "sede": instance.sede_id},
+    )
 
 
 def disponibilidad_en_sede(sede, productos):
@@ -180,3 +214,55 @@ class MarcarAgotadoView(APIView):
             avisar_operadores(reporte)
 
         return Response(datos_reporte(reporte), status=status.HTTP_201_CREATED)
+
+
+class AgotadosPendientesView(APIView):
+    """
+    GET /api/inventario/agotados/
+
+    Productos que cocina reportó agotados y siguen sin habilitarse, del más
+    reciente al más antiguo, una vez por producto y sede. El operador ve su sede; el administrador todas,
+    o una con ?sede=<id>.
+    """
+
+    permission_classes = [EsPersonalDeMenu]
+
+    @extend_schema(
+        parameters=[OpenApiParameter("sede", int, description="Filtra por id de sede.")],
+        responses=inline_serializer(
+            "ReporteAgotadoPendiente",
+            {
+                "id": serializers.IntegerField(),
+                "sede": serializers.IntegerField(),
+                "producto": serializers.IntegerField(),
+                "producto_nombre": serializers.CharField(),
+                "usuario": serializers.IntegerField(),
+                "usuario_nombre": serializers.CharField(),
+                "fecha_hora": serializers.DateTimeField(),
+                "resuelto_en": serializers.DateTimeField(allow_null=True),
+            },
+            many=True,
+        ),
+    )
+    def get(self, request):
+        reportes = ReporteAgotado.objects.filter(
+            resuelto_en__isnull=True, producto__activo=True
+        ).select_related("producto", "usuario__empleado")
+        gestionables = sedes_que_gestiona(request.user)
+        if gestionables is not None:
+            reportes = reportes.filter(sede_id__in=gestionables)
+
+        sede = request.query_params.get("sede")
+        if sede not in (None, ""):
+            if not sede.isdigit():
+                return Response({"sede": "La sede debe ser un id numérico."}, status=status.HTTP_400_BAD_REQUEST)
+            reportes = reportes.filter(sede_id=int(sede))
+
+        # Un producto aparece una sola vez por sede: con su reporte más reciente.
+        vistos, resultado = set(), []
+        for reporte in reportes.order_by("-fecha_hora", "-id"):
+            clave = (reporte.sede_id, reporte.producto_id)
+            if clave not in vistos:
+                vistos.add(clave)
+                resultado.append(datos_reporte(reporte))
+        return Response(resultado)

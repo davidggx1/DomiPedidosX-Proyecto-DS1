@@ -157,7 +157,9 @@ class ReporteAgotado(models.Model):
     HU-17 · Cocina reporta un producto como agotado por falta de insumos.
 
     Queda el registro de qué producto, en qué sede, quién lo reportó y a qué
-    hora exacta, para avisar al operador y poder auditarlo después.
+    hora exacta, para avisar al operador y poder auditarlo después. Mientras
+    el producto siga sin habilitarse, el reporte está pendiente y aparece en
+    el inventario del operador.
     """
 
     sede = models.ForeignKey(
@@ -176,6 +178,8 @@ class ReporteAgotado(models.Model):
         related_name="reportes_agotado",
     )
     fecha_hora = models.DateTimeField(auto_now_add=True)
+    # Cuándo el producto volvió a estar disponible en la sede. Null = sigue pendiente.
+    resuelto_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-fecha_hora", "-id"]
