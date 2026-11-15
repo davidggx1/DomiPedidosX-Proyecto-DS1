@@ -32,6 +32,7 @@ urlpatterns = [
     path("api/menu/", include("menu.urls")),
     path("api/inventario/", include("inventario.urls")),
     path("api/pedidos/", include("pedidos.urls")),
+    path("api/", include("promociones.urls")),
 ]
 
 # In development, Django serves the uploaded images from /media/
