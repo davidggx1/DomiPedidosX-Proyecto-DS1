@@ -64,6 +64,16 @@ def productos_no_disponibles(sede, ids):
     return resultado
 
 
+def productos_retirados(ids):
+    """
+    Ids that no longer exist or were deleted/deactivated (HU-79). Unlike
+    productos_no_disponibles, it ignores the stock and the availability of the sede:
+    a retired product will not come back, so the client cart can drop it
+    """
+    existentes = dict(Producto.objects.filter(pk__in=set(ids)).values_list("id", "activo"))
+    return sorted(i for i in set(ids) if not existentes.get(i, False))
+
+
 class CambioDisponibilidadSerializer(serializers.Serializer):
     sede = serializers.PrimaryKeyRelatedField(
         queryset=Sede.objects.filter(activa=True),
@@ -164,6 +174,7 @@ class ValidarCarritoView(APIView):
             {
                 "valido": serializers.BooleanField(),
                 "no_disponibles": serializers.ListField(child=serializers.DictField()),
+                "retirados": serializers.ListField(child=serializers.IntegerField()),
             },
         ),
     )
@@ -178,4 +189,11 @@ class ValidarCarritoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         no_disponibles = productos_no_disponibles(sede, ids)
-        return Response({"valido": not no_disponibles, "no_disponibles": no_disponibles})
+        return Response(
+            {
+                "valido": not no_disponibles,
+                "no_disponibles": no_disponibles,
+                # HU-79: products deleted from the menu, for the client to clean its cart
+                "retirados": productos_retirados(ids),
+            }
+        )

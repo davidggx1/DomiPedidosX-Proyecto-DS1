@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
-import { listarCategorias, listarProductos, listarSedesMenu } from '../../api/menu.js'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  eliminarProducto,
+  listarCategorias,
+  listarProductos,
+  listarSedesMenu,
+} from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
 import { formatearPrecio } from '../../utils/formato.js'
 import DisponibilidadProducto from '../../components/menu/DisponibilidadProducto.jsx'
 import FormularioProducto from '../../components/menu/FormularioProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
+import Modal from '../../components/ui/Modal.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
 
@@ -21,6 +27,9 @@ export default function Productos() {
   const [editando, setEditando] = useState(null)
   const [mensaje, setMensaje] = useState(null)
   const [conDisponibilidad, setConDisponibilidad] = useState(null)
+  const [porEliminar, setPorEliminar] = useState(null) // HU-79: product in the confirmation modal
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState(null)
 
   // Listado: se recarga al cambiar el filtro o después de guardar.
   useEffect(() => {
@@ -68,6 +77,37 @@ export default function Productos() {
     })
     setEditando(null)
     setRecarga((valor) => valor + 1)
+  }
+
+  const cerrarModal = useCallback(() => {
+    setPorEliminar(null)
+    setErrorEliminar(null)
+  }, [])
+
+  function pedirEliminar(producto) {
+    setMensaje(null)
+    setErrorEliminar(null)
+    setPorEliminar(producto)
+  }
+
+  // HU-79: soft delete, the product stays as inactive and old orders keep it
+  async function eliminar() {
+    setEliminando(true)
+    setErrorEliminar(null)
+    try {
+      await eliminarProducto(porEliminar.id)
+      setMensaje({
+        tipo: 'exito',
+        texto: `Se eliminó "${porEliminar.nombre}" del menú. Los pedidos anteriores lo conservan.`,
+      })
+      if (editando?.id === porEliminar.id) setEditando(null)
+      setPorEliminar(null)
+      setRecarga((valor) => valor + 1)
+    } catch (error) {
+      setErrorEliminar(interpretarError(error).general)
+    } finally {
+      setEliminando(false)
+    }
   }
 
   function empezarEdicion(producto) {
@@ -180,6 +220,15 @@ export default function Productos() {
                     >
                       Editar
                     </Boton>
+                    {producto.activo && (
+                      <Boton
+                        variante="peligro"
+                        onClick={() => pedirEliminar(producto)}
+                        aria-label={`Eliminar ${producto.nombre}`}
+                      >
+                        Eliminar
+                      </Boton>
+                    )}
                   </div>
 
                   {conDisponibilidad === producto.id && (
@@ -196,6 +245,32 @@ export default function Productos() {
           )}
         </Tarjeta>
       </div>
+
+      {porEliminar && (
+        <Modal
+          titulo="Eliminar producto"
+          alCerrar={cerrarModal}
+          acciones={
+            <>
+              <Boton variante="secundario" onClick={cerrarModal} disabled={eliminando}>
+                Cancelar
+              </Boton>
+              <Boton variante="peligro" onClick={eliminar} cargando={eliminando}>
+                Eliminar
+              </Boton>
+            </>
+          }
+        >
+          <p>
+            ¿Eliminar <strong>{porEliminar.nombre}</strong> del menú? Dejará de mostrarse a los
+            clientes y se quitará de los carritos que lo tengan.
+          </p>
+          <p className="mt-2 text-sm text-texto-suave">
+            Los pedidos anteriores conservan el producto y su precio.
+          </p>
+          {errorEliminar && <Alerta tipo="error" titulo={errorEliminar} />}
+        </Modal>
+      )}
     </div>
   )
 }

@@ -12,8 +12,10 @@ so one receiver covers every path
 - stock > stock_minimo and one is active -> it is marked as resolved ("resuelta")
 
 Changing the minimum is also a save, so it re-evaluates the alert. A product
-only has its own stock when its tipo_control_stock is PRODUCTO, the others do
-not alert. A minimum of 0 alerts when the item runs out
+only has its own stock when its tipo_control_stock is PRODUCTO and it is active,
+the others do not alert: deleting or deactivating a product (HU-79) closes its
+alerts and activating it again opens them back if its stock is still low.
+A minimum of 0 alerts when the item runs out
 
 The event goes to the operators of the sede (group pedidos_sede_<id>), through
 the same socket of the panel, and never breaks the save that caused it. A new
@@ -151,6 +153,11 @@ def _sincronizar(inventario, campo_item, item, aplica):
         _resolver(activa, inventario)
 
 
+def _lleva_stock(producto):
+    """Only active products controlled by their own stock can alert."""
+    return producto.activo and producto.tipo_control_stock == Producto.TipoControlStock.PRODUCTO
+
+
 def _toca_el_stock(kwargs):
     campos = kwargs.get("update_fields")
     return campos is None or bool(CAMPOS_DE_STOCK & set(campos))
@@ -161,8 +168,17 @@ def alertar_stock_de_producto(sender, instance, **kwargs):
     if not _toca_el_stock(kwargs):
         return
     producto = instance.producto
-    aplica = producto.tipo_control_stock == Producto.TipoControlStock.PRODUCTO
-    _sincronizar(instance, "producto", producto, aplica)
+    _sincronizar(instance, "producto", producto, _lleva_stock(producto))
+
+
+@receiver(post_save, sender=Producto)
+def alertar_stock_al_cambiar_el_producto(sender, instance, **kwargs):
+    """HU-79: deleting, deactivating or restoring a product changes its alerts."""
+    campos = kwargs.get("update_fields")
+    if campos is not None and not {"activo", "tipo_control_stock"} & set(campos):
+        return
+    for inventario in instance.inventarios.all():
+        _sincronizar(inventario, "producto", instance, _lleva_stock(instance))
 
 
 @receiver(post_save, sender=InventarioInsumo)

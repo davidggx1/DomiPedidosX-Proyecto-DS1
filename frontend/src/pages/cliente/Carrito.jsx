@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { validarLineaCarrito } from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
 import { useCarrito } from '../../carrito/useCarrito.js'
+import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
 import Contador from '../../components/carrito/Contador.jsx'
 import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
@@ -25,6 +26,8 @@ function describirVariantes(linea) {
 // HU-21 & HU-22 · Carrito del cliente: líneas personalizadas, subtotal, domicilio y total.
 export default function Carrito() {
   const { sedeId, lineas, subtotal, cambiarCantidad, eliminar } = useCarrito()
+  // HU-79: quita del carrito los productos que el operador ya eliminó del menú
+  const avisoLimpieza = useLimpiarCarrito()
   const [editando, setEditando] = useState(null)
   const [actualizando, setActualizando] = useState(null)
   const [aviso, setAviso] = useState(null)
@@ -57,6 +60,7 @@ export default function Carrito() {
     return (
       <div className="flex flex-col items-start gap-4">
         <h1 className="text-2xl font-bold">Tu carrito</h1>
+        {avisoLimpieza && <Alerta tipo="aviso" titulo={avisoLimpieza} />}
         <p className="text-texto-suave">Todavía no has agregado productos.</p>
         <Link
           to="/menu"
@@ -72,6 +76,7 @@ export default function Carrito() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Tu carrito</h1>
 
+      {avisoLimpieza && <Alerta tipo="aviso" titulo={avisoLimpieza} />}
       {aviso && <Alerta tipo={aviso.tipo} titulo={aviso.texto} />}
 
       <ul className="flex flex-col gap-3">

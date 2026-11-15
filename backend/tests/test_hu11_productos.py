@@ -291,10 +291,6 @@ def test_desactivar_producto_lo_oculta_del_menu(operador, producto, sede):
     assert producto.id not in menu_cliente(sede)
 
 
-def test_no_se_puede_borrar(operador, producto):
-    assert operador.delete(f"{URL}{producto.id}/").status_code == 405
-
-
 # --- listado ---
 
 def test_lista_y_filtra_por_categoria(operador, producto):

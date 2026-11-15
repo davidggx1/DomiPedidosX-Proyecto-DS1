@@ -7,6 +7,7 @@ import {
   claveCarrito,
   domicilioCarrito,
   eliminarLinea,
+  quitarLineasRetiradas,
   reemplazarLinea,
   subtotalCarrito,
   totalCarrito,
@@ -88,6 +89,16 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
     [actualizar],
   )
 
+  // HU-79: removes every line of the products that were deleted from the menu
+  const quitarProductos = useCallback(
+    (productoIds) =>
+      actualizar((actual) => ({
+        ...actual,
+        lineas: quitarLineasRetiradas(actual.lineas, productoIds).lineas,
+      })),
+    [actualizar],
+  )
+
   const vaciar = useCallback(() => actualizar(() => VACIO), [actualizar])
 
   // Cálculo de subtotales y totales usando tarifaSede
@@ -107,9 +118,21 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       reemplazar,
       cambiarCantidad,
       eliminar,
+      quitarProductos,
       vaciar,
     }),
-    [carrito, subtotal, costoDomicilio, total, agregar, reemplazar, cambiarCantidad, eliminar, vaciar],
+    [
+      carrito,
+      subtotal,
+      costoDomicilio,
+      total,
+      agregar,
+      reemplazar,
+      cambiarCantidad,
+      eliminar,
+      quitarProductos,
+      vaciar,
+    ],
   )
 
   return <CarritoContext.Provider value={valor}>{children}</CarritoContext.Provider>
