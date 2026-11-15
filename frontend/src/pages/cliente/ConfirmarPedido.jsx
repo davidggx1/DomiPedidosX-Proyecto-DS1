@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCarrito } from '../../carrito/useCarrito.js'
+import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
 import { confirmarPedidoCliente } from '../../api/pedidos.js'
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
 import { validarCoberturaDireccion } from '../../api/sedes.js'
@@ -17,6 +18,8 @@ export default function ConfirmarPedido() {
 
   // Hook del carrito
   const { sedeId, lineas = [], subtotal, vaciar } = useCarrito()
+  // HU-79: quita del carrito los productos que el operador ya eliminó del menú
+  const avisoLimpieza = useLimpiarCarrito()
 
   // HU-61: capacity of the sede, to block the button before sending
   const sedeActual = sedeId || localStorage.getItem('domipedidosx.sede')
@@ -276,6 +279,7 @@ export default function ConfirmarPedido() {
     <div className="mx-auto max-w-2xl space-y-6 rounded-xl border border-borde bg-superficie p-6 shadow-sm">
       <h1 className="text-2xl font-bold">Confirmar Pedido</h1>
 
+      {avisoLimpieza && <Alerta tipo="aviso" titulo={avisoLimpieza} />}
       {mensaje && <Alerta tipo={mensaje.tipo} titulo={mensaje.texto} />}
 
       {erroresItems.length > 0 && (

@@ -139,3 +139,27 @@ export function domicilioDeZona(subtotal, tarifaZona) {
   if (tarifaZona == null) return null
   return domicilioCarrito(subtotal, Number(tarifaZona))
 }
+
+// HU-79 · A product deleted from the menu has to leave the carts that still have it
+
+// Cart lines without the retired products, and the lines that were removed.
+// `retiradosIds` comes from the server (validar-carrito)
+export function quitarLineasRetiradas(lineas, retiradosIds) {
+  const retirados = new Set(retiradosIds)
+  const quitadas = lineas.filter((linea) => retirados.has(linea.producto.id))
+  if (quitadas.length === 0) return { lineas, quitadas }
+  return { lineas: lineas.filter((linea) => !retirados.has(linea.producto.id)), quitadas }
+}
+
+// Notice for the client, or null if nothing was removed
+export function textoLineasQuitadas(quitadas) {
+  const nombres = [...new Set(quitadas.map((linea) => linea.producto.nombre))]
+  if (nombres.length === 0) return null
+  if (nombres.length === 1) {
+    return `"${nombres[0]}" ya no está en el menú y se quitó de tu carrito.`
+  }
+  const entreComillas = nombres.map((nombre) => `"${nombre}"`)
+  const ultimo = entreComillas.pop()
+  return `${entreComillas.join(', ')} y ${ultimo} ya no están en el menú y se quitaron de tu carrito.`
+}
+

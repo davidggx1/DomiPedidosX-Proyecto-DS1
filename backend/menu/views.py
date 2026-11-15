@@ -1,8 +1,7 @@
-from django.db.models import Count, Prefetch, ProtectedError
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, status, viewsets
-from rest_framework.exceptions import APIException
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -39,10 +38,12 @@ class ProductoViewSet(
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
     HU-11 & HU-20: listar, crear, editar productos y consulta pública de detalle.
+    HU-79: DELETE retira el producto (borrado lógico).
     """
 
     serializer_class = ProductoSerializer
@@ -70,8 +71,11 @@ class ProductoViewSet(
 
     def get_queryset(self):
         if self.action == "retrieve":
-            # Optimización SQL específica para la vista de detalle
-            return Producto.objects.select_related("categoria").prefetch_related(
+            # Optimización SQL específica para la vista de detalle.
+            # HU-79: un producto eliminado o inactivo ya no se muestra al cliente.
+            return Producto.objects.filter(activo=True).select_related(
+                "categoria"
+            ).prefetch_related(
                 Prefetch("tamanos", queryset=ProductoTamano.objects.filter(activo=True)),
                 "insumos_requeridos__insumo",
                 # HU-21: el cliente solo ve las adiciones que puede agregar al carrito.
@@ -94,6 +98,13 @@ class ProductoViewSet(
             if activo is not None:
                 productos = productos.filter(activo=activo.lower() in ("true", "1"))
         return productos
+
+    def perform_destroy(self, instance):
+        # HU-79: borrado lógico, como adiciones e ingredientes. El producto queda
+        # inactivo: el cliente ya no lo ve ni lo puede pedir, y los pedidos viejos
+        # (y el inventario) siguen apuntando a él. Se puede restaurar con "activo".
+        instance.activo = False
+        instance.save(update_fields=["activo"])
 
 
 class ProductoTamanoViewSet(viewsets.ModelViewSet):
@@ -156,36 +167,14 @@ class ProductoImagenView(generics.GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CategoriaConProductos(APIException):
-    """409: the category still has products, so it cannot be deleted (HU-78)."""
-
-    status_code = 409
-    default_code = "categoria_con_productos"
-
-    def __init__(self, total):
-        asociados = "1 producto asociado" if total == 1 else f"{total} productos asociados"
-        self.detail = {
-            "detail": (
-                f"No se puede eliminar la categoría porque tiene {asociados}. "
-                "Muévelos a otra categoría antes de eliminarla."
-            ),
-            "codigo": "categoria_con_productos",
-            "total_productos": total,
-        }
-
-
 class CategoriaMenuViewSet(
     mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    Lists, creates, edits and deletes menu categories (HU-10, HU-78).
-    A category with products, active or not, cannot be deleted
-    """
+    """Lists, creates and edits menu categories (no delete on purpose)"""
 
     serializer_class = CategoriaMenuSerializer
     permission_classes = [EsPersonalDeMenu]
@@ -194,16 +183,6 @@ class CategoriaMenuViewSet(
         return CategoriaMenu.objects.annotate(
             total_productos=Count("productos")
         ).order_by("nombre")
-
-    def perform_destroy(self, instance):
-        total = instance.productos.count()
-        if total:
-            raise CategoriaConProductos(total)
-        try:
-            instance.delete()
-        except ProtectedError:
-            # a product was added at the same moment, the database refuses
-            raise CategoriaConProductos(instance.productos.count())
 
 
 @extend_schema_view(

@@ -180,7 +180,8 @@ def test_carrito_valido_si_todo_sigue_disponible(producto, centro):
         f"/api/menu/sedes/{centro.id}/validar-carrito/", {"productos": [producto.id]}, format="json"
     )
     assert respuesta.status_code == 200
-    assert respuesta.data == {"valido": True, "no_disponibles": []}
+    # HU-79 added `retirados`: the products deleted from the menu
+    assert respuesta.data == {"valido": True, "no_disponibles": [], "retirados": []}
 
 
 def test_carrito_avisa_si_se_desactivo_antes_de_confirmar(operador_centro, producto, centro, sur):

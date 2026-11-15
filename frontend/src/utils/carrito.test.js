@@ -11,9 +11,11 @@ import {
   eliminarLinea,
   lineaParaValidar,
   precioUnitario,
+  quitarLineasRetiradas,
   reemplazarLinea,
   subtotalCarrito,
   subtotalLinea,
+  textoLineasQuitadas,
   totalCarrito,
 } from './carrito.js'
 
@@ -204,3 +206,54 @@ describe('domicilio según la zona (HU-22)', () => {
     expect(domicilioCarrito(0)).toBe(0)
   })
 })
+
+describe('limpieza del carrito con productos eliminados (HU-79)', () => {
+  const sencilla = { id: 'a', producto: { id: 1, nombre: 'Sencilla' }, cantidad: 1 }
+  const doble = { id: 'b', producto: { id: 2, nombre: 'Doble' }, cantidad: 2 }
+  const dobleExtra = { id: 'c', producto: { id: 2, nombre: 'Doble' }, cantidad: 1 }
+  const papas = { id: 'd', producto: { id: 3, nombre: 'Papas' }, cantidad: 1 }
+
+  it('quita las líneas de los productos retirados y deja las demás', () => {
+    const { lineas, quitadas } = quitarLineasRetiradas([sencilla, doble, papas], [2])
+    expect(lineas).toEqual([sencilla, papas])
+    expect(quitadas).toEqual([doble])
+  })
+
+  it('quita todas las variantes del mismo producto', () => {
+    const { lineas, quitadas } = quitarLineasRetiradas([sencilla, doble, dobleExtra], [2])
+    expect(lineas).toEqual([sencilla])
+    expect(quitadas).toHaveLength(2)
+  })
+
+  it('si no hay retirados devuelve el mismo carrito', () => {
+    const original = [sencilla, doble]
+    const { lineas, quitadas } = quitarLineasRetiradas(original, [])
+    expect(lineas).toBe(original)
+    expect(quitadas).toEqual([])
+    expect(quitarLineasRetiradas(original, [99]).lineas).toBe(original)
+  })
+
+  it('el carrito puede quedar vacío', () => {
+    expect(quitarLineasRetiradas([sencilla], [1]).lineas).toEqual([])
+  })
+
+  it('avisa con el nombre del producto, una sola vez', () => {
+    expect(textoLineasQuitadas([doble, dobleExtra])).toBe(
+      '"Doble" ya no está en el menú y se quitó de tu carrito.',
+    )
+  })
+
+  it('avisa de varios productos en plural', () => {
+    expect(textoLineasQuitadas([sencilla, doble])).toBe(
+      '"Sencilla" y "Doble" ya no están en el menú y se quitaron de tu carrito.',
+    )
+    expect(textoLineasQuitadas([sencilla, doble, papas])).toBe(
+      '"Sencilla", "Doble" y "Papas" ya no están en el menú y se quitaron de tu carrito.',
+    )
+  })
+
+  it('sin líneas quitadas no hay aviso', () => {
+    expect(textoLineasQuitadas([])).toBeNull()
+  })
+})
+

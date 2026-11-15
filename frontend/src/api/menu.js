@@ -66,14 +66,14 @@ export async function actualizarProducto(id, datos) {
   return data
 }
 
+// HU-79: soft delete, the product stays as inactive and old orders keep it
+export async function eliminarProducto(id) {
+  await api.delete(`/menu/productos/${id}/`)
+}
+
 export async function listarCategorias() {
   const { data } = await api.get('/menu/categorias/')
   return data
-}
-
-// HU-78: the server refuses (409) if the category still has products
-export async function eliminarCategoria(id) {
-  await api.delete(`/menu/categorias/${id}/`)
 }
 
 export async function listarProductosOpciones() {
@@ -147,10 +147,8 @@ export async function listarSedesMenu() {
 }
 
 // Devuelve { sede, categorias: [{ id, nombre, productos: [...] }] }.
-// Soporta búsqueda por nombre (HU-19) vía { q } sin romper llamadas previas.
-export async function obtenerMenuSede(sedeId, { q = '' } = {}) {
-  const params = q.trim() ? { q: q.trim() } : {}
-  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`, { params })
+export async function obtenerMenuSede(sedeId) {
+  const { data } = await api.get(`/menu/sedes/${sedeId}/menu/`)
   return data
 }
 
@@ -186,7 +184,8 @@ export async function validarLineaCarrito(sedeId, linea) {
   return data
 }
 
-// Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }] }.
+// Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }], retirados: [id] }.
+// `retirados` (HU-79) son los productos que ya no existen o fueron eliminados del menú.
 export async function validarCarrito(sedeId, productoIds) {
   const { data } = await api.post(`/menu/sedes/${sedeId}/validar-carrito/`, {
     productos: productoIds,
