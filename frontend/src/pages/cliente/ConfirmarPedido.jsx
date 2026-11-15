@@ -265,7 +265,7 @@ export default function ConfirmarPedido() {
           </div>
         )}
 
-        <Boton variante="primario" className="mt-4 w-full" onClick={() => navigate('/pedidos')}>
+        <Boton variante="primario" className="mt-4 w-full" onClick={() => navigate('/mis-pedidos')}>
           Ver mis pedidos
         </Boton>
       </div>
@@ -309,7 +309,7 @@ export default function ConfirmarPedido() {
               No tienes direcciones registradas.{' '}
               <button
                 type="button"
-                onClick={() => navigate('/perfil/direcciones')}
+                onClick={() => navigate('/direcciones')}
                 className="text-marca underline"
               >
                 Agregar una dirección
