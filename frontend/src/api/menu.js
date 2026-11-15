@@ -66,6 +66,11 @@ export async function actualizarProducto(id, datos) {
   return data
 }
 
+// HU-79: soft delete, the product stays as inactive and old orders keep it
+export async function eliminarProducto(id) {
+  await api.delete(`/menu/productos/${id}/`)
+}
+
 export async function listarCategorias() {
   const { data } = await api.get('/menu/categorias/')
   return data
@@ -186,7 +191,8 @@ export async function validarLineaCarrito(sedeId, linea) {
   return data
 }
 
-// Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }] }.
+// Hook del carrito: devuelve { valido, no_disponibles: [{ id, nombre }], retirados: [id] }.
+// `retirados` (HU-79) son los productos que ya no existen o fueron eliminados del menú.
 export async function validarCarrito(sedeId, productoIds) {
   const { data } = await api.post(`/menu/sedes/${sedeId}/validar-carrito/`, {
     productos: productoIds,

@@ -39,10 +39,12 @@ class ProductoViewSet(
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
     HU-11 & HU-20: listar, crear, editar productos y consulta pública de detalle.
+    HU-79: DELETE retira el producto (borrado lógico).
     """
 
     serializer_class = ProductoSerializer
@@ -70,8 +72,11 @@ class ProductoViewSet(
 
     def get_queryset(self):
         if self.action == "retrieve":
-            # Optimización SQL específica para la vista de detalle
-            return Producto.objects.select_related("categoria").prefetch_related(
+            # Optimización SQL específica para la vista de detalle.
+            # HU-79: un producto eliminado o inactivo ya no se muestra al cliente.
+            return Producto.objects.filter(activo=True).select_related(
+                "categoria"
+            ).prefetch_related(
                 Prefetch("tamanos", queryset=ProductoTamano.objects.filter(activo=True)),
                 "insumos_requeridos__insumo",
                 # HU-21: el cliente solo ve las adiciones que puede agregar al carrito.
@@ -94,6 +99,13 @@ class ProductoViewSet(
             if activo is not None:
                 productos = productos.filter(activo=activo.lower() in ("true", "1"))
         return productos
+
+    def perform_destroy(self, instance):
+        # HU-79: borrado lógico, como adiciones e ingredientes. El producto queda
+        # inactivo: el cliente ya no lo ve ni lo puede pedir, y los pedidos viejos
+        # (y el inventario) siguen apuntando a él. Se puede restaurar con "activo".
+        instance.activo = False
+        instance.save(update_fields=["activo"])
 
 
 class ProductoTamanoViewSet(viewsets.ModelViewSet):
