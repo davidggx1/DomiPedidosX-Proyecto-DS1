@@ -74,3 +74,20 @@ export function filtrarProductosCocina(productos, busqueda) {
     : productos
   return [...encontrados].sort((a, b) => Number(b.disponible) - Number(a.disponible))
 }
+
+// HU-33 · Same limits as the backend (pedidos/cancelacion.py)
+export const JUSTIFICACION_MINIMA = 5
+export const JUSTIFICACION_MAXIMA = 500
+
+// Error text for the justification of a kitchen error, or null if it is valid
+export function validarJustificacion(texto) {
+  const limpio = (texto ?? '').trim()
+  if (!limpio) return 'Escribe la justificación del error de cocina.'
+  if (limpio.length < JUSTIFICACION_MINIMA) {
+    return `La justificación debe tener al menos ${JUSTIFICACION_MINIMA} caracteres.`
+  }
+  if (limpio.length > JUSTIFICACION_MAXIMA) {
+    return `La justificación no puede superar ${JUSTIFICACION_MAXIMA} caracteres.`
+  }
+  return null
+}

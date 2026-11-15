@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtrarProductosCocina } from './cocina.js'
+import { filtrarProductosCocina, validarJustificacion } from './cocina.js'
 
 const productos = [
   { id: 1, nombre: 'Clásica', categoria: 'Hamburguesas', disponible: false },
@@ -16,5 +16,15 @@ describe('productos de cocina (HU-17)', () => {
 
   it('sin búsqueda muestra todos con los no disponibles al final', () => {
     expect(filtrarProductosCocina(productos, '').map((p) => p.id)).toEqual([2, 3, 1])
+  })
+})
+
+describe('justificación del error de cocina (HU-33)', () => {
+  it('es obligatoria y tiene un mínimo y un máximo', () => {
+    expect(validarJustificacion('')).toMatch(/Escribe/)
+    expect(validarJustificacion('   ')).toMatch(/Escribe/)
+    expect(validarJustificacion('abc')).toMatch(/al menos 5/)
+    expect(validarJustificacion('x'.repeat(501))).toMatch(/superar 500/)
+    expect(validarJustificacion('  Se quemó la carne ')).toBeNull()
   })
 })

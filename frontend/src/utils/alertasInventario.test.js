@@ -3,6 +3,7 @@ import {
   alertaDeEvento,
   aplicarEvento,
   avisoDeAgotado,
+  avisoDeCancelacionCocina,
   avisoDeEvento,
   textoStock,
 } from './alertasInventario.js'
@@ -102,5 +103,29 @@ describe('aviso de agotado reportado por cocina (HU-17)', () => {
   it('ignora cualquier otro mensaje', () => {
     expect(avisoDeAgotado({ tipo: 'alerta_inventario', alerta: {} })).toBeNull()
     expect(avisoDeAgotado({ tipo: 'producto_agotado' })).toBeNull()
+  })
+})
+
+describe('aviso de pedido cancelado por error de cocina (HU-33)', () => {
+  const datos = {
+    tipo: 'pedido_cancelado_cocina',
+    pedido: { id: 4, numero_pedido: 'PED-0004', estado: 'cancelado' },
+    justificacion: 'Se quemó la carne',
+    usuario_nombre: 'Carla Gómez',
+    fecha_hora: '2026-11-15T14:05:09-05:00',
+  }
+
+  it('muestra el pedido, el motivo y quién lo reportó', () => {
+    const aviso = avisoDeCancelacionCocina(datos)
+    expect(aviso.id).toBe('error-cocina-4')
+    expect(aviso.titulo).toBe('Pedido PED-0004 cancelado por error de cocina')
+    expect(aviso.texto).toContain('Motivo: Se quemó la carne')
+    expect(aviso.texto).toContain('Carla Gómez')
+    expect(aviso.enlace).toBe('/operador/pedidos-del-dia')
+  })
+
+  it('ignora cualquier otro mensaje', () => {
+    expect(avisoDeCancelacionCocina({ tipo: 'producto_agotado', reporte: {} })).toBeNull()
+    expect(avisoDeCancelacionCocina({ tipo: 'pedido_cancelado_cocina' })).toBeNull()
   })
 })

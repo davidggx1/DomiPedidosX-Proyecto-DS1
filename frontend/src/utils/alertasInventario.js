@@ -64,3 +64,17 @@ export function avisoDeAgotado(datos) {
     accion: 'Ver productos',
   }
 }
+
+// HU-33 · Popup when the kitchen cancels an order because of a kitchen error
+export const TIPO_EVENTO_ERROR_COCINA = 'pedido_cancelado_cocina'
+
+export function avisoDeCancelacionCocina(datos) {
+  if (datos?.tipo !== TIPO_EVENTO_ERROR_COCINA || !datos.pedido) return null
+  return {
+    id: `error-cocina-${datos.pedido.id}`,
+    titulo: `Pedido ${datos.pedido.numero_pedido} cancelado por error de cocina`,
+    texto: `Motivo: ${datos.justificacion}. Reportado por ${datos.usuario_nombre} a las ${horaExacta(datos.fecha_hora)}`,
+    enlace: '/operador/pedidos-del-dia',
+    accion: 'Ver pedidos del día',
+  }
+}

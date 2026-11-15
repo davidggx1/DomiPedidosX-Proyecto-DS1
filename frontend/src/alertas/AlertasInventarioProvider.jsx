@@ -7,11 +7,12 @@ import {
   alertaDeEvento,
   aplicarEvento,
   avisoDeAgotado,
+  avisoDeCancelacionCocina,
   avisoDeEvento,
 } from '../utils/alertasInventario.js'
 import { AlertasInventarioContext } from './AlertasInventarioContext.js'
 
-// HU-16 · Low stock alerts for the operator, on any of his screens (and HU-17 sold out reports).
+// HU-16 · Low stock alerts for the operator, on any of his screens (and HU-17 sold out reports, HU-33 kitchen errors).
 // One socket keeps the list of active alerts live (the panel of Inventario reads
 // it with useAlertasInventario) and a new alert also shows a popup
 export default function AlertasInventarioProvider({ children }) {
@@ -58,7 +59,8 @@ export default function AlertasInventarioProvider({ children }) {
           return
         }
         // HU-17: the kitchen reported a product as sold out
-        mostrar(avisoDeAgotado(datos))
+        // HU-33: the kitchen cancelled an order because of a kitchen error
+        mostrar(avisoDeAgotado(datos) ?? avisoDeCancelacionCocina(datos))
       },
     })
 

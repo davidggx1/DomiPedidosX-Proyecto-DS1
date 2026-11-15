@@ -18,3 +18,9 @@ export async function marcarAgotado(id) {
   const { data } = await api.post(`/menu/cocina/productos/${id}/agotado/`)
   return data
 }
+
+// HU-33 · Cancels the order because of a kitchen error. The justification is required
+export async function cancelarPorErrorCocina(id, justificacion) {
+  const { data } = await api.post(`/pedidos/${id}/cancelar-cocina/`, { justificacion })
+  return data
+}

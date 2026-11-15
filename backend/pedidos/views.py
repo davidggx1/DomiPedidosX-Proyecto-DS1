@@ -113,15 +113,21 @@ class EstadoPedidoView(APIView):
             )
 
         try:
-            cambiar_estado(
-                pedido,
-                datos.validated_data["estado"],
-                usuario=request.user,
-                rol=rol,
-                motivo=datos.validated_data.get("motivo", ""),
-            )
+            if rol == COCINA and datos.validated_data["estado"] == EstadoPedido.CANCELADO:
+                # HU-33: la cancelación de cocina siempre devuelve el stock y avisa al cliente y al operador.
+                from .cancelacion import cancelar_por_error_cocina  # cancelacion importa este módulo
+
+                cancelar_por_error_cocina(pedido, request.user, datos.validated_data.get("motivo", ""))
+            else:
+                cambiar_estado(
+                    pedido,
+                    datos.validated_data["estado"],
+                    usuario=request.user,
+                    rol=rol,
+                    motivo=datos.validated_data.get("motivo", ""),
+                )
         except TransicionInvalida as error:
-            campo = "motivo" if error.codigo == "motivo_obligatorio" else "detail"
+            campo = "motivo" if error.codigo in ("motivo_obligatorio", "motivo_muy_largo") else "detail"
             codigo_http = (
                 status.HTTP_403_FORBIDDEN
                 if error.codigo == "rol_no_autorizado"
