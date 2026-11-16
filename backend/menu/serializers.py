@@ -109,6 +109,22 @@ class ProductoSerializer(serializers.ModelSerializer):
             "not_a_list": "Selecciona al menos una sede.",
         },
     )
+    # Optional: without it a new product is "Sin control" (the model default) and an edit
+    # keeps the current value, so clients that do not send it keep working
+    tipo_control_stock = serializers.ChoiceField(
+        choices=Producto.TipoControlStock.choices,
+        required=False,
+        help_text=(
+            "PRODUCTO: se controla con la existencia del propio producto en la sede y cada "
+            "pedido la descuenta. INSUMOS: se controla con los ingredientes de su receta. "
+            "NINGUNO: no se descuenta ni se bloquea por stock."
+        ),
+        error_messages={
+            "invalid_choice": "Elige un tipo de control de stock válido.",
+            "null": "Elige un tipo de control de stock válido.",
+            "blank": "Elige un tipo de control de stock válido.",
+        },
+    )
 
     class Meta:
         model = Producto
@@ -123,6 +139,7 @@ class ProductoSerializer(serializers.ModelSerializer):
             "categoria_nombre",
             "sedes",
             "activo",
+            "tipo_control_stock",
         ]
         read_only_fields = ["id"]
 
