@@ -95,3 +95,16 @@ export async function obtenerReporteTiempos({ desde, hasta, sede = '' }) {
   const { data } = await api.get('/pedidos/reportes/tiempos/', { params })
   return data
 }
+
+// HU-62: when the sede of the customer is blocked (saturated or without slot), the other
+// sedes that cover his address and have capacity, or the next slot of his sede.
+// `productos` are the ids of the cart, to know what each other sede does not have
+export async function obtenerAlternativasCapacidad({ sedeId, direccionId, productos = [] }) {
+  const { data } = await api.post('/pedidos/alternativas-capacidad/', {
+    sede_id: sedeId,
+    direccion_id: direccionId,
+    productos,
+  })
+  return data
+}
+
