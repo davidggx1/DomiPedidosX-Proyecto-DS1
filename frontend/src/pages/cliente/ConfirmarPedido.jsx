@@ -2,23 +2,36 @@ import {useState, useEffect, useCallback} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
+<<<<<<< ours
 import { confirmarPedidoCliente } from '../../api/pedidos.js'
 import { mensajesSinCampos } from '../../api/errores.js'
+=======
+import { interpretarError } from '../../api/errores.js'
+import { confirmarPedidoCliente, obtenerAlternativasCapacidad } from '../../api/pedidos.js'
+>>>>>>> theirs
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
 import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
+import ModalAlternativas from '../../components/pedidos/ModalAlternativas.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { domicilioDeZona, subtotalLinea, totalCarrito } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
 import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
+import {
+  coberturaDeAlternativa,
+  idsDeProductos,
+  ofreceAlternativas,
+  textoCambioDeSede,
+  trasladarCarrito,
+} from '../../utils/alternativas.js'
 
 export default function ConfirmarPedido() {
   const navigate = useNavigate()
 
   // Hook del carrito
-  const { sedeId, lineas = [], subtotal, vaciar } = useCarrito()
+  const { sedeId, lineas = [], subtotal, vaciar, trasladarASede } = useCarrito()
   // HU-79: quita del carrito los productos que el operador ya eliminó del menú
   const avisoLimpieza = useLimpiarCarrito()
 
@@ -29,6 +42,12 @@ export default function ConfirmarPedido() {
     activo: Boolean(sedeActual),
   })
   const capacidadInfo = interpretarCapacidad(estadoCapacidad)
+
+  // HU-62: what to do when the sede is blocked (another sede, or the next slot)
+  const [alternativasAbiertas, setAlternativasAbiertas] = useState(false)
+  const [alternativas, setAlternativas] = useState(null)
+  const [cargandoAlternativas, setCargandoAlternativas] = useState(false)
+  const [errorAlternativas, setErrorAlternativas] = useState(null)
 
   const [direcciones, setDirecciones] = useState([])
   const [direccionId, setDireccionId] = useState('')
@@ -94,6 +113,42 @@ export default function ConfirmarPedido() {
       activo = false
     }
   }, [handleSeleccionarDireccion])
+
+  // HU-62: asks for the other sedes that cover the address and have capacity
+  async function abrirAlternativas() {
+    setAlternativasAbiertas(true)
+    setCargandoAlternativas(true)
+    setErrorAlternativas(null)
+    setAlternativas(null)
+    try {
+      setAlternativas(
+        await obtenerAlternativasCapacidad({
+          sedeId: Number(sedeActual),
+          direccionId: Number(direccionId),
+          productos: idsDeProductos(lineas),
+        }),
+      )
+    } catch (error) {
+      setErrorAlternativas(interpretarError(error).general)
+    } finally {
+      setCargandoAlternativas(false)
+    }
+  }
+
+  // HU-62: the cart goes to the new sede with what it has available, and the delivery
+  // fee, the minimum and the time are the ones of its zone
+  function elegirAlternativa(alternativa) {
+    const { lineas: restantes, quitadas } = trasladarCarrito(lineas, alternativa)
+    trasladarASede(alternativa.sede.id, restantes)
+    try {
+      localStorage.setItem('domipedidosx.sede', String(alternativa.sede.id))
+    } catch {
+      // without storage the menu asks for the sede again
+    }
+    setCoberturaInfo(coberturaDeAlternativa(alternativa))
+    setMensaje({ tipo: 'exito', texto: textoCambioDeSede(alternativa, quitadas) })
+    setAlternativasAbiertas(false)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -426,6 +481,24 @@ export default function ConfirmarPedido() {
         {capacidadInfo.aviso && (
           <Alerta tipo={capacidadInfo.aviso.tipo} titulo={capacidadInfo.aviso.texto} className="mt-4" />
         )}
+        {ofreceAlternativas(estadoCapacidad) && (
+          <>
+            <Boton
+              tipo="button"
+              variante="secundario"
+              className="mt-2 w-full"
+              onClick={abrirAlternativas}
+              disabled={!direccionId}
+            >
+              Ver alternativas
+            </Boton>
+            {!direccionId && (
+              <p className="mt-1 text-sm text-texto-suave">
+                Elige una dirección de entrega para buscar sedes cercanas.
+              </p>
+            )}
+          </>
+        )}
 
         <Boton
           tipo="submit"
@@ -443,6 +516,16 @@ export default function ConfirmarPedido() {
           {cargando ? 'Procesando pedido...' : 'Confirmar y Pagar'}
         </Boton>
       </form>
+
+      {alternativasAbiertas && (
+        <ModalAlternativas
+          datos={alternativas}
+          cargando={cargandoAlternativas}
+          error={errorAlternativas}
+          alElegir={elegirAlternativa}
+          alCerrar={() => setAlternativasAbiertas(false)}
+        />
+      )}
     </div>
   )
 }

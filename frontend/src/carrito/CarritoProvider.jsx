@@ -99,6 +99,12 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
     [actualizar],
   )
 
+  // HU-62: the customer accepts another sede, the cart goes there with the lines it can serve
+  const trasladarASede = useCallback(
+    (nuevaSedeId, lineas) => actualizar(() => ({ sedeId: nuevaSedeId, lineas })),
+    [actualizar],
+  )
+
   const vaciar = useCallback(() => actualizar(() => VACIO), [actualizar])
 
   // Cálculo de subtotales y totales usando tarifaSede
@@ -119,6 +125,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       cambiarCantidad,
       eliminar,
       quitarProductos,
+      trasladarASede,
       vaciar,
     }),
     [
@@ -131,6 +138,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       cambiarCantidad,
       eliminar,
       quitarProductos,
+      trasladarASede,
       vaciar,
     ],
   )
