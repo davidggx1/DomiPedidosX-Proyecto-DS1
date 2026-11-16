@@ -1,11 +1,12 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema_view, extend_schema
+from django.db import transaction
 from rest_framework import viewsets
 
 from usuarios.permissions import filtrar_por_sede, rol_requerido
-from usuarios.roles import ADMINISTRADOR, OPERADOR
+from usuarios.roles import ADMINISTRADOR, OPERADOR, obtener_rol, obtener_sede
 
-from .models import EstadoPromocion, Promocion
-from .serializers import PromocionSerializer
+from .models import Combo, ComboSede, EstadoPromocion, Promocion
+from .serializers import ComboSerializer, PromocionSerializer
 
 
 @extend_schema_view(
@@ -52,3 +53,49 @@ class PromocionViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.activa = False
         instance.save(update_fields=["activa"])
+
+
+class ComboViewSet(viewsets.ModelViewSet):
+    """
+    HU-85: crear, editar y desactivar combos.
+
+    El operador gestiona los de su sede; el administrador, los de todas (`?sede=` filtra).
+    DELETE desactiva (borrado lógico). Editar no cambia los pedidos ya hechos.
+    """
+
+    serializer_class = ComboSerializer
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+    pagination_class = None
+    http_method_names = ["get", "post", "patch", "put", "delete", "head", "options"]
+
+    def _sede_operador(self):
+        usuario = self.request.user
+        return obtener_sede(usuario) if obtener_rol(usuario) != ADMINISTRADOR else None
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        contexto["sede"] = self._sede_operador()
+        return contexto
+
+    def get_queryset(self):
+        combos = Combo.objects.prefetch_related("sedes_disponibles__sede").order_by(
+            "-fecha_inicio", "nombre", "id"
+        )
+        if obtener_rol(self.request.user) == ADMINISTRADOR:
+            sede = self.request.query_params.get("sede")
+        else:
+            sede = getattr(self._sede_operador(), "pk", 0)
+        if sede:
+            combos = combos.filter(sedes_disponibles__sede_id=sede)
+        elif obtener_rol(self.request.user) != ADMINISTRADOR:
+            return combos.none()
+        activo = self.request.query_params.get("activo")
+        if activo is not None:
+            combos = combos.filter(activo=activo.lower() in ("true", "1"))
+        return combos
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        instance.activo = False
+        instance.save(update_fields=["activo"])
+        ComboSede.objects.filter(combo=instance).update(activo=False)
