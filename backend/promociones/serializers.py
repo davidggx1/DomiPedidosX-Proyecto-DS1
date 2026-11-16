@@ -3,6 +3,7 @@ from rest_framework import serializers
 from sedes.models import Sede
 from usuarios.roles import ADMINISTRADOR, obtener_rol, obtener_sede
 
+from . import cupos
 from .models import Promocion, TipoDescuento
 
 
@@ -21,6 +22,8 @@ class PromocionSerializer(serializers.ModelSerializer):
     sede_nombre = serializers.ReadOnlyField(source="sede.nombre")
     estado = serializers.SerializerMethodField()
     utilizable = serializers.SerializerMethodField()
+    usos_hoy = serializers.SerializerMethodField()
+    cupo_restante = serializers.SerializerMethodField()
 
     class Meta:
         model = Promocion
@@ -36,9 +39,27 @@ class PromocionSerializer(serializers.ModelSerializer):
             "fecha_fin",
             "condiciones",
             "activa",
+            "cupo_max_diario",
+            "usos_hoy",
+            "cupo_restante",
             "estado",
             "utilizable",
         ]
+        extra_kwargs = {"cupo_max_diario": {"required": False, "allow_null": True}}
+
+    def get_usos_hoy(self, promocion):
+        return cupos.usos_hoy(promocion)
+
+    def get_cupo_restante(self, promocion):
+        # None = sin límite.
+        return cupos.cupo_restante(promocion)
+
+    def validate_cupo_max_diario(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError(
+                "El cupo diario debe ser un entero mayor que 0 (vacío = sin límite)."
+            )
+        return value
 
     def get_estado(self, promocion):
         return promocion.estado().value
