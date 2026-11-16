@@ -27,7 +27,7 @@ export const ENLACES_POR_ROL = {
   [ROLES.OPERADOR]: [
     { ruta: '/operador', texto: 'Pedidos entrantes' },
     { ruta: '/operador/crear-pedido', texto: 'Crear pedido' },
-    { ruta: '/operador/menu', texto: 'Menú e inventario' },
+    { ruta: '/operador/menu', texto: 'Categorias' },
     { ruta: '/operador/productos', texto: 'Productos' },
     { ruta: '/operador/adiciones', texto: 'Adiciones' },
     { ruta: '/operador/ingredientes', texto: 'Ingredientes' },
@@ -47,7 +47,8 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/pedidos', texto: 'Pedidos del día' },
     { ruta: '/admin/historial', texto: 'Historial' },
     { ruta: '/admin/reportes', texto: 'Reportes' },
-    { ruta: '/admin/sedes', texto: 'Sedes' },
+    // Los horarios, festivos y franjas de capacidad se configuran desde cada sede
+    { ruta: '/admin/sedes', texto: 'Sedes y horarios', activoEn: ['/admin/horarios'] },
     { ruta: '/admin/zonas', texto: 'Zonas de cobertura' },
     { ruta: '/admin/notificaciones', texto: 'Notificaciones' },
     { ruta: '/admin/personal', texto: 'Personal' },

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api/cliente.js'
 import {
   obtenerHorariosSede,
@@ -177,6 +177,9 @@ export default function ConfiguracionHorarios() {
   return (
     <div className="flex flex-col gap-6">
       <header>
+        <Link to="/admin/sedes" className="text-sm font-medium text-marca-clara underline">
+          ← Volver a sedes
+        </Link>
         <h1 className="text-2xl font-bold">Horarios de Atención, Festivos y Capacidad</h1>
         <p className="text-texto-suave">Configura las reglas de apertura y límites por franja (HU-82 / HU-59).</p>
       </header>
