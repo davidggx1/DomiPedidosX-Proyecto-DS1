@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PanelAgotadosCocina from '../../components/inventario/PanelAgotadosCocina.jsx'
 import PanelStockBajo from '../../components/inventario/PanelStockBajo.jsx'
 import SeccionExistencias from '../../components/inventario/SeccionExistencias.jsx'
 import Boton from '../../components/ui/Boton.jsx'
@@ -18,6 +19,7 @@ export default function Inventario() {
         </p>
       </header>
 
+      <PanelAgotadosCocina />
       <PanelStockBajo />
 
       <div role="group" aria-label="Tipo de existencias" className="flex flex-wrap gap-2">

@@ -1,4 +1,4 @@
-// HU-16 · Popup for new low stock alerts. Shown on any screen of the operator
+// HU-16 · Popup for new low stock alerts (and HU-17 sold out reports). Shown on any screen of the operator
 export default function AvisosInventario({ avisos, alAbrir, alCerrar }) {
   if (avisos.length === 0) return null
 
@@ -21,7 +21,7 @@ export default function AvisosInventario({ avisos, alAbrir, alCerrar }) {
               onClick={() => alAbrir(aviso)}
               className="mt-2 min-h-11 rounded-lg bg-marca px-4 py-2 font-medium text-sobre-marca hover:bg-marca-oscura"
             >
-              Ver inventario
+              {aviso.accion ?? 'Ver inventario'}
             </button>
           </div>
           <button

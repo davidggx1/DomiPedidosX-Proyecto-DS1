@@ -33,6 +33,7 @@ import Reportes from './pages/admin/Reportes.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
 import Despacho from './pages/operador/Despacho.jsx'
 import PedidosEntrantes from './pages/operador/PedidosEntrantes.jsx'
+import ProductosCocina from './pages/cocina/ProductosCocina.jsx'
 import TableroCocina from './pages/cocina/TableroCocina.jsx'
 import RegistrarEmpleado from "./pages/admin/RegistrarEmpleado.jsx";
 import PersonalDashboard from "./pages/admin/PersonalDashboard.jsx";
@@ -83,6 +84,7 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
           <Route path="cocina" element={<TableroCocina />} />
+          <Route path="cocina/productos" element={<ProductosCocina />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>

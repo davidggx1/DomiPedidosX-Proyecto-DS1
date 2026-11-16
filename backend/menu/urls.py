@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 from .carrito import ValidarLineaCarritoView, CalcularResumenCarritoView
+from .agotados import MarcarAgotadoView, ProductosCocinaView
 from .catalogo import MenuSedeView, SedesMenuView
 from .disponibilidad import DisponibilidadProductoView, ValidarCarritoView
 
@@ -41,6 +42,9 @@ urlpatterns = [
     path("productos/<int:producto_pk>/tamanos/<int:pk>/", producto_tamano_detalle, name="producto-tamano-detalle"),
     path("productos/<int:pk>/imagen/", ProductoImagenView.as_view(), name="producto-imagen"),
     path("productos-opciones/", ProductoOpcionesView.as_view(), name="producto-opciones"),
+    # HU-17: cocina reporta agotados
+    path("cocina/productos/", ProductosCocinaView.as_view(), name="cocina-productos"),
+    path("cocina/productos/<int:pk>/agotado/", MarcarAgotadoView.as_view(), name="cocina-producto-agotado"),
     path("sedes/", SedesMenuView.as_view(), name="menu-sedes"),
     path("sedes/<int:sede_pk>/menu/", MenuSedeView.as_view(), name="menu-sede"),
     path(
