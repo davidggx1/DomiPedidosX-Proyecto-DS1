@@ -150,3 +150,39 @@ class AlertaInventario(models.Model):
     def __str__(self):
         item = self.producto or self.insumo
         return f"Alerta {self.estado}: {item} - {self.sede}"
+
+
+class ReporteAgotado(models.Model):
+    """
+    HU-17 · Cocina reporta un producto como agotado por falta de insumos.
+
+    Queda el registro de qué producto, en qué sede, quién lo reportó y a qué
+    hora exacta, para avisar al operador y poder auditarlo después. Mientras
+    el producto siga sin habilitarse, el reporte está pendiente y aparece en
+    el inventario del operador.
+    """
+
+    sede = models.ForeignKey(
+        "sedes.Sede",
+        on_delete=models.PROTECT,
+        related_name="reportes_agotado",
+    )
+    producto = models.ForeignKey(
+        "menu.Producto",
+        on_delete=models.PROTECT,
+        related_name="reportes_agotado",
+    )
+    usuario = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.PROTECT,
+        related_name="reportes_agotado",
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    # Cuándo el producto volvió a estar disponible en la sede. Null = sigue pendiente.
+    resuelto_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-fecha_hora", "-id"]
+
+    def __str__(self):
+        return f"Agotado: {self.producto} - {self.sede} ({self.fecha_hora:%Y-%m-%d %H:%M})"

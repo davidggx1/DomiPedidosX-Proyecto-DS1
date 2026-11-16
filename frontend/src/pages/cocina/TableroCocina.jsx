@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { interpretarError } from '../../api/errores.js'
 import { cambiarEstadoPedido, obtenerTableroCocina } from '../../api/pedidos.js'
+import ModalErrorCocina from '../../components/cocina/ModalErrorCocina.jsx'
 import TarjetaPedido from '../../components/cocina/TarjetaPedido.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
@@ -9,7 +10,7 @@ import { AVANCE_COCINA, COLUMNAS_COCINA, ordenarPorAntiguedad } from '../../util
 // how often the board asks the server for changes
 const INTERVALO_MS = 10000
 
-// HU-29, HU-30, HU-31 y HU-32 · Kitchen board with three columns and live order timers
+// HU-29, HU-30, HU-31, HU-32 y HU-33 · Kitchen board with three columns and live order timers
 export default function TableroCocina() {
   const [tablero, setTablero] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -18,6 +19,8 @@ export default function TableroCocina() {
   const [ahora, setAhora] = useState(() => Date.now())
   const [moviendo, setMoviendo] = useState(null) // id of the order being moved
   const [mensaje, setMensaje] = useState(null)
+  const [conError, setConError] = useState(null) // HU-33: card whose kitchen error is being reported
+  const cerrarError = useCallback(() => setConError(null), [])
 
   // HU-32 · Reloj dinámico en tiempo real para que el cronómetro en minutos avance sin esperar al polling
   useEffect(() => {
@@ -70,6 +73,16 @@ export default function TableroCocina() {
     }
   }
 
+  // HU-33: the order left the board; the customer and the operator were warned
+  function alCancelarPorError(pedido) {
+    setConError(null)
+    setMensaje({
+      tipo: 'exito',
+      texto: `${pedido.numero_pedido} cancelado por error de cocina. Se avisó al cliente y al operador.`,
+    })
+    setRecarga((numero) => numero + 1)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -115,6 +128,7 @@ export default function TableroCocina() {
                         ahora={ahora}
                         ocupada={moviendo === tarjeta.id}
                         alAvanzar={avanzar}
+                        alReportarError={setConError}
                       />
                     ))}
                   </ul>
@@ -123,6 +137,10 @@ export default function TableroCocina() {
             )
           })}
         </div>
+      )}
+
+      {conError && (
+        <ModalErrorCocina tarjeta={conError} alCerrar={cerrarError} alCancelar={alCancelarPorError} />
       )}
     </div>
   )

@@ -8,8 +8,9 @@ import Boton from '../ui/Boton.jsx'
 import DetalleComanda from './DetalleComanda.jsx'
 
 // Card of the kitchen board. It expands to show the full order (HU-30),
-// moves the order to the next column (HU-31) and shows elapsed time (HU-32).
-export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
+// moves the order to the next column (HU-31), shows elapsed time (HU-32)
+// and cancels it because of a kitchen error (HU-33).
+export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar, alReportarError }) {
   const [abierta, setAbierta] = useState(false)
   const [comanda, setComanda] = useState(null)
   const [cargando, setCargando] = useState(false)
@@ -18,6 +19,8 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
   const avance = AVANCE_COCINA[tarjeta.estado]
   // the API tells which steps this role can give
   const puedeAvanzar = avance && tarjeta.siguientes_estados.includes(avance.estado)
+  // HU-33: cocina can cancel only while the order is in its hands (received or in preparation)
+  const puedeReportarError = tarjeta.siguientes_estados.includes('cancelado')
   const idDetalle = `detalle-pedido-${tarjeta.id}`
   const cronometro = estadoCronometroCocina(tarjeta, ahora)
 
@@ -110,6 +113,16 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar }) {
             aria-label={`${avance.texto}: pedido ${tarjeta.numero_pedido}`}
           >
             {avance.texto}
+          </Boton>
+        )}
+        {puedeReportarError && (
+          <Boton
+            variante="peligro"
+            onClick={() => alReportarError(tarjeta)}
+            disabled={ocupada}
+            aria-label={`Reportar error de cocina: pedido ${tarjeta.numero_pedido}`}
+          >
+            Reportar error
           </Boton>
         )}
       </div>

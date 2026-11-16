@@ -37,7 +37,10 @@ export const ENLACES_POR_ROL = {
     { ruta: '/operador/promociones', texto: 'Promociones' },
     { ruta: '/operador/pedidos-del-dia', texto: 'Pedidos del día' },
   ],
-  [ROLES.COCINA]: [{ ruta: '/cocina', texto: 'Tablero de cocina' }],
+  [ROLES.COCINA]: [
+    { ruta: '/cocina', texto: 'Tablero de cocina' },
+    { ruta: '/cocina/productos', texto: 'Productos' },
+  ],
   [ROLES.REPARTIDOR]: [{ ruta: '/repartidor', texto: 'Mis entregas' }],
   [ROLES.ADMINISTRADOR]: [
     { ruta: '/admin', texto: 'Dashboard' },
@@ -51,6 +54,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/personal', texto: 'Personal' },
     { ruta: '/admin/cuentas', texto: 'Cuentas' },
     { ruta: '/admin/clientes', texto: 'Clientes' },
+    { ruta: '/admin/promociones', texto: 'Promociones' },
   ],
 }
 
