@@ -3,10 +3,10 @@ import { listarDirecciones } from '../api/direcciones.js'
 import { validarCoberturaDireccion } from '../api/sedes.js'
 
 // Datos de la zona donde cae la dirección principal del cliente (o la primera):
-// el pedido mínimo (HU-57) y la tarifa de domicilio (HU-22).
+// el pedido mínimo (HU-57) y la tarifa de domicilio (HU-22), de la sede del carrito.
 // Mientras carga, o si no se puede determinar, devuelve null en los dos: en ese caso
 // el carrito no bloquea nada, no inventa un domicilio y el backend valida al confirmar.
-export function useZonaEntrega() {
+export function useZonaEntrega(sedeId) {
   const [zona, setZona] = useState(null)
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export function useZonaEntrega() {
         const lista = Array.isArray(data) ? data : (data?.results ?? [])
         const direccion = lista.find((d) => d.es_principal) ?? lista[0]
         if (!direccion) return null
-        return validarCoberturaDireccion(direccion.latitud, direccion.longitud)
+        return validarCoberturaDireccion(direccion.latitud, direccion.longitud, sedeId)
       })
       .then((cobertura) => {
         if (activo && cobertura?.cubierto) {
@@ -30,7 +30,7 @@ export function useZonaEntrega() {
     return () => {
       activo = false
     }
-  }, [])
+  }, [sedeId])
 
   return { pedidoMinimo: zona?.pedidoMinimo ?? null, tarifaDomicilio: zona?.tarifaDomicilio ?? null }
 }

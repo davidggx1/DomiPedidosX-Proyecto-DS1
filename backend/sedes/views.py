@@ -164,7 +164,11 @@ class SedeViewSet(viewsets.ModelViewSet):
     def validar_cobertura(self, request):
         """
         HU-58: Valida la latitud y longitud enviada por el cliente.
-        Body: { "latitud": 3.45, "longitud": -76.53 }
+        Body: { "latitud": 3.45, "longitud": -76.53, "sede_id": 2 (opcional) }
+
+        Con `sede_id` (la sede del carrito) la respuesta es sobre ESA sede, que
+        es a la que se enviará el pedido: si no cubre la dirección pero otra sí,
+        responde cubierto=false con codigo "otra_sede" y la sede sugerida.
         """
         try:
             lat = float(request.data.get('latitud'))
@@ -192,6 +196,29 @@ class SedeViewSet(viewsets.ModelViewSet):
                     'distancia_km': dist_km,
                     'zona': zona
                 })
+
+        # Con la sede del carrito, la respuesta es sobre ella.
+        sede_id = request.data.get('sede_id')
+        if sede_id not in (None, ''):
+            try:
+                sede_id = int(sede_id)
+            except (TypeError, ValueError):
+                return Response({"detail": "La sede debe ser un id numérico."}, status=status.HTTP_400_BAD_REQUEST)
+            del_carrito = next((item for item in sedes_con_cobertura if item['sede'].id == sede_id), None)
+            if del_carrito is not None:
+                sedes_con_cobertura = [del_carrito]
+            elif sedes_con_cobertura:
+                sugerida = min(sedes_con_cobertura, key=lambda item: item['distancia_km'])['sede']
+                carrito = next((s.nombre for s in sedes_activas if s.id == sede_id), "otra sede")
+                return Response({
+                    "cubierto": False,
+                    "codigo": "otra_sede",
+                    "mensaje": (
+                        f"Tu carrito es de {carrito}, pero esta dirección la atiende {sugerida.nombre}. "
+                        "Elige otra dirección o cambia de sede en el menú."
+                    ),
+                    "sede_sugerida": {"id": sugerida.id, "nombre": sugerida.nombre},
+                }, status=status.HTTP_200_OK)
 
         # Criterio 2: Fuera de todas las áreas
         if not sedes_con_cobertura:

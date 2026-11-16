@@ -44,3 +44,19 @@ export function interpretarError(error) {
 
   return { general, campos }
 }
+
+// Readable text of an error body without the field names (the user must never
+// see "direccion_id: ..."). `detail` goes first; nested lists and objects are flattened
+export function mensajesSinCampos(data) {
+  if (data == null) return ''
+  if (typeof data === 'string') return data
+  if (Array.isArray(data)) return data.map(mensajesSinCampos).filter(Boolean).join(' ')
+  if (typeof data === 'object') {
+    // `codigo` is for the code, not for people
+    const resto = Object.entries(data)
+      .filter(([clave]) => clave !== 'detail' && clave !== 'codigo')
+      .map(([, valor]) => mensajesSinCampos(valor))
+    return [mensajesSinCampos(data.detail), ...resto].filter(Boolean).join(' ')
+  }
+  return String(data)
+}

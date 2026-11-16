@@ -1,8 +1,9 @@
 import {useState, useEffect, useCallback} from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
 import { confirmarPedidoCliente } from '../../api/pedidos.js'
+import { mensajesSinCampos } from '../../api/errores.js'
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
 import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'
@@ -60,7 +61,8 @@ export default function ConfirmarPedido() {
     if (dirObj.latitud && dirObj.longitud) {
       setValidandoCobertura(true)
       try {
-        const res = await validarCoberturaDireccion(dirObj.latitud, dirObj.longitud)
+        // against the sede of the cart: it is the one the order goes to
+        const res = await validarCoberturaDireccion(dirObj.latitud, dirObj.longitud, sedeActual)
         setCoberturaInfo(res)
         if (!res.cubierto) {
           setMensaje({ tipo: 'error', texto: res.mensaje })
@@ -71,7 +73,7 @@ export default function ConfirmarPedido() {
         setValidandoCobertura(false)
       }
     }
-  }, [])
+  }, [sedeActual])
 
   useEffect(() => {
     let activo = true
@@ -204,23 +206,18 @@ export default function ConfirmarPedido() {
           setErroresItems(dataError.items)
         } else if (typeof dataError.items === 'object') {
           const listaErrores = Object.entries(dataError.items).map(([indice, detalles]) => {
-            const msgs = Object.entries(detalles)
-              .map(([campo, msgs]) => `${campo}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
-              .join(' | ')
             return {
               indice: Number(indice),
               nombre: lineas[Number(indice)]?.producto?.nombre || `Ítem #${Number(indice) + 1}`,
-              motivo: msgs,
+              motivo: mensajesSinCampos(detalles),
             }
           })
           setMensaje({ tipo: 'error', texto: 'Revisa los errores en los productos del carrito.' })
           setErroresItems(listaErrores)
         }
       } else if (typeof dataError === 'object' && dataError !== null) {
-        const textoError = Object.entries(dataError)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : v}`)
-          .join(' | ')
-        setMensaje({ tipo: 'error', texto: textoError })
+        // only the messages: the user must not see field names like "direccion_id"
+        setMensaje({ tipo: 'error', texto: mensajesSinCampos(dataError) || 'No se pudo confirmar el pedido.' })
       } else {
         setMensaje({ tipo: 'error', texto: 'Error inesperado al procesar el pedido.' })
       }
@@ -268,7 +265,7 @@ export default function ConfirmarPedido() {
           </div>
         )}
 
-        <Boton variante="primario" className="mt-4 w-full" onClick={() => navigate('/pedidos')}>
+        <Boton variante="primario" className="mt-4 w-full" onClick={() => navigate('/mis-pedidos')}>
           Ver mis pedidos
         </Boton>
       </div>
@@ -283,8 +280,8 @@ export default function ConfirmarPedido() {
       {mensaje && <Alerta tipo={mensaje.tipo} titulo={mensaje.texto} />}
 
       {erroresItems.length > 0 && (
-        <div className="space-y-1 rounded-lg border border-rojo bg-rojo/10 p-4 text-sm text-rojo">
-          <p className="font-bold">Ítems con inconvenientes:</p>
+        <div className="space-y-2 rounded-lg border border-error bg-error/10 p-4 text-sm">
+          <p className="font-bold text-error">Ítems con inconvenientes:</p>
           <ul className="list-disc pl-5">
             {erroresItems.map((err, idx) => (
               <li key={idx}>
@@ -293,6 +290,13 @@ export default function ConfirmarPedido() {
               </li>
             ))}
           </ul>
+          {/* the lines are fixed in the cart: change or remove them and come back */}
+          <Link
+            to="/carrito"
+            className="inline-flex min-h-11 items-center rounded-xl border border-borde bg-superficie-alta px-4 py-2 font-semibold hover:bg-borde"
+          >
+            ← Volver al carrito para corregirlo
+          </Link>
         </div>
       )}
 
@@ -305,7 +309,7 @@ export default function ConfirmarPedido() {
               No tienes direcciones registradas.{' '}
               <button
                 type="button"
-                onClick={() => navigate('/perfil/direcciones')}
+                onClick={() => navigate('/direcciones')}
                 className="text-marca underline"
               >
                 Agregar una dirección
@@ -332,6 +336,12 @@ export default function ConfirmarPedido() {
 
           {validandoCobertura && (
             <p className="mt-1 text-xs text-texto-suave">Validando cobertura de la dirección...</p>
+          )}
+
+          {coberturaInfo?.codigo === 'otra_sede' && (
+            <Link to="/menu" className="mt-2 inline-block text-sm font-medium text-marca-clara underline">
+              Ir al menú para cambiar a {coberturaInfo.sede_sugerida.nombre}
+            </Link>
           )}
 
           {coberturaInfo && coberturaInfo.cubierto && (
