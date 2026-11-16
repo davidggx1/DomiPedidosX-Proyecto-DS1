@@ -2,13 +2,9 @@ import {useState, useEffect, useCallback} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
-<<<<<<< ours
-import { confirmarPedidoCliente } from '../../api/pedidos.js'
 import { mensajesSinCampos } from '../../api/errores.js'
-=======
 import { interpretarError } from '../../api/errores.js'
 import { confirmarPedidoCliente, obtenerAlternativasCapacidad } from '../../api/pedidos.js'
->>>>>>> theirs
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
 import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'

@@ -35,6 +35,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/operador/repartidores', texto: 'Repartidores' },
     { ruta: '/operador/repartidores/estado', texto: 'Estado de repartidores' },
     { ruta: '/operador/promociones', texto: 'Promociones' },
+    { ruta: '/operador/combos', texto: 'Combos' },
     { ruta: '/operador/pedidos-del-dia', texto: 'Pedidos del día' },
   ],
   [ROLES.COCINA]: [
@@ -55,6 +56,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/cuentas', texto: 'Cuentas' },
     { ruta: '/admin/clientes', texto: 'Clientes' },
     { ruta: '/admin/promociones', texto: 'Promociones' },
+    { ruta: '/admin/combos', texto: 'Combos' },
   ],
 }
 

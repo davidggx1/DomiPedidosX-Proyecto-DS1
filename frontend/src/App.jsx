@@ -43,6 +43,7 @@ import Sedes from "./pages/admin/Sedes.jsx";
 import ZonasCobertura from "./pages/admin/ZonasCobertura.jsx";
 import EstadoRepartidores from './pages/operador/EstadoRepartidores.jsx';
 import Promociones from './pages/operador/Promociones.jsx'
+import Combos from './pages/operador/Combos.jsx'
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="operador/pedidos-del-dia" element={<PedidosDelDia />} />
           <Route path="operador/repartidores/estado" element={<EstadoRepartidores />} />
           <Route path="operador/promociones" element={<Promociones />} />
+          <Route path="operador/combos" element={<Combos />} />
         </Route>
 
         <Route element={<RutaProtegida roles={[ROLES.COCINA]} />}>
@@ -106,6 +108,7 @@ export default function App() {
           <Route path="admin/cuentas" element={<Cuentas />} />
           <Route path="admin/clientes" element={<Clientes />} />
           <Route path="admin/promociones" element={<Promociones />} />
+          <Route path="admin/combos" element={<Combos />} />
         </Route>
 
         <Route path="*" element={<NoEncontrada />} />
