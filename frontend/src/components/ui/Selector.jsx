@@ -1,12 +1,14 @@
 import { useId } from 'react'
 
 // Lista desplegable. opciones = [{ valor: '1', etiqueta: 'Sede Centro' }, ...]
+// `sinOpcionVacia` quita la opción "Selecciona..." cuando siempre hay un valor elegido
 export default function Selector({
   etiqueta,
   opciones,
   error,
   requerido = false,
   textoVacio = 'Selecciona una opción',
+  sinOpcionVacia = false,
   id,
   className = '',
   ...props
@@ -33,7 +35,7 @@ export default function Selector({
         className={`min-h-11 rounded-xl border bg-fondo px-3 py-2 text-texto ${error ? 'border-error' : 'border-borde'}`}
         {...props}
       >
-        <option value="">{textoVacio}</option>
+        {!sinOpcionVacia && <option value="">{textoVacio}</option>}
         {opciones.map((opcion) => (
           <option key={opcion.valor} value={opcion.valor}>
             {opcion.etiqueta}

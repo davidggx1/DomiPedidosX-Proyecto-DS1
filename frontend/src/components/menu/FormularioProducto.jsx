@@ -8,6 +8,13 @@ import Casilla from '../ui/Casilla.jsx'
 import Selector from '../ui/Selector.jsx'
 import SelectorImagen from './SelectorImagen.jsx'
 import TamanosProducto from './TamanosProducto.jsx'
+import {
+  CONTROL_POR_DEFECTO,
+  OPCIONES_CONTROL_STOCK,
+  ayudaControlStock,
+  controlStockInicial,
+} from '../../utils/controlStock.js'
+import { armarDatosProducto } from '../../utils/productoFormulario.js'
 
 const VACIO = {
   nombre: '',
@@ -17,6 +24,7 @@ const VACIO = {
   categoria: '',
   sedes: [],
   activo: true,
+  tipo_control_stock: CONTROL_POR_DEFECTO,
 }
 
 function valoresIniciales(producto) {
@@ -29,11 +37,8 @@ function valoresIniciales(producto) {
     categoria: String(producto.categoria),
     sedes: producto.sedes.map(String),
     activo: producto.activo,
+    tipo_control_stock: controlStockInicial(producto),
   }
-}
-
-function mismasSedes(a, b) {
-  return a.length === b.length && a.every((id) => b.includes(id))
 }
 
 // Mismas reglas que el backend, para avisar antes de enviar.
@@ -67,6 +72,7 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
   const esEdicion = Boolean(producto)
   const idDescripcion = useId()
   const idSedes = useId()
+  const idControlStock = useId()
   const [valores, setValores] = useState(() => valoresIniciales(producto))
   const [archivo, setArchivo] = useState(null)
   const [errores, setErrores] = useState({})
@@ -100,23 +106,6 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
     setErrores((actuales) => ({ ...actuales, imagen: problema ?? undefined }))
   }
 
-  function armarFormulario() {
-    const datos = new FormData()
-    datos.append('nombre', valores.nombre.trim())
-    datos.append('descripcion', valores.descripcion.trim())
-    datos.append('precio_base', valores.precio_base)
-    datos.append('tiempo_preparacion', valores.tiempo_preparacion)
-    datos.append('categoria', valores.categoria)
-    if (esEdicion) datos.append('activo', String(valores.activo))
-    if (archivo) datos.append('imagen', archivo)
-    // En edición solo se envían las sedes si cambiaron, para no tocar la disponibilidad actual.
-    const sedesIniciales = producto?.sedes.map(String) ?? []
-    if (!esEdicion || !mismasSedes(valores.sedes, sedesIniciales)) {
-      valores.sedes.forEach((id) => datos.append('sedes', id))
-    }
-    return datos
-  }
-
   async function enviar(evento) {
     evento.preventDefault()
     const nuevosErrores = validar(valores)
@@ -127,7 +116,7 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
 
     setGuardando(true)
     try {
-      const datos = armarFormulario()
+      const datos = armarDatosProducto({ valores, archivo, producto })
       const guardado = esEdicion
         ? await actualizarProducto(producto.id, datos)
         : await crearProducto(datos)
@@ -227,6 +216,23 @@ export default function FormularioProducto({ producto, categorias, sedes, alGuar
         textoVacio="Selecciona una categoría"
         requerido
       />
+
+      <div className="flex flex-col gap-1">
+        <Selector
+          etiqueta="Control de stock"
+          name="tipo_control_stock"
+          opciones={OPCIONES_CONTROL_STOCK.map(({ valor, etiqueta }) => ({ valor, etiqueta }))}
+          value={valores.tipo_control_stock}
+          onChange={cambiar}
+          error={errores.tipo_control_stock}
+          sinOpcionVacia
+          requerido
+          {...(errores.tipo_control_stock ? {} : { 'aria-describedby': idControlStock })}
+        />
+        <p id={idControlStock} className="text-sm text-texto-suave">
+          {ayudaControlStock(valores.tipo_control_stock)}
+        </p>
+      </div>
 
       <fieldset
         aria-describedby={errores.sedes ? `${idSedes}-error` : undefined}
