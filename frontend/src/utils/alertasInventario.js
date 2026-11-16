@@ -1,3 +1,5 @@
+import { horaExacta } from './tiempo.js'
+
 // HU-16: low stock alerts. Pure helpers for the panel and the popup of the operator
 
 export const TIPO_EVENTO_ALERTA = 'alerta_inventario'
@@ -45,5 +47,48 @@ export function avisoDeEvento(evento) {
     titulo: `${alerta.stock_actual === 0 ? 'Agotado' : 'Stock bajo'}: ${alerta.nombre}`,
     texto: textoStock(alerta),
     enlace: '/operador/inventario',
+  }
+}
+
+// HU-17 · Popup when the kitchen reports a product as sold out, or null for any other message
+export const TIPO_EVENTO_AGOTADO = 'producto_agotado'
+
+export function avisoDeAgotado(datos) {
+  if (datos?.tipo !== TIPO_EVENTO_AGOTADO || !datos.reporte) return null
+  const { reporte } = datos
+  return {
+    id: `agotado-${reporte.id}`,
+    titulo: `Agotado por cocina: ${reporte.producto_nombre}`,
+    texto: `Ya no aparece disponible en el menú. Reportado por ${reporte.usuario_nombre} a las ${horaExacta(reporte.fecha_hora)}`,
+    enlace: '/operador/inventario',
+    accion: 'Ver inventario',
+  }
+}
+
+// HU-17 · New list of pending sold out reports after a socket message. A new
+// report goes first; when the operator enables the product again it leaves the list
+export const TIPO_EVENTO_AGOTADO_RESUELTO = 'agotado_resuelto'
+
+export function aplicarEventoAgotado(lista, datos) {
+  if (datos?.tipo === TIPO_EVENTO_AGOTADO && datos.reporte) {
+    return [datos.reporte, ...lista.filter((r) => r.id !== datos.reporte.id)]
+  }
+  if (datos?.tipo === TIPO_EVENTO_AGOTADO_RESUELTO && Array.isArray(datos.reportes)) {
+    return lista.filter((r) => !datos.reportes.includes(r.id))
+  }
+  return lista
+}
+
+// HU-33 · Popup when the kitchen cancels an order because of a kitchen error
+export const TIPO_EVENTO_ERROR_COCINA = 'pedido_cancelado_cocina'
+
+export function avisoDeCancelacionCocina(datos) {
+  if (datos?.tipo !== TIPO_EVENTO_ERROR_COCINA || !datos.pedido) return null
+  return {
+    id: `error-cocina-${datos.pedido.id}`,
+    titulo: `Pedido ${datos.pedido.numero_pedido} cancelado por error de cocina`,
+    texto: `Motivo: ${datos.justificacion}. Reportado por ${datos.usuario_nombre} a las ${horaExacta(datos.fecha_hora)}`,
+    enlace: '/operador/pedidos-del-dia',
+    accion: 'Ver pedidos del día',
   }
 }

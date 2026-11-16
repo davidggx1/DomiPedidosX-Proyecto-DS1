@@ -32,6 +32,12 @@ export async function listarAlertasInventario(estado = 'activa') {
   return data
 }
 
+// HU-17: products the kitchen reported as sold out that are still unavailable
+export async function listarAgotadosPendientes() {
+  const { data } = await api.get('/inventario/agotados/')
+  return data
+}
+
 // HU-16: the stock alerts travel in the same socket as the incoming orders.
 // Returns the function that closes it
 export function conectarAlertasInventario(eventos) {

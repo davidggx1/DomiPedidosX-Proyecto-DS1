@@ -209,7 +209,7 @@ export default function Sedes() {
                   className="w-full text-xs"
                   onClick={() => navigate(`/admin/horarios?sede=${sede.id}`)}
                 >
-                  📅 Horarios y Festivos
+                  📅 Horarios, festivos y capacidad
                 </Boton>
 
                 <div className="flex gap-2">

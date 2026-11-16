@@ -60,3 +60,42 @@ export function textoTiempoEnCocina(tarjeta, ahora) {
   }
   return `En cocina hace ${textoDuracion(minutos)}`
 }
+
+// "Clásica" -> "clasica", to search without caring about accents or case
+function normalizar(texto) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+// HU-17 · Products whose name or category contain the search. Sold out ones go last
+export function filtrarProductosCocina(productos, busqueda) {
+  const termino = normalizar(busqueda)
+  const encontrados = termino
+    ? productos.filter((p) => normalizar(`${p.nombre} ${p.categoria}`).includes(termino))
+    : productos
+  return [...encontrados].sort((a, b) => Number(b.disponible) - Number(a.disponible))
+}
+
+// HU-33 · Same limits as the backend (pedidos/cancelacion.py)
+export const JUSTIFICACION_MINIMA = 5
+export const JUSTIFICACION_MAXIMA = 500
+
+// Error text for the justification of a kitchen error, or null if it is valid
+export function validarJustificacion(texto) {
+  const limpio = (texto ?? '').trim()
+  if (!limpio) return 'Escribe la justificación del error de cocina.'
+  if (limpio.length < JUSTIFICACION_MINIMA) {
+    return `La justificación debe tener al menos ${JUSTIFICACION_MINIMA} caracteres.`
+  }
+  if (limpio.length > JUSTIFICACION_MAXIMA) {
+    return `La justificación no puede superar ${JUSTIFICACION_MAXIMA} caracteres.`
+  }
+  return null
+}
+
+// HU-17 · Names of the products that were unavailable and now can be ordered
+// again (the operator enabled them). Empty on the first load
+export function productosReactivados(antes, despues) {
+  if (!antes) return []
+  const noDisponibles = new Set(antes.filter((p) => !p.disponible).map((p) => p.id))
+  return despues.filter((p) => p.disponible && noDisponibles.has(p.id)).map((p) => p.nombre)
+}

@@ -25,3 +25,8 @@ export function fechaHora(fecha) {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 }
+
+// "07:14:05 p. m." (with seconds, for audit messages)
+export function horaExacta(fecha) {
+  return new Date(fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}

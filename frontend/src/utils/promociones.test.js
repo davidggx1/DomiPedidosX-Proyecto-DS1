@@ -3,12 +3,15 @@ import {
   armarCuerpoPromocion,
   claseEstado,
   contarPorEstado,
+  cupoAgotado,
   datosIniciales,
   etiquetaValor,
   fechaLocal,
   filtrarPorEstado,
   formatearFecha,
+  mensajeCupoAgotado,
   normalizarValor,
+  textoCupo,
   textoPorcentaje,
   textoVigencia,
   validarPromocion,
@@ -163,5 +166,43 @@ describe('filtros por estado', () => {
     expect(claseEstado('programada')).toContain('aviso')
     expect(claseEstado('vencida')).toContain('borde')
     expect(claseEstado('inactiva')).toContain('borde')
+  })
+})
+
+describe('HU-64 · cupo diario', () => {
+  const base = {
+    nombre: 'Promo', tipo_descuento: 'porcentaje', valor: '10',
+    fecha_inicio: '2026-11-15', fecha_fin: '2026-11-20',
+  }
+
+  it('el cupo es opcional; vacío se envía como null', () => {
+    expect(validarPromocion({ ...base, cupo_max_diario: '' })).toEqual({})
+    expect(armarCuerpoPromocion({ ...base, cupo_max_diario: '  ' }).cupo_max_diario).toBeNull()
+    expect(armarCuerpoPromocion({ ...base, cupo_max_diario: '50' }).cupo_max_diario).toBe(50)
+  })
+
+  it('rechaza cupo 0, negativo, decimal o texto', () => {
+    for (const malo of ['0', '-3', '2.5', 'abc']) {
+      expect(validarPromocion({ ...base, cupo_max_diario: malo }).cupo_max_diario).toBeTruthy()
+    }
+  })
+
+  it('muestra el uso del día y avisa si se agotó', () => {
+    expect(textoCupo({ cupo_max_diario: null })).toBeNull()
+    expect(textoCupo({ cupo_max_diario: 10, usos_hoy: 4, cupo_restante: 6 })).toBe(
+      'Hoy: 4 de 10 usos · quedan 6',
+    )
+    expect(textoCupo({ cupo_max_diario: 10, usos_hoy: 10, cupo_restante: 0 })).toContain('agotado')
+    expect(cupoAgotado({ cupo_max_diario: 10, cupo_restante: 0 })).toBe(true)
+    expect(cupoAgotado({ cupo_max_diario: null, cupo_restante: null })).toBe(false)
+  })
+
+  it('el mensaje al cliente nombra la oferta', () => {
+    expect(mensajeCupoAgotado('2x1')).toContain('«2x1»')
+  })
+
+  it('al editar carga el cupo actual', () => {
+    expect(datosIniciales({ ...base, valor: '10.00', cupo_max_diario: 25 }).cupo_max_diario).toBe('25')
+    expect(datosIniciales({ ...base, valor: '10.00', cupo_max_diario: null }).cupo_max_diario).toBe('')
   })
 })

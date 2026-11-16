@@ -8,3 +8,8 @@ export async function validarCoberturaDireccion(latitud, longitud, sedeId) {
   const { data } = await api.post('/sedes/validar-cobertura/', cuerpo)
   return data
 }
+
+export async function listarSedes() {
+  const { data } = await api.get('/sedes/')
+  return Array.isArray(data) ? data : (data?.results ?? [])
+}
