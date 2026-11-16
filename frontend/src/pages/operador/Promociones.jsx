@@ -14,8 +14,10 @@ import {
   ETIQUETA_ESTADO,
   FILTROS_ESTADO,
   claseEstado,
+  cupoAgotado,
   contarPorEstado,
   filtrarPorEstado,
+  textoCupo,
   textoPorcentaje,
   textoVigencia,
 } from '../../utils/promociones.js'
@@ -160,6 +162,13 @@ export default function Promociones() {
                       <span className="text-texto-suave">· {textoDescuento(promocion)} de descuento</span>
                     </p>
                     <p className="text-sm text-texto-suave">{textoVigencia(promocion)}</p>
+                    {textoCupo(promocion) && (
+                      <p
+                        className={`text-sm ${cupoAgotado(promocion) ? 'text-aviso' : 'text-texto-suave'}`}
+                      >
+                        {textoCupo(promocion)}
+                      </p>
+                    )}
                     {promocion.condiciones && (
                       <p className="text-sm text-texto-suave">{promocion.condiciones}</p>
                     )}

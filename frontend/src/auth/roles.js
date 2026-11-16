@@ -53,6 +53,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/admin/personal', texto: 'Personal' },
     { ruta: '/admin/cuentas', texto: 'Cuentas' },
     { ruta: '/admin/clientes', texto: 'Clientes' },
+    { ruta: '/admin/promociones', texto: 'Promociones' },
   ],
 }
 
