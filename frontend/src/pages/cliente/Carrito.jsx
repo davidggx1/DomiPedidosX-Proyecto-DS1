@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { validarLineaCarrito } from '../../api/menu.js'
+import { calcularResumenCarrito, validarLineaCarrito } from '../../api/menu.js'
 import { interpretarError } from '../../api/errores.js'
 import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
@@ -8,7 +8,12 @@ import Contador from '../../components/carrito/Contador.jsx'
 import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
-import { domicilioDeZona, lineaParaValidar, subtotalLinea, totalCarrito } from '../../utils/carrito.js'
+import {
+  domicilioDeZona,
+  lineaParaValidar,
+  subtotalLinea,
+  totalCarritoConDescuento,
+} from '../../utils/carrito.js'
 import { formatearPrecio } from '../../utils/formato.js'
 import { useZonaEntrega } from '../../carrito/useZonaEntrega.js'
 import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
@@ -23,21 +28,65 @@ function describirVariantes(linea) {
   return partes.join(' · ')
 }
 
-// HU-21 & HU-22 · Carrito del cliente: líneas personalizadas, subtotal, domicilio y total.
+// HU-21, HU-22 & HU-65 · Carrito del cliente con cupones/promociones y desglose dinámico.
 export default function Carrito() {
-  const { sedeId, lineas, subtotal, cambiarCantidad, eliminar } = useCarrito()
-  // HU-79: quita del carrito los productos que el operador ya eliminó del menú
+  const {
+    sedeId,
+    lineas,
+    promocion,
+    subtotal,
+    descuento,
+    cambiarCantidad,
+    eliminar,
+    aplicarPromocion,
+    quitarPromocion,
+  } = useCarrito()
+
   const avisoLimpieza = useLimpiarCarrito()
   const [editando, setEditando] = useState(null)
   const [actualizando, setActualizando] = useState(null)
   const [aviso, setAviso] = useState(null)
-  // HU-22: el domicilio sale de la zona de la dirección del cliente (no de una tarifa fija).
+
+  // HU-65 · Estado del input de cupón
+  const [codigoInput, setCodigoInput] = useState('')
+  const [validandoCupon, setValidandoCupon] = useState(false)
+  const [errorCupon, setErrorCupon] = useState(null)
+  const [mensajeCupon, setMensajeCupon] = useState(null)
+
   const { pedidoMinimo, tarifaDomicilio } = useZonaEntrega(sedeId)
   const faltante = faltanteMinimo(subtotal, pedidoMinimo)
   const costoDomicilio = domicilioDeZona(subtotal, tarifaDomicilio)
-  const total = totalCarrito(subtotal, costoDomicilio ?? 0)
+  const total = totalCarritoConDescuento(subtotal, descuento, costoDomicilio ?? 0)
 
-  // Al subir la cantidad se revalida con el backend (stock de la sede).
+  // Si cambia el subtotal (por editar cantidades o eliminar líneas) con un cupón activo,
+  // revalidamos contra el backend para asegurar que sigue cumpliendo condiciones.
+  useEffect(() => {
+    if (!promocion || !sedeId || lineas.length === 0) return undefined
+    let vigente = true
+    calcularResumenCarrito(sedeId, {
+      lineas: lineas.map(lineaParaValidar),
+      codigoPromocion: promocion.codigo,
+    })
+      .then((res) => {
+        if (vigente && res.promocion) {
+          aplicarPromocion(res.promocion)
+        }
+      })
+      .catch((err) => {
+        if (!vigente) return
+        const { general, campos } = interpretarError(err)
+        const motivo =
+          campos.codigo_promocion ?? Object.values(campos)[0] ?? general ?? 'El cupón ya no aplica.'
+        quitarPromocion()
+        setMensajeCupon(null)
+        setErrorCupon(motivo)
+      })
+    return () => {
+      vigente = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, sedeId])
+
   async function nuevaCantidad(linea, cantidad) {
     setAviso(null)
     if (cantidad < linea.cantidad) {
@@ -54,6 +103,47 @@ export default function Carrito() {
     } finally {
       setActualizando(null)
     }
+  }
+
+  // HU-65 · Aplicar cupón/promoción (máximo 1 por pedido; reemplaza si había otro)
+  async function handleAplicarCupon(e) {
+    e.preventDefault()
+    const codigo = codigoInput.trim()
+    if (!codigo) return
+
+    setErrorCupon(null)
+    setMensajeCupon(null)
+    setValidandoCupon(true)
+    try {
+      const res = await calcularResumenCarrito(sedeId, {
+        lineas: lineas.map(lineaParaValidar),
+        codigoPromocion: codigo,
+      })
+      if (res.promocion) {
+        aplicarPromocion(res.promocion)
+        setCodigoInput('')
+        setMensajeCupon(
+          `Cupón "${res.promocion.nombre}" aplicado (−${formatearPrecio(res.descuento)}).`,
+        )
+      }
+    } catch (err) {
+      const { general, campos } = interpretarError(err)
+      const motivo =
+        campos.codigo_promocion ??
+        Object.values(campos)[0] ??
+        general ??
+        'No se pudo aplicar el cupón.'
+      setErrorCupon(motivo)
+    } finally {
+      setValidandoCupon(false)
+    }
+  }
+
+  // HU-65 · Criterio 4: Remover cupón y restaurar el total original
+  function handleQuitarCupon() {
+    quitarPromocion()
+    setErrorCupon(null)
+    setMensajeCupon(null)
   }
 
   if (lineas.length === 0) {
@@ -129,13 +219,81 @@ export default function Carrito() {
         ))}
       </ul>
 
-      {/* HU-22: Desglose completo de Totales (Subtotal, Costo de domicilio y Total) */}
+      {/* HU-65: Sección de Cupón / Promoción (máximo 1 promoción por pedido) */}
+      <div className="flex flex-col gap-3 rounded-xl border border-borde bg-superficie p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold">Cupón o promoción</h2>
+          <span className="text-xs text-texto-suave">Máximo 1 promoción por pedido</span>
+        </div>
+
+        {promocion ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-exito bg-exito/10 px-3 py-2.5">
+            <div>
+              <p className="text-sm font-bold text-exito">
+                ✓ {promocion.nombre}{' '}
+                <span className="font-normal">
+                  (
+                  {promocion.tipo_descuento === 'porcentaje'
+                    ? `${Number(promocion.valor)}% de descuento`
+                    : `${formatearPrecio(promocion.valor)} de descuento`}
+                  )
+                </span>
+              </p>
+              {promocion.descripcion && (
+                <p className="text-xs text-texto-suave">{promocion.descripcion}</p>
+              )}
+            </div>
+            <Boton
+              type="button"
+              variante="secundario"
+              onClick={handleQuitarCupon}
+              aria-label="Quitar cupón aplicado"
+            >
+              Quitar
+            </Boton>
+          </div>
+        ) : (
+          <form onSubmit={handleAplicarCupon} className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={codigoInput}
+              onChange={(e) => {
+                setCodigoInput(e.target.value)
+                if (errorCupon) setErrorCupon(null)
+              }}
+              placeholder="Ingresa el código de descuento"
+              aria-label="Código de descuento"
+              disabled={validandoCupon}
+              className="min-h-11 flex-1 rounded-lg border border-borde bg-fondo px-3 text-texto placeholder:text-texto-suave focus:border-marca focus:outline-none"
+            />
+            <Boton
+              type="submit"
+              variante="secundario"
+              cargando={validandoCupon}
+              disabled={!codigoInput.trim() || validandoCupon}
+            >
+              Aplicar
+            </Boton>
+          </form>
+        )}
+
+        {errorCupon && <Alerta tipo="error" titulo={errorCupon} />}
+        {mensajeCupon && !errorCupon && <Alerta tipo="exito" titulo={mensajeCupon} />}
+      </div>
+
+      {/* HU-22 & HU-65: Desglose completo de Totales (Subtotal, Descuento, Domicilio y Total) */}
       <div className="flex flex-col items-end gap-3 border-t border-borde pt-4">
-        <div className="flex w-full flex-col gap-1.5 sm:w-72">
+        <div className="flex w-full flex-col gap-1.5 sm:w-80">
           <div className="flex justify-between text-sm text-texto-suave">
             <span>Subtotal</span>
             <span>{formatearPrecio(subtotal)}</span>
           </div>
+          {descuento > 0 && (
+            <div className="flex justify-between text-sm font-medium text-exito">
+              <span>Descuento ({promocion?.nombre})</span>
+              <span>−{formatearPrecio(descuento)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm text-texto-suave">
             <span>Costo de domicilio</span>
             <span>
@@ -148,7 +306,6 @@ export default function Carrito() {
           </div>
         </div>
 
-        {/* Botón para proceder al flujo de la HU-23 */}
         {faltante > 0 && (
           <Alerta
             tipo="aviso"

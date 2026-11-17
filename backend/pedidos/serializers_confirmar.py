@@ -49,4 +49,7 @@ class ConfirmarPedidoSerializer(serializers.Serializer):
     observaciones = serializers.CharField(
         max_length=200, required=False, allow_blank=True, default=""
     )
+    codigo_promocion = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, allow_null=True, default=""
+    )
     items = ItemCarritoSerializer(many=True, allow_empty=False, max_length=50)

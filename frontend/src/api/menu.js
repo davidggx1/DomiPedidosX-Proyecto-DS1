@@ -199,3 +199,13 @@ export async function validarCarrito(sedeId, productoIds) {
   })
   return data
 }
+
+// --- Liquidación del carrito con promoción/cupón (HU-22 y HU-65) ---
+export async function calcularResumenCarrito(sedeId, { lineas, codigoPromocion = '' }) {
+  const payload = {
+    lineas,
+    ...(codigoPromocion?.trim() ? { codigo_promocion: codigoPromocion.trim() } : {}),
+  }
+  const { data } = await api.post(`/menu/sedes/${sedeId}/carrito/resumen/`, payload)
+  return data
+}

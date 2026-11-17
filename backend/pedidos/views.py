@@ -387,6 +387,7 @@ class ConfirmarPedidoView(APIView):
                     "subtotal": factura.subtotal,
                     "iva": factura.iva,
                     "costo_domicilio": factura.costo_domicilio,
+                    "valor_descuento": factura.valor_descuento,
                     "total": factura.total,
                     "metodo_pago": factura.metodo_pago,
                     "estado": factura.estado_factura,

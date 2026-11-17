@@ -24,6 +24,7 @@ from sedes.models import Sede
 
 from .catalogo import producto_disponible
 from .models import Producto, ProductoAdicion, ProductoInsumo, ProductoTamano
+from promociones.descuentos import validar_y_calcular_descuento
 
 
 def inventarios_insumos_de(sede, producto):
@@ -263,12 +264,16 @@ class ValidarLineaCarritoView(APIView):
 
 class ResumenCarritoSerializer(serializers.Serializer):
     """
-    HU-22: Recibe la lista de líneas del carrito y calcula el subtotal, domicilio y total.
+    HU-22 & HU-65: Recibe las líneas del carrito y un cupón opcional,
+    y calcula subtotal, descuento, domicilio y total.
     """
     lineas = LineaCarritoSerializer(many=True, required=True, allow_empty=True)
+    codigo_promocion = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, max_length=100
+    )
+    promocion_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
 
     def validate(self, attrs):
-        # Valida cada línea reutilizando la lógica de LineaCarritoSerializer
         return attrs
 
 
@@ -276,26 +281,12 @@ class CalcularResumenCarritoView(APIView):
     """
     POST /api/menu/sedes/<sede_pk>/carrito/resumen/
 
-    Payload de entrada:
-    {
-        "lineas": [
-            {
-                "producto": 1,
-                "tamano": 2,
-                "adiciones": [{"adicion": 3, "cantidad": 1}],
-                "exclusiones": [],
-                "cantidad": 2
-            }
-        ]
-    }
-
-    Respuesta (HU-22):
-    {
-        "subtotal": "54000.00",
-        "costo_domicilio": "4000.00",
-        "total": "58000.00",
-        "lineas": [ ... precio unitario y subtotal por línea ... ]
-    }
+    Liquidación del carrito (HU-22 y HU-65):
+    - Valida líneas de productos.
+    - Si viene `codigo_promocion` (o `promocion_id`), valida vigencia, sede,
+      condiciones y bolsa diaria (máximo 1 promoción por pedido).
+    - Devuelve subtotal, valor de descuento, datos de la promoción aplicada,
+      costo de domicilio y total recalculado.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -306,6 +297,8 @@ class CalcularResumenCarritoView(APIView):
             "ResumenCarritoSalida",
             {
                 "subtotal": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "descuento": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "promocion": serializers.DictField(allow_null=True),
                 "costo_domicilio": serializers.DecimalField(max_digits=10, decimal_places=2),
                 "total": serializers.DecimalField(max_digits=12, decimal_places=2),
                 "lineas": serializers.ListField(child=serializers.DictField()),
@@ -338,16 +331,40 @@ class CalcularResumenCarritoView(APIView):
                 }
             )
 
+        promocion, descuento = validar_y_calcular_descuento(
+            sede=sede,
+            subtotal=subtotal_acumulado,
+            codigo_promocion=serializer.validated_data.get("codigo_promocion"),
+            promocion_id=serializer.validated_data.get("promocion_id"),
+        )
+
         # HU-22: Tarifa fija de domicilio provisional por sede para el PMV (Sprint 2)
         costo_domicilio = getattr(sede, "tarifa_domicilio_fija", Decimal("4000.00"))
         if subtotal_acumulado == Decimal("0.00"):
             costo_domicilio = Decimal("0.00")
 
-        total = subtotal_acumulado + costo_domicilio
+        subtotal_con_descuento = max(subtotal_acumulado - descuento, Decimal("0.00"))
+        total = subtotal_con_descuento + costo_domicilio
+
+        promocion_data = (
+            {
+                "id": promocion.id,
+                "codigo": promocion.nombre,
+                "nombre": promocion.nombre,
+                "descripcion": promocion.descripcion,
+                "tipo_descuento": promocion.tipo_descuento,
+                "valor": f"{promocion.valor.quantize(Decimal('0.01'))}",
+                "condiciones": promocion.condiciones,
+            }
+            if promocion
+            else None
+        )
 
         return Response(
             {
                 "subtotal": f"{subtotal_acumulado.quantize(Decimal('0.01'))}",
+                "descuento": f"{descuento.quantize(Decimal('0.01'))}",
+                "promocion": promocion_data,
                 "costo_domicilio": f"{costo_domicilio.quantize(Decimal('0.01'))}",
                 "total": f"{total.quantize(Decimal('0.01'))}",
                 "lineas": lineas_desglosadas,

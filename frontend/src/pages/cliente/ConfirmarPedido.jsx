@@ -11,7 +11,7 @@ import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import ModalAlternativas from '../../components/pedidos/ModalAlternativas.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
-import { domicilioDeZona, subtotalLinea, totalCarrito } from '../../utils/carrito.js'
+import { domicilioDeZona, subtotalLinea, totalCarritoConDescuento } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
 import { faltanteMinimo } from '../../utils/pedidoMinimo.js'
@@ -27,7 +27,7 @@ export default function ConfirmarPedido() {
   const navigate = useNavigate()
 
   // Hook del carrito
-  const { sedeId, lineas = [], subtotal, vaciar, trasladarASede } = useCarrito()
+  const { sedeId, lineas = [], promocion, subtotal, descuento = 0, vaciar, trasladarASede } = useCarrito()
   // HU-79: quita del carrito los productos que el operador ya eliminó del menú
   const avisoLimpieza = useLimpiarCarrito()
 
@@ -66,7 +66,7 @@ export default function ConfirmarPedido() {
   // HU-22: el domicilio es la tarifa real de la zona de la dirección elegida.
   const tarifaDomicilio = coberturaInfo?.cubierto ? coberturaInfo.sede.tarifa_domicilio : null
   const costoDomicilio = domicilioDeZona(subtotal, tarifaDomicilio)
-  const total = totalCarrito(subtotal, costoDomicilio ?? 0)
+  const total = totalCarritoConDescuento(subtotal, descuento, costoDomicilio ?? 0)
 
   const handleSeleccionarDireccion = useCallback(async (dirObj) => {
     setDireccionId(dirObj.id)
@@ -197,6 +197,7 @@ export default function ConfirmarPedido() {
         direccion_id: Number(direccionId),
         metodo_pago: metodoPago,
         observaciones: observaciones.trim(),
+        ...(promocion?.codigo ? { codigo_promocion: promocion.codigo } : {}),
         items: lineas.map((linea) => {
           if (linea.combo || linea.combo_id) {
             return {
@@ -313,6 +314,12 @@ export default function ConfirmarPedido() {
               <span>Total pagado:</span>
               <span>{formatearPrecio(resumenExito.factura.total)}</span>
             </div>
+            {Number(resumenExito.factura.valor_descuento) > 0 && (
+              <div className="flex justify-between text-sm font-medium text-exito">
+                <span>Descuento aplicado:</span>
+                <span>−{formatearPrecio(resumenExito.factura.valor_descuento)}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -442,6 +449,12 @@ export default function ConfirmarPedido() {
                     <span className="text-xs text-texto-suave"> ({linea.tamano.nombre})</span>
                   )}
                 </div>
+                {descuento > 0 && (
+                  <div className="flex justify-between text-xs font-medium text-exito">
+                    <span>Descuento ({promocion?.nombre}):</span>
+                    <span>−{formatearPrecio(descuento)}</span>
+                  </div>
+                )}
                 <span className="font-semibold">{formatearPrecio(subtotalLinea(linea))}</span>
               </li>
             ))}
