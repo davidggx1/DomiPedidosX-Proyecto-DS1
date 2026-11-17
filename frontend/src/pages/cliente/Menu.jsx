@@ -8,9 +8,11 @@ import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Selector from '../../components/ui/Selector.jsx'
+import { formatearPrecio } from '../../utils/formato.js'
 
 const CLAVE_SEDE = 'domipedidosx.sede'
 const TODAS = 'todas'
+const CATEGORIA_COMBOS = 'combos'
 
 // La sede elegida se recuerda en este navegador para la próxima visita.
 function leerSedeGuardada() {
@@ -132,6 +134,39 @@ export default function Menu() {
     }
   }
 
+  function agregarCombo(combo) {
+    setAviso(null)
+    if (!combo.disponible) {
+      setAviso({
+        tipo: 'aviso',
+        texto: combo.motivo_no_disponible || `"${combo.nombre}" no está disponible.`,
+      })
+      return
+    }
+    const yaEnCarrito = carrito.lineas.find((l) => l.combo?.id === combo.id)?.cantidad ?? 0
+    if (combo.cupo_restante !== null && yaEnCarrito + 1 > combo.cupo_restante) {
+      setAviso({
+        tipo: 'aviso',
+        texto: `Solo quedan ${combo.cupo_restante} unidades disponibles hoy de "${combo.nombre}".`,
+      })
+      return
+    }
+    carrito.agregar(Number(sedeId), {
+      combo: {
+        id: combo.id,
+        nombre: combo.nombre,
+        descripcion: combo.descripcion,
+        productos_incluidos: combo.productos_incluidos,
+      },
+      cantidad: 1,
+      precio_unitario: combo.precio,
+    })
+    setAviso({
+      tipo: 'exito',
+      texto: `Agregaste 1 × "${combo.nombre}" a tu carrito.`,
+    })
+  }
+
   const opcionesSede = sedes.map((sede) => ({
     valor: String(sede.id),
     etiqueta: `${sede.nombre} · ${sede.barrio}`,
@@ -141,15 +176,24 @@ export default function Menu() {
     resultado?.sedeId === sedeId && resultado?.q === busquedaDebounced ? resultado : null
   const cargandoMenu = Boolean(sedeId) && sedesCargadas && !actual
   const categorias = actual?.menu?.categorias ?? []
+  const combos = actual?.menu?.combos ?? []
   const hayBusqueda = busquedaDebounced.length > 0
 
-  // Cuando hay búsqueda activa o estamos en "Todas", ocultamos categorías sin coincidencias
-  const filtradas =
-    categoriaId === TODAS
-      ? categorias.filter((categoria) => categoria.productos.length > 0)
-      : categorias.filter((categoria) => String(categoria.id) === categoriaId)
+  const mostrarCombos =
+    combos.length > 0 && (categoriaId === TODAS || categoriaId === CATEGORIA_COMBOS)
 
-  const opcionesFiltro = [{ id: TODAS, nombre: 'Todas' }, ...categorias]
+  const filtradas =
+    categoriaId === CATEGORIA_COMBOS
+      ? []
+      : categoriaId === TODAS
+        ? categorias.filter((categoria) => categoria.productos.length > 0)
+        : categorias.filter((categoria) => String(categoria.id) === categoriaId)
+
+  const opcionesFiltro = [
+    { id: TODAS, nombre: 'Todas' },
+    ...(combos.length > 0 ? [{ id: CATEGORIA_COMBOS, nombre: `Combos (${combos.length})` }] : []),
+    ...categorias,
+  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -230,7 +274,7 @@ export default function Menu() {
             })}
           </div>
 
-          {filtradas.length === 0 && (
+          {filtradas.length === 0 && !mostrarCombos && (
             <div className="flex flex-col items-start gap-3">
               <Alerta tipo="info">
                 {hayBusqueda
@@ -245,6 +289,86 @@ export default function Menu() {
                 </Boton>
               )}
             </div>
+          )}
+
+          {mostrarCombos && (
+            <section aria-labelledby="categoria-combos">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="categoria-combos" className="text-xl font-bold">
+                  Combos y promociones
+                </h2>
+                <span className="text-xs text-texto-suave">Precio especial por paquete</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {combos.map((combo) => (
+                  <article
+                    key={combo.id}
+                    className="flex flex-col justify-between gap-3 rounded-xl border border-borde bg-superficie p-4"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-lg font-bold">{combo.nombre}</h3>
+                        {Number(combo.ahorro) > 0 && (
+                          <span className="rounded-full bg-exito/15 px-2.5 py-0.5 text-xs font-semibold text-exito">
+                            Ahorras {formatearPrecio(combo.ahorro)}
+                          </span>
+                        )}
+                      </div>
+
+                      {combo.descripcion && (
+                        <p className="text-sm text-texto-suave">{combo.descripcion}</p>
+                      )}
+
+                      {combo.productos_incluidos?.length > 0 && (
+                        <ul className="space-y-0.5 rounded-lg bg-fondo px-3 py-2 text-xs text-texto-suave">
+                          {combo.productos_incluidos.map((item) => (
+                            <li key={item.producto_id}>
+                              • {item.cantidad}× {item.nombre}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {combo.condicion && (
+                        <p className="text-xs text-texto-suave">Condición: {combo.condicion}</p>
+                      )}
+
+                      {combo.cupo_restante !== null && combo.disponible && (
+                        <p className="text-xs font-medium text-aviso">
+                          Quedan {combo.cupo_restante} disponibles hoy
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-borde pt-3">
+                      <div>
+                        {Number(combo.suma_individual) > Number(combo.precio) && (
+                          <p className="text-xs text-texto-suave line-through">
+                            {formatearPrecio(combo.suma_individual)}
+                          </p>
+                        )}
+                        <p className="text-lg font-bold text-marca">
+                          {formatearPrecio(combo.precio)}
+                        </p>
+                      </div>
+
+                      <Boton
+                        type="button"
+                        variante="primario"
+                        disabled={!combo.disponible}
+                        onClick={() => agregarCombo(combo)}
+                      >
+                        {combo.disponible ? 'Agregar combo' : 'No disponible'}
+                      </Boton>
+                    </div>
+
+                    {!combo.disponible && combo.motivo_no_disponible && (
+                      <p className="text-xs text-error">{combo.motivo_no_disponible}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
           )}
 
           {filtradas.map((categoria) => (

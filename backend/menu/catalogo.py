@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.db import connection
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_field
+from django.utils import timezone
 from rest_framework import generics, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
@@ -24,6 +25,8 @@ from sedes.models import Sede
 
 from .models import CategoriaMenu, Producto
 
+from promociones import combos as reglas_combos, cupos as reglas_cupos
+from promociones.models import Combo, ComboSede
 
 
 
@@ -83,10 +86,86 @@ class SedeResumenSerializer(serializers.ModelSerializer):
         model = Sede
         fields = ["id", "nombre", "direccion", "barrio"]
 
+class ComboMenuSerializer(serializers.ModelSerializer):
+    """HU-65: combo vigente expuesto en el menú público de una sede."""
+
+    productos_incluidos = serializers.SerializerMethodField()
+    suma_individual = serializers.SerializerMethodField()
+    ahorro = serializers.SerializerMethodField()
+    disponible = serializers.SerializerMethodField()
+    motivo_no_disponible = serializers.SerializerMethodField()
+    cupo_restante = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Combo
+        fields = [
+            "id",
+            "nombre",
+            "descripcion",
+            "condicion",
+            "precio",
+            "productos_incluidos",
+            "suma_individual",
+            "ahorro",
+            "disponible",
+            "motivo_no_disponible",
+            "cupo_restante",
+        ]
+
+    def _info(self, combo):
+        cache = self.context.setdefault("_cache_combos_menu", {})
+        if combo.pk not in cache:
+            cs = self.context["combos_sede"].get(combo.pk)
+            detalle = reglas_combos.detalle_productos(combo, self.context["sede"]) if cs else []
+            disponible, motivo = (
+                reglas_combos.disponibilidad(combo, cs, detalle) if cs else (False, "No disponible.")
+            )
+            restante = reglas_cupos.cupo_restante(cs) if cs else 0
+            if disponible and restante is not None and restante <= 0:
+                disponible = False
+                motivo = "Cupo diario agotado."
+            cache[combo.pk] = (detalle, disponible, motivo, restante)
+        return cache[combo.pk]
+
+    def get_productos_incluidos(self, combo):
+        return [
+            {
+                "producto_id": item["producto"],
+                "nombre": item["nombre"],
+                "cantidad": item["cantidad"],
+            }
+            for item in self._info(combo)[0]
+        ]
+
+    def get_suma_individual(self, combo):
+        suma = sum(
+            (item["precio_base"] * item["cantidad"] for item in self._info(combo)[0]),
+            Decimal("0.00"),
+        )
+        return f"{suma.quantize(Decimal('0.01'))}"
+
+    def get_ahorro(self, combo):
+        suma = sum(
+            (item["precio_base"] * item["cantidad"] for item in self._info(combo)[0]),
+            Decimal("0.00"),
+        )
+        ahorro = max(suma - combo.precio, Decimal("0.00"))
+        return f"{ahorro.quantize(Decimal('0.01'))}"
+
+    def get_disponible(self, combo):
+        return self._info(combo)[1]
+
+    def get_motivo_no_disponible(self, combo):
+        return self._info(combo)[2]
+
+    def get_cupo_restante(self, combo):
+        return self._info(combo)[3]
+
 
 class MenuSedeSerializer(serializers.Serializer):
     sede = SedeResumenSerializer()
     categorias = CategoriaConProductosSerializer(many=True)
+    combos = ComboMenuSerializer(many=True, default=list)
 
 
 class SedesMenuView(generics.ListAPIView):
@@ -194,12 +273,38 @@ class MenuSedeView(APIView):
             for inventario in InventarioInsumo.objects.filter(sede=sede)
         }
 
+        hoy = timezone.localdate()
+        enlaces_combo = {
+            cs.combo_id: cs
+            for cs in ComboSede.objects.select_related("combo").filter(
+                sede=sede,
+                activo=True,
+                combo__activo=True,
+                combo__fecha_inicio__lte=hoy,
+                combo__fecha_vencimiento__gte=hoy,
+            )
+        }
+        combos_qs = (
+            Combo.objects.filter(pk__in=list(enlaces_combo.keys()))
+            .prefetch_related("productos_incluidos__producto__categoria")
+            .order_by("nombre")
+        )
+        if busqueda and usar_unaccent_sql:
+            combos_qs = combos_qs.filter(nombre__unaccent__icontains=busqueda)
+
+        combos_lista = list(combos_qs)
+        if busqueda and not usar_unaccent_sql:
+            termino = _normalizar_texto(busqueda)
+            combos_lista = [c for c in combos_lista if termino in _normalizar_texto(c.nombre)]
+
         serializer = MenuSedeSerializer(
-            {"sede": sede, "categorias": categorias_lista},
+            {"sede": sede, "categorias": categorias_lista, "combos": combos_lista},
             context={
                 "request": request,
+                "sede": sede,
                 "inventarios": inventarios,
                 "inventarios_insumos": inventarios_insumos,
+                "combos_sede": enlaces_combo,
             },
         )
         return Response(serializer.data)

@@ -9,6 +9,7 @@ import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import {
+  comboParaValidar,
   domicilioDeZona,
   lineaParaValidar,
   subtotalLinea,
@@ -63,8 +64,11 @@ export default function Carrito() {
   useEffect(() => {
     if (!promocion || !sedeId || lineas.length === 0) return undefined
     let vigente = true
+    const lineasProductos = lineas.filter((l) => !l.combo).map(lineaParaValidar)
+    const lineasCombos = lineas.filter((l) => Boolean(l.combo)).map(comboParaValidar)
     calcularResumenCarrito(sedeId, {
-      lineas: lineas.map(lineaParaValidar),
+      lineas: lineasProductos,
+      combos: lineasCombos,
       codigoPromocion: promocion.codigo,
     })
       .then((res) => {
@@ -89,7 +93,7 @@ export default function Carrito() {
 
   async function nuevaCantidad(linea, cantidad) {
     setAviso(null)
-    if (cantidad < linea.cantidad) {
+    if (linea.combo || cantidad < linea.cantidad) {
       cambiarCantidad(linea.id, cantidad)
       return
     }
@@ -115,8 +119,12 @@ export default function Carrito() {
     setMensajeCupon(null)
     setValidandoCupon(true)
     try {
+      const lineasProductos = lineas.filter((l) => !l.combo).map(lineaParaValidar)
+      const lineasCombos = lineas.filter((l) => Boolean(l.combo)).map(comboParaValidar)
+
       const res = await calcularResumenCarrito(sedeId, {
-        lineas: lineas.map(lineaParaValidar),
+        lineas: lineasProductos,
+        combos: lineasCombos,
         codigoPromocion: codigo,
       })
       if (res.promocion) {
@@ -170,53 +178,68 @@ export default function Carrito() {
       {aviso && <Alerta tipo={aviso.tipo} titulo={aviso.texto} />}
 
       <ul className="flex flex-col gap-3">
-        {lineas.map((linea) => (
-          <li
-            key={linea.id}
-            className="flex flex-col gap-3 rounded-xl border border-borde bg-superficie p-4 sm:flex-row sm:items-center"
-          >
-            {linea.producto.imagen ? (
-              <img
-                src={linea.producto.imagen}
-                alt=""
-                className="aspect-video w-full rounded-lg object-cover sm:w-28"
-              />
-            ) : (
-              <div aria-hidden="true" className="hidden h-16 w-28 rounded-lg bg-superficie-alta sm:block" />
-            )}
+        {lineas.map((linea) => {
+          const esCombo = Boolean(linea.combo)
+          const nombreItem = esCombo ? linea.combo.nombre : linea.producto.nombre
 
-            <div className="flex-1">
-              <h2 className="font-bold">{linea.producto.nombre}</h2>
-              {describirVariantes(linea) && (
-                <p className="text-sm text-texto-suave">{describirVariantes(linea)}</p>
+          return (
+            <li
+              key={linea.id}
+              className="flex flex-col gap-3 rounded-xl border border-borde bg-superficie p-4 sm:flex-row sm:items-center"
+            >
+              {linea.producto?.imagen ? (
+                <img
+                  src={linea.producto.imagen}
+                  alt=""
+                  className="aspect-video w-full rounded-lg object-cover sm:w-28"
+                />
+              ) : (
+                <div aria-hidden="true" className="hidden h-16 w-28 rounded-lg bg-superficie-alta sm:block" />
               )}
-              <p className="text-sm text-texto-suave">{formatearPrecio(linea.precio_unitario)} c/u</p>
-            </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-              <Contador
-                etiqueta={`Cantidad de ${linea.producto.nombre}`}
-                valor={linea.cantidad}
-                minimo={1}
-                disabled={actualizando === linea.id}
-                alCambiar={(cantidad) => nuevaCantidad(linea, cantidad)}
-              />
-              <p className="w-28 text-right text-lg font-semibold">{formatearPrecio(subtotalLinea(linea))}</p>
-              <div className="flex gap-2">
-                <Boton variante="secundario" onClick={() => setEditando(linea)}>
-                  Editar
-                </Boton>
-                <Boton
-                  variante="peligro"
-                  onClick={() => eliminar(linea.id)}
-                  aria-label={`Eliminar ${linea.producto.nombre} del carrito`}
-                >
-                  Eliminar
-                </Boton>
+              <div className="flex-1">
+                <h2 className="font-bold">{nombreItem}</h2>
+                {esCombo && linea.combo.productos_incluidos?.length > 0 && (
+                  <p className="text-sm text-texto-suave">
+                    Incluye:{' '}
+                    {linea.combo.productos_incluidos
+                      .map((item) => `${item.cantidad}× ${item.nombre}`)
+                      .join(' · ')}
+                  </p>
+                )}
+                {!esCombo && describirVariantes(linea) && (
+                  <p className="text-sm text-texto-suave">{describirVariantes(linea)}</p>
+                )}
+                <p className="text-sm text-texto-suave">{formatearPrecio(linea.precio_unitario)} c/u</p>
               </div>
-            </div>
-          </li>
-        ))}
+
+              <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                <Contador
+                  etiqueta={`Cantidad de ${nombreItem}`}
+                  valor={linea.cantidad}
+                  minimo={1}
+                  disabled={actualizando === linea.id}
+                  alCambiar={(cantidad) => nuevaCantidad(linea, cantidad)}
+                />
+                <p className="w-28 text-right text-lg font-semibold">{formatearPrecio(subtotalLinea(linea))}</p>
+                <div className="flex gap-2">
+                  {!esCombo && (
+                    <Boton variante="secundario" onClick={() => setEditando(linea)}>
+                      Editar
+                    </Boton>
+                  )}
+                  <Boton
+                    variante="peligro"
+                    onClick={() => eliminar(linea.id)}
+                    aria-label={`Eliminar ${nombreItem} del carrito`}
+                  >
+                    Eliminar
+                  </Boton>
+                </div>
+              </div>
+            </li>
+          )
+        })}
       </ul>
 
       {/* HU-65: Sección de Cupón / Promoción (máximo 1 promoción por pedido) */}

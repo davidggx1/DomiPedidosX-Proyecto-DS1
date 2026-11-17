@@ -436,6 +436,7 @@ export default function ConfirmarPedido() {
         </div>
 
         {/* Resumen de Ítems */}
+        {/* Resumen de Ítems */}
         <div className="space-y-2 rounded-lg border border-borde bg-fondo p-4">
           <h3 className="text-sm font-semibold">Resumen de Ítems ({lineas.length})</h3>
           <ul className="divide-y divide-borde text-sm">
@@ -443,27 +444,29 @@ export default function ConfirmarPedido() {
               <li key={linea.id} className="flex justify-between py-2">
                 <div>
                   <span className="font-medium">
-                    {linea.cantidad}x {linea.producto?.nombre || 'Producto'}
+                    {linea.cantidad}x {linea.combo?.nombre || linea.producto?.nombre || 'Producto'}
                   </span>
                   {linea.tamano?.nombre && (
                     <span className="text-xs text-texto-suave"> ({linea.tamano.nombre})</span>
                   )}
                 </div>
-                {descuento > 0 && (
-                  <div className="flex justify-between text-xs font-medium text-exito">
-                    <span>Descuento ({promocion?.nombre}):</span>
-                    <span>−{formatearPrecio(descuento)}</span>
-                  </div>
-                )}
                 <span className="font-semibold">{formatearPrecio(subtotalLinea(linea))}</span>
               </li>
             ))}
           </ul>
 
-          <div className="flex justify-between text-xs text-texto-suave pt-2 border-t border-borde">
+          <div className="flex justify-between border-t border-borde pt-2 text-xs text-texto-suave">
             <span>Subtotal:</span>
             <span>{formatearPrecio(subtotal)}</span>
           </div>
+
+          {descuento > 0 && (
+            <div className="flex justify-between text-xs font-medium text-exito">
+              <span>Descuento ({promocion?.nombre}):</span>
+              <span>−{formatearPrecio(descuento)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between text-xs text-texto-suave">
             <span>Domicilio:</span>
             <span>
@@ -471,7 +474,7 @@ export default function ConfirmarPedido() {
             </span>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-borde text-base font-bold">
+          <div className="flex items-center justify-between border-t border-borde pt-2 text-base font-bold">
             <span>Total estimado:</span>
             <span className="text-marca">{formatearPrecio(total)}</span>
           </div>
