@@ -392,6 +392,13 @@ class CalcularResumenCarritoView(APIView):
             promocion_id=serializer.validated_data.get("promocion_id"),
         )
 
+        promocion, descuento = validar_y_calcular_descuento(
+            sede=sede,
+            subtotal=subtotal_acumulado,
+            codigo_promocion=serializer.validated_data.get("codigo_promocion"),
+            promocion_id=serializer.validated_data.get("promocion_id"),
+        )
+
         # HU-22: Tarifa fija de domicilio provisional por sede para el PMV (Sprint 2)
         costo_domicilio = getattr(sede, "tarifa_domicilio_fija", Decimal("4000.00"))
         if subtotal_acumulado == Decimal("0.00"):

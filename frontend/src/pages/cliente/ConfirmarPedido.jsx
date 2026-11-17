@@ -450,6 +450,12 @@ export default function ConfirmarPedido() {
                     <span className="text-xs text-texto-suave"> ({linea.tamano.nombre})</span>
                   )}
                 </div>
+                {descuento > 0 && (
+                  <div className="flex justify-between text-xs font-medium text-exito">
+                    <span>Descuento ({promocion?.nombre}):</span>
+                    <span>−{formatearPrecio(descuento)}</span>
+                  </div>
+                )}
                 <span className="font-semibold">{formatearPrecio(subtotalLinea(linea))}</span>
               </li>
             ))}
