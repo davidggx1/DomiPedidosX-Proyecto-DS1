@@ -163,3 +163,16 @@ export function textoLineasQuitadas(quitadas) {
   return `${entreComillas.join(', ')} y ${ultimo} ya no están en el menú y se quitaron de tu carrito.`
 }
 
+// HU-65 · Cálculo de descuento de una promoción sobre el subtotal del carrito
+export function calcularDescuentoPromocion(subtotal, promocion) {
+  if (!promocion || subtotal <= 0) return 0
+  const valor = Number(promocion.valor ?? 0)
+  if (valor <= 0) return 0
+  const descuento =
+    promocion.tipo_descuento === 'porcentaje' ? Math.round((subtotal * valor) / 100) : valor
+  return Math.min(descuento, subtotal)
+}
+
+export function totalCarritoConDescuento(subtotal, descuento, domicilio) {
+  return Math.max(0, subtotal - descuento) + domicilio
+}

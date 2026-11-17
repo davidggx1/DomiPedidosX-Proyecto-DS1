@@ -3,6 +3,7 @@ import { useAuth } from '../auth/useAuth.js'
 import {
   actualizarCantidad,
   agregarLinea,
+  calcularDescuentoPromocion,
   cantidadArticulos,
   claveCarrito,
   domicilioCarrito,
@@ -10,23 +11,25 @@ import {
   quitarLineasRetiradas,
   reemplazarLinea,
   subtotalCarrito,
-  totalCarrito,
+  totalCarritoConDescuento,
   TARIFA_DOMICILIO_PROVISIONAL_DEFAULT,
 } from '../utils/carrito.js'
 import { CarritoContext } from './CarritoContext.js'
 
-const VACIO = { sedeId: null, lineas: [] }
+const VACIO = { sedeId: null, lineas: [], promocion: null }
 
-// El carrito vive en el navegador (HU-21), uno por cuenta de cliente: el backend
-// solo valida cada línea. Sincronizarlo entre dispositivos queda para el producto final.
 function leerCarrito(clave) {
   if (!clave) return VACIO
   try {
     const texto = localStorage.getItem(clave)
     const guardado = texto ? JSON.parse(texto) : null
-    return Array.isArray(guardado?.lineas) ? guardado : VACIO
+    if (!Array.isArray(guardado?.lineas)) return VACIO
+    return {
+      sedeId: guardado.sedeId ?? null,
+      lineas: guardado.lineas,
+      promocion: guardado.promocion ?? null,
+    }
   } catch {
-    // Almacenamiento bloqueado o dato corrupto: se empieza con el carrito vacío.
     return VACIO
   }
 }
@@ -36,7 +39,7 @@ function guardarCarrito(clave, carrito) {
   try {
     localStorage.setItem(clave, JSON.stringify(carrito))
   } catch {
-    // Sin almacenamiento disponible: el carrito dura mientras la pestaña esté abierta.
+    // Sin almacenamiento disponible
   }
 }
 
@@ -44,8 +47,6 @@ function nuevoId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
 
-// El carrito pertenece a una sede: la disponibilidad y el stock dependen de ella.
-// Se agrega tarifaSede con valor por defecto en los props
 export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILIO_PROVISIONAL_DEFAULT }) {
   const { usuario } = useAuth()
   const clave = claveCarrito(usuario)
@@ -66,57 +67,87 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
 
   const agregar = useCallback(
     (sedeId, linea) =>
-      actualizar((actual) => ({
-        sedeId,
-        lineas: agregarLinea(actual.sedeId === sedeId ? actual.lineas : [], { ...linea, id: nuevoId() }),
-      })),
+      actualizar((actual) => {
+        const mismaSede = actual.sedeId === sedeId
+        return {
+          sedeId,
+          lineas: agregarLinea(mismaSede ? actual.lineas : [], { ...linea, id: nuevoId() }),
+          promocion: mismaSede ? actual.promocion : null,
+        }
+      }),
     [actualizar],
   )
 
   const reemplazar = useCallback(
-    (id, linea) => actualizar((actual) => ({ ...actual, lineas: reemplazarLinea(actual.lineas, id, linea) })),
+    (id, linea) =>
+      actualizar((actual) => ({ ...actual, lineas: reemplazarLinea(actual.lineas, id, linea) })),
     [actualizar],
   )
 
   const cambiarCantidad = useCallback(
     (id, cantidad) =>
-      actualizar((actual) => ({ ...actual, lineas: actualizarCantidad(actual.lineas, id, cantidad) })),
+      actualizar((actual) => {
+        const lineas = actualizarCantidad(actual.lineas, id, cantidad)
+        return { ...actual, lineas, promocion: lineas.length > 0 ? actual.promocion : null }
+      }),
     [actualizar],
   )
 
   const eliminar = useCallback(
-    (id) => actualizar((actual) => ({ ...actual, lineas: eliminarLinea(actual.lineas, id) })),
+    (id) =>
+      actualizar((actual) => {
+        const lineas = eliminarLinea(actual.lineas, id)
+        return { ...actual, lineas, promocion: lineas.length > 0 ? actual.promocion : null }
+      }),
     [actualizar],
   )
 
-  // HU-79: removes every line of the products that were deleted from the menu
   const quitarProductos = useCallback(
     (productoIds) =>
-      actualizar((actual) => ({
-        ...actual,
-        lineas: quitarLineasRetiradas(actual.lineas, productoIds).lineas,
-      })),
+      actualizar((actual) => {
+        const lineas = quitarLineasRetiradas(actual.lineas, productoIds).lineas
+        return { ...actual, lineas, promocion: lineas.length > 0 ? actual.promocion : null }
+      }),
     [actualizar],
   )
 
-  // HU-62: the customer accepts another sede, the cart goes there with the lines it can serve
+  // HU-65: Aplica una promoción (reemplaza cualquier cupón previo: no acumulables)
+  const aplicarPromocion = useCallback(
+    (promocion) => actualizar((actual) => ({ ...actual, promocion })),
+    [actualizar],
+  )
+
+  // HU-65: Remueve el cupón y restaura el precio original
+  const quitarPromocion = useCallback(
+    () => actualizar((actual) => ({ ...actual, promocion: null })),
+    [actualizar],
+  )
+
   const trasladarASede = useCallback(
-    (nuevaSedeId, lineas) => actualizar(() => ({ sedeId: nuevaSedeId, lineas })),
+    (nuevaSedeId, lineas) => actualizar(() => ({ sedeId: nuevaSedeId, lineas, promocion: null })),
     [actualizar],
   )
 
   const vaciar = useCallback(() => actualizar(() => VACIO), [actualizar])
 
-  // Cálculo de subtotales y totales usando tarifaSede
   const subtotal = useMemo(() => subtotalCarrito(carrito.lineas), [carrito.lineas])
+  const descuento = useMemo(
+    () => calcularDescuentoPromocion(subtotal, carrito.promocion),
+    [subtotal, carrito.promocion],
+  )
   const costoDomicilio = useMemo(() => domicilioCarrito(subtotal, tarifaSede), [subtotal, tarifaSede])
-  const total = useMemo(() => totalCarrito(subtotal, costoDomicilio), [subtotal, costoDomicilio])
+  const total = useMemo(
+    () => totalCarritoConDescuento(subtotal, descuento, costoDomicilio),
+    [subtotal, descuento, costoDomicilio],
+  )
 
   const valor = useMemo(
     () => ({
       sedeId: carrito.sedeId,
       lineas: carrito.lineas,
+      promocion: carrito.promocion,
       subtotal,
+      descuento,
       costoDomicilio,
       total,
       articulos: cantidadArticulos(carrito.lineas),
@@ -125,12 +156,15 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       cambiarCantidad,
       eliminar,
       quitarProductos,
+      aplicarPromocion,
+      quitarPromocion,
       trasladarASede,
       vaciar,
     }),
     [
       carrito,
       subtotal,
+      descuento,
       costoDomicilio,
       total,
       agregar,
@@ -138,6 +172,8 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       cambiarCantidad,
       eliminar,
       quitarProductos,
+      aplicarPromocion,
+      quitarPromocion,
       trasladarASede,
       vaciar,
     ],

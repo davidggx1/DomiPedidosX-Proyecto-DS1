@@ -40,6 +40,8 @@ from .models import (
     Pedido,
     TipoNotificacion,
 )
+from promociones import cupos
+from promociones.descuentos import validar_y_calcular_descuento
 
 # --- Configuración (confirmar con el equipo) --------------------------------
 IVA = Decimal("0.19")
@@ -390,13 +392,21 @@ def confirmar_pedido(*, usuario, cliente, datos):
             faltante=str(faltante),
         )
 
+    # HU-65: Validar y calcular descuento por promoción (máximo 1 por pedido)
+    promocion, valor_descuento = validar_y_calcular_descuento(
+        sede=sede,
+        subtotal=subtotal,
+        codigo_promocion=datos.get("codigo_promocion"),
+    )
+
+    subtotal_neto = max(subtotal - valor_descuento, CERO)
     costo_domicilio = zona.tarifa_domicilio
     if PRECIOS_INCLUYEN_IVA:
-        iva = _redondear(subtotal - subtotal / (1 + IVA))
-        total = subtotal + costo_domicilio
+        iva = _redondear(subtotal_neto - subtotal_neto / (1 + IVA))
+        total = subtotal_neto + costo_domicilio
     else:
-        iva = _redondear(subtotal * IVA)
-        total = subtotal + iva + costo_domicilio
+        iva = _redondear(subtotal_neto * IVA)
+        total = subtotal_neto + iva + costo_domicilio
 
     # Folio único: si dos pedidos calculan el mismo, la base rechaza el segundo.
     for _ in range(5):
@@ -452,13 +462,19 @@ def confirmar_pedido(*, usuario, cliente, datos):
         subtotal=subtotal,
         iva=iva,
         costo_domicilio=costo_domicilio,
-        valor_descuento=CERO,
+        valor_descuento=valor_descuento,
         total=total,
         metodo_pago=metodo,
         estado_factura=(
             EstadoFactura.PENDIENTE if metodo == MetodoPago.EFECTIVO else EstadoFactura.PAGADA
         ),
     )
+
+    if promocion is not None:
+        try:
+            cupos.consumir(promocion, pedido)
+        except cupos.CupoAgotado as err:
+            raise ValidationError({"codigo_promocion": [err.mensaje]})
 
     for cs, cantidad in consumos:
         ConsumoCupoCombo.objects.create(combo_sede=cs, pedido=pedido, cantidad_usada=cantidad)
