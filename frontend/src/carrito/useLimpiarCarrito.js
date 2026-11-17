@@ -17,7 +17,7 @@ export function useLimpiarCarrito() {
   }, [lineas])
 
   // ids of the products as text, so the effect does not run again for a new quantity
-  const productos = [...new Set(lineas.map((linea) => linea.producto.id))]
+  const productos = [...new Set(lineas.filter((l) => Boolean(l.producto)).map((l) => l.producto.id))]
     .sort((a, b) => a - b)
     .join(',')
 

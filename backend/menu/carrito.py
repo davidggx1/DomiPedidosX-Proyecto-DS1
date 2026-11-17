@@ -24,6 +24,8 @@ from sedes.models import Sede
 
 from .catalogo import producto_disponible
 from .models import Producto, ProductoAdicion, ProductoInsumo, ProductoTamano
+from promociones import combos as reglas_combos, cupos as reglas_cupos
+from promociones.models import Combo, ComboSede
 from promociones.descuentos import validar_y_calcular_descuento
 
 
@@ -262,12 +264,52 @@ class ValidarLineaCarritoView(APIView):
             }
         )
 
+class ComboLineaCarritoSerializer(serializers.Serializer):
+    """Una línea de combo en el carrito."""
+
+    combo = serializers.IntegerField(
+        error_messages={"required": "Indica el combo.", "invalid": "El combo debe ser un id."}
+    )
+    cantidad = serializers.IntegerField(
+        min_value=1,
+        error_messages={
+            "required": "Indica la cantidad.",
+            "invalid": "La cantidad debe ser un número entero.",
+            "min_value": "La cantidad debe ser al menos 1.",
+        },
+    )
+
+    def validate(self, attrs):
+        sede = self.context["sede"]
+        combo = Combo.objects.filter(pk=attrs["combo"], activo=True).first()
+        if combo is None:
+            raise serializers.ValidationError({"combo": "El combo no existe o no está activo."})
+        cs = ComboSede.objects.filter(combo=combo, sede=sede, activo=True).first()
+        if cs is None:
+            raise serializers.ValidationError(
+                {"combo": f'"{combo.nombre}" no está disponible en esta sede.'}
+            )
+        detalle = reglas_combos.detalle_productos(combo, sede)
+        disponible, motivo = reglas_combos.disponibilidad(combo, cs, detalle)
+        if not disponible:
+            raise serializers.ValidationError({"combo": motivo or "Combo no disponible."})
+
+        restante = reglas_cupos.cupo_restante(cs)
+        if restante is not None and attrs["cantidad"] > restante:
+            raise serializers.ValidationError(
+                {"cantidad": f'Solo quedan {restante} unidades disponibles hoy de "{combo.nombre}".'}
+            )
+
+        attrs["combo_obj"] = combo
+        return attrs
+
 class ResumenCarritoSerializer(serializers.Serializer):
     """
     HU-22 & HU-65: Recibe las líneas del carrito y un cupón opcional,
     y calcula subtotal, descuento, domicilio y total.
     """
     lineas = LineaCarritoSerializer(many=True, required=True, allow_empty=True)
+    combos = ComboLineaCarritoSerializer(many=True, required=False, default=list)
     codigo_promocion = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, max_length=100
     )
@@ -330,6 +372,25 @@ class CalcularResumenCarritoView(APIView):
                     "subtotal_linea": f"{subtotal_linea.quantize(Decimal('0.01'))}",
                 }
             )
+        for item_combo in serializer.validated_data.get("combos", []):
+            combo_obj = item_combo["combo_obj"]
+            subtotal_combo = combo_obj.precio * item_combo["cantidad"]
+            subtotal_acumulado += subtotal_combo
+            lineas_desglosadas.append(
+                {
+                    "combo_id": combo_obj.id,
+                    "combo_nombre": combo_obj.nombre,
+                    "cantidad": item_combo["cantidad"],
+                    "precio_unitario": f"{combo_obj.precio.quantize(Decimal('0.01'))}",
+                    "subtotal_linea": f"{subtotal_combo.quantize(Decimal('0.01'))}",
+                }
+            )
+        promocion, descuento = validar_y_calcular_descuento(
+            sede=sede,
+            subtotal=subtotal_acumulado,
+            codigo_promocion=serializer.validated_data.get("codigo_promocion"),
+            promocion_id=serializer.validated_data.get("promocion_id"),
+        )
 
         promocion, descuento = validar_y_calcular_descuento(
             sede=sede,

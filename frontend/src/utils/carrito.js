@@ -36,7 +36,11 @@ export function cantidadArticulos(lineas) {
 
 // Identifica la configuración de una línea, sin importar el orden de las adiciones
 // o exclusiones. Dos líneas con la misma clave son la misma variante del producto.
-export function claveVariante({ producto, tamano, adiciones = [], exclusiones = [] }) {
+export function claveVariante(linea) {
+  if (linea.combo) {
+    return `combo|${linea.combo.id}`
+  }
+  const { producto, tamano, adiciones = [], exclusiones = [] } = linea
   const partesAdiciones = adiciones
     .filter((item) => item.cantidad > 0)
     .map((item) => `${item.adicion}x${item.cantidad}`)
@@ -105,10 +109,17 @@ export function lineaParaValidar(linea) {
   return {
     producto: linea.producto.id,
     tamano: linea.tamano?.id ?? null,
-    adiciones: linea.adiciones
+    adiciones: (linea.adiciones ?? [])
       .filter((item) => item.cantidad > 0)
       .map((item) => ({ adicion: item.adicion, cantidad: item.cantidad })),
-    exclusiones: linea.exclusiones.map((item) => item.id),
+    exclusiones: (linea.exclusiones ?? []).map((item) => item.id),
+    cantidad: linea.cantidad,
+  }
+}
+
+export function comboParaValidar(linea) {
+  return {
+    combo: linea.combo.id,
     cantidad: linea.cantidad,
   }
 }
@@ -146,9 +157,12 @@ export function domicilioDeZona(subtotal, tarifaZona) {
 // `retiradosIds` comes from the server (validar-carrito)
 export function quitarLineasRetiradas(lineas, retiradosIds) {
   const retirados = new Set(retiradosIds)
-  const quitadas = lineas.filter((linea) => retirados.has(linea.producto.id))
+  const quitadas = lineas.filter((linea) => linea.producto && retirados.has(linea.producto.id))
   if (quitadas.length === 0) return { lineas, quitadas }
-  return { lineas: lineas.filter((linea) => !retirados.has(linea.producto.id)), quitadas }
+  return {
+    lineas: lineas.filter((linea) => !linea.producto || !retirados.has(linea.producto.id)),
+    quitadas,
+  }
 }
 
 // Notice for the client, or null if nothing was removed
