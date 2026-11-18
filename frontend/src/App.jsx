@@ -44,6 +44,7 @@ import ZonasCobertura from "./pages/admin/ZonasCobertura.jsx";
 import EstadoRepartidores from './pages/operador/EstadoRepartidores.jsx';
 import Promociones from './pages/operador/Promociones.jsx'
 import Combos from './pages/operador/Combos.jsx'
+import EditarEmpleado from './pages/admin/EditarEmpleado.jsx'
 
 // Rutas de la aplicación. Cada grupo protegido solo deja entrar a su rol.
 // Al implementar una HU, reemplaza <EnConstruccion> por la página real.
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="admin/horarios" element={<ConfiguracionHorarios />} />
           <Route path="admin/personal" element={<PersonalDashboard />} />
           <Route path="admin/personal/nuevo" element={<RegistrarEmpleado />} />
+          <Route path="admin/personal/:id/editar" element={<EditarEmpleado />} />
           <Route path="admin/cuentas" element={<Cuentas />} />
           <Route path="admin/clientes" element={<Clientes />} />
           <Route path="admin/promociones" element={<Promociones />} />

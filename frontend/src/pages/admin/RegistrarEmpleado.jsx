@@ -94,7 +94,7 @@ export default function RegistrarEmpleado() {
 
   return (
     <div className="mx-auto max-w-2xl rounded-xl border border-borde bg-superficie p-6 shadow-sm">
-      <h1 className="mb-6 text-2xl font-bold">Registrar Nuevo Empleado (HU-08)</h1>
+      <h1 className="mb-6 text-2xl font-bold">Registrar Nuevo Empleado</h1>
 
       {mensaje && <Alerta tipo={mensaje.tipo} titulo={mensaje.texto} />}
 
@@ -160,7 +160,7 @@ export default function RegistrarEmpleado() {
             >
               <option value="CC">Cédula de Ciudadanía</option>
               <option value="CE">Cédula de Extranjería</option>
-              <option value="PASAPORTE">Pasaporte</option>
+              <option value="PA">Pasaporte</option>
             </select>
           </div>
           <div>

@@ -27,3 +27,14 @@ export async function registrarCliente(datos) {
   const { data } = await api.post('/usuarios/registro/', datos)
   return data
 }
+
+
+export async function obtenerEmpleado(id) {
+  const { data } = await api.get(`/usuarios/empleados/${id}/`)
+  return data
+}
+
+export async function actualizarEmpleado(id, datos) {
+  const { data } = await api.patch(`/usuarios/empleados/${id}/`, datos)
+  return data
+}
