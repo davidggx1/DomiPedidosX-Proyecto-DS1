@@ -7,6 +7,7 @@ import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import Modal from '../../components/ui/Modal.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
+import TimerEstimadoEntrega from '../../components/pedidos/TimerEstimadoEntrega.jsx'
 import { datosEstado } from '../../utils/estadosPedido.js'
 import { PASOS_CLIENTE, aplicarEvento, pasosConProgreso, puedeCancelar } from '../../utils/seguimiento.js'
 
@@ -136,13 +137,21 @@ export default function SeguimientoPedido() {
           <p className="mt-1 text-sm text-texto-suave">Si ya pagaste, comunícate con la sede para el reembolso.</p>
         </Alerta>
       ) : (
-        <Tarjeta>
-          <div aria-live="polite" className="mb-4">
-            <p className="text-lg font-semibold">{pasoActual?.titulo}</p>
-            <p className="text-texto-suave">{pasoActual?.texto}</p>
-          </div>
-          <BarraProgresoPedido pasos={pasosConProgreso(seguimiento.estado, seguimiento.historial)} />
-        </Tarjeta>
+        <>
+          <TimerEstimadoEntrega
+            rango={seguimiento.tiempo_estimado_rango}
+            estadoPedido={seguimiento.estado}
+            fechaCreacion={seguimiento.historial?.[0]?.fecha_hora}
+          />
+
+          <Tarjeta>
+            <div aria-live="polite" className="mb-4">
+              <p className="text-lg font-semibold">{pasoActual?.titulo}</p>
+              <p className="text-texto-suave">{pasoActual?.texto}</p>
+            </div>
+            <BarraProgresoPedido pasos={pasosConProgreso(seguimiento.estado, seguimiento.historial)} />
+          </Tarjeta>
+        </>
       )}
 
       {!terminado && (

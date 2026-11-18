@@ -4,12 +4,17 @@ import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
 import { mensajesSinCampos } from '../../api/errores.js'
 import { interpretarError } from '../../api/errores.js'
-import { confirmarPedidoCliente, obtenerAlternativasCapacidad } from '../../api/pedidos.js'
+import {
+  confirmarPedidoCliente,
+  estimarTiempoEntrega,
+  obtenerAlternativasCapacidad,
+} from '../../api/pedidos.js'
 import { obtenerDireccionesCliente } from '../../api/direcciones.js'
 import { validarCoberturaDireccion } from '../../api/sedes.js'
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import ModalAlternativas from '../../components/pedidos/ModalAlternativas.jsx'
+import TimerEstimadoEntrega from '../../components/pedidos/TimerEstimadoEntrega.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { domicilioDeZona, subtotalLinea, totalCarritoConDescuento } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
@@ -53,7 +58,43 @@ export default function ConfirmarPedido() {
   // Cobertura HU-58
   const [coberturaInfo, setCoberturaInfo] = useState(null)
   const [validandoCobertura, setValidandoCobertura] = useState(false)
+  // HU-48: Tiempo estimado de entrega dinámico
+  const [estimacionTiempo, setEstimacionTiempo] = useState(null)
 
+  useEffect(() => {
+    if (!coberturaInfo?.cubierto || !sedeActual || !direccionId || lineas.length === 0) {
+      setEstimacionTiempo(null)
+      return undefined
+    }
+    let vigente = true
+    const items = lineas.map((linea) =>
+      linea.combo || linea.combo_id
+        ? {
+            combo_id: Number(linea.combo_id || linea.combo?.id || linea.id),
+            cantidad: Number(linea.cantidad || 1),
+          }
+        : {
+            producto_id: Number(linea.producto?.id || linea.producto_id || linea.id),
+            cantidad: Number(linea.cantidad || 1),
+          },
+    )
+
+    estimarTiempoEntrega({
+      sedeId: Number(sedeActual),
+      direccionId: Number(direccionId),
+      items,
+    })
+      .then((res) => {
+        if (vigente) setEstimacionTiempo(res)
+      })
+      .catch(() => {
+        if (vigente) setEstimacionTiempo(null)
+      })
+
+    return () => {
+      vigente = false
+    }
+  }, [coberturaInfo, sedeActual, direccionId, lineas])
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
@@ -291,9 +332,12 @@ export default function ConfirmarPedido() {
         <p className="text-sm">
           Estado: <span className="font-semibold uppercase text-marca">{resumenExito.estado}</span>
         </p>
-        {resumenExito.tiempo_estimado_entrega && (
+        {(resumenExito.tiempo_estimado_rango || resumenExito.tiempo_estimado_entrega) && (
           <p className="text-sm">
-            Tiempo estimado de entrega: <strong>{resumenExito.tiempo_estimado_entrega} mins</strong>
+            Tiempo estimado de entrega:{' '}
+            <strong>
+              {resumenExito.tiempo_estimado_rango ?? `${resumenExito.tiempo_estimado_entrega} mins`}
+            </strong>
           </p>
         )}
 
@@ -436,7 +480,6 @@ export default function ConfirmarPedido() {
         </div>
 
         {/* Resumen de Ítems */}
-        {/* Resumen de Ítems */}
         <div className="space-y-2 rounded-lg border border-borde bg-fondo p-4">
           <h3 className="text-sm font-semibold">Resumen de Ítems ({lineas.length})</h3>
           <ul className="divide-y divide-borde text-sm">
@@ -485,6 +528,14 @@ export default function ConfirmarPedido() {
             <span className="text-marca">{formatearPrecio(total)}</span>
           </div>
         </div>
+
+        {/* HU-48: Tiempo estimado de entrega */}
+        {estimacionTiempo && (
+          <TimerEstimadoEntrega
+            rango={estimacionTiempo.tiempo_estimado_rango}
+            desglose={estimacionTiempo.desglose}
+          />
+        )}
 
         {faltante > 0 && (
           <Alerta

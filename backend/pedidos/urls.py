@@ -8,7 +8,7 @@ from .views import (
     TableroCocinaView,
     PedidosEntrantesView,
     ConfirmarPedidoView,
-    AprobarPedidoView, CrearPedidoOperadorView,
+    AprobarPedidoView, CrearPedidoOperadorView, EstimarTiempoEntregaView,
 )
 from .alternativas import AlternativasCapacidadView
 from .cancelacion import CancelarErrorCocinaView, CancelarPedidoView
@@ -49,4 +49,5 @@ urlpatterns = [
     path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
     path("repartidores/estado/", EstadoRepartidoresView.as_view(), name="repartidores-estado"),
+    path("estimar-tiempo/", EstimarTiempoEntregaView.as_view(), name="estimar-tiempo"),
 ]

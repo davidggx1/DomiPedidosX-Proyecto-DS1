@@ -42,6 +42,7 @@ from .models import (
 )
 from promociones import cupos
 from promociones.descuentos import validar_y_calcular_descuento
+from .tiempos import estimar_tiempo_entrega
 
 # --- Configuración (confirmar con el equipo) --------------------------------
 IVA = Decimal("0.19")
@@ -411,6 +412,7 @@ def confirmar_pedido(*, usuario, cliente, datos):
     # Folio único: si dos pedidos calculan el mismo, la base rechaza el segundo.
     for _ in range(5):
         try:
+            estimacion = estimar_tiempo_entrega(sede=sede, zona=zona, items=datos["items"])
             with transaction.atomic():  # savepoint
                 pedido = Pedido(
                     numero_pedido=_siguiente_folio(),
@@ -419,7 +421,7 @@ def confirmar_pedido(*, usuario, cliente, datos):
                     zona_cobertura=zona,
                     origen=OrigenPedido.WEB,
                     estado=EstadoPedido.PENDIENTE_APROBACION,
-                    tiempo_estimado_entrega=zona.tiempo_estimado,
+                    tiempo_estimado_entrega=estimacion["tiempo_estimado_min"],
                     descripcion=datos.get("observaciones", ""),
                 )
                 pedido.asignar_direccion_entrega(direccion)

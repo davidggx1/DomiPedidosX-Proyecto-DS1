@@ -35,11 +35,10 @@ class HistorialEstadoSerializer(serializers.ModelSerializer):
 
 
 class EstadoPedidoSerializer(serializers.ModelSerializer):
-    """Estado actual, historial con hora de cada paso y a qué estados puede pasar quien consulta."""
-
     estado_nombre = serializers.CharField(source="get_estado_display", read_only=True)
     historial = HistorialEstadoSerializer(source="historial_estados", many=True, read_only=True)
     siguientes_estados = serializers.SerializerMethodField()
+    tiempo_estimado_rango = serializers.SerializerMethodField()
 
     class Meta:
         model = Pedido
@@ -48,6 +47,8 @@ class EstadoPedidoSerializer(serializers.ModelSerializer):
             "numero_pedido",
             "estado",
             "estado_nombre",
+            "tiempo_estimado_entrega",
+            "tiempo_estimado_rango",
             "motivo_cancelacion",
             "historial",
             "siguientes_estados",
@@ -56,6 +57,10 @@ class EstadoPedidoSerializer(serializers.ModelSerializer):
     def get_siguientes_estados(self, pedido) -> list[str]:
         return siguientes_estados(pedido.estado, self.context.get("rol"))
 
+    def get_tiempo_estimado_rango(self, pedido) -> str | None:
+        if pedido.tiempo_estimado_entrega is None:
+            return None
+        return f"{pedido.tiempo_estimado_entrega}-{pedido.tiempo_estimado_entrega + 10} min"
 
 # --- Cocina: tablero Kanban (HU-29) y detalle de la comanda (HU-30) --------------
 

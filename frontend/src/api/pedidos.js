@@ -108,3 +108,13 @@ export async function obtenerAlternativasCapacidad({ sedeId, direccionId, produc
   return data
 }
 
+// HU-48: Tiempo estimado de entrega dinámico (preparación + congestión + zona)
+export async function estimarTiempoEntrega({ sedeId, direccionId, items }) {
+  const { data } = await api.post('/pedidos/estimar-tiempo/', {
+    sede_id: sedeId,
+    direccion_id: direccionId,
+    items,
+  })
+  return data
+}
+
