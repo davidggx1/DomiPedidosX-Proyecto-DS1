@@ -105,13 +105,14 @@ def test_pedido_previo_conserva_tarifa_y_tiempo_y_el_nuevo_usa_los_nuevos(m, adm
 
     antes = Pedido.objects.get(numero_pedido=r1.data["numero_pedido"])
     despues = Pedido.objects.get(numero_pedido=r2.data["numero_pedido"])
-    assert antes.tiempo_estimado_entrega == 40
+    # HU-48: zona (40) + preparación hamburguesa (15) = 55; el pedido previo no cambia al editar la zona.
+    assert antes.tiempo_estimado_entrega == 55
     assert antes.factura.costo_domicilio == Decimal("3000")
-    assert despues.tiempo_estimado_entrega == 60
+    # El nuevo pedido usa la nueva tarifa y el nuevo tiempo base de zona (60 + 15 + 3 por 1 pedido en cola = 78).
+    assert despues.tiempo_estimado_entrega == 78
     assert despues.factura.costo_domicilio == Decimal("5000")
     # Mismo pedido, solo cambió el domicilio: el total sube exactamente 2000.
     assert despues.factura.total - antes.factura.total == Decimal("2000")
-
 
 def test_zona_desactivada_no_recibe_pedidos_nuevos_pero_los_previos_se_conservan(m, admin):
     assert _confirmar(m).status_code == 201
