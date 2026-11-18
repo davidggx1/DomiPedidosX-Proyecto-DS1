@@ -10,10 +10,12 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 
 from rest_framework.permissions import BasePermission
+
+from sedes.models import Sede
 from .serializers_confirmar import ConfirmarPedidoSerializer
 
 
-from usuarios.models import Repartidor
+from usuarios.models import Repartidor, DireccionEntrega
 from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 from usuarios.permissions import filtrar_por_sede, rol_requerido
 
@@ -382,6 +384,11 @@ class ConfirmarPedidoView(APIView):
                 "numero_pedido": pedido.numero_pedido,
                 "estado": pedido.estado,
                 "tiempo_estimado_entrega": pedido.tiempo_estimado_entrega,
+                "tiempo_estimado_rango": (
+                    f"{pedido.tiempo_estimado_entrega}-{pedido.tiempo_estimado_entrega + 10} min"
+                    if pedido.tiempo_estimado_entrega is not None
+                    else None
+                ),
                 "factura": {
                     "numero": factura.numero,
                     "subtotal": factura.subtotal,
@@ -450,3 +457,30 @@ class CrearPedidoOperadorView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+class EstimarTiempoEntregaView(APIView):
+    """HU-48: calcula el rango estimado de entrega antes de confirmar el pedido."""
+    permission_classes = [EsCliente]
+
+    def post(self, request):
+        from sedes.models import Sede
+        from usuarios.models import DireccionEntrega
+        from .servicios import _zona_de_cobertura
+        from .tiempos import estimar_tiempo_entrega
+
+        sede_id = request.data.get("sede_id")
+        direccion_id = request.data.get("direccion_id")
+        items = request.data.get("items", [])
+
+        sede = get_object_or_404(Sede, pk=sede_id, activa=True)
+        direccion = get_object_or_404(
+            DireccionEntrega, pk=direccion_id, cliente=request.user.cliente, activa=True
+        )
+        zona = _zona_de_cobertura(sede, direccion)
+        if zona is None:
+            return Response(
+                {"detail": "La dirección está fuera de la cobertura de esta sede."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(estimar_tiempo_entrega(sede=sede, zona=zona, items=items))
