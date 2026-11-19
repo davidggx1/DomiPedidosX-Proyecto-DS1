@@ -1,4 +1,4 @@
-// Utilidades de la página de reportes (HU-72; el rango de fechas sirve también para la HU-71)
+// Utilidades de la página de reportes (HU-71 ventas y HU-72 tiempos)
 
 const DIAS_POR_DEFECTO = 7
 
@@ -34,4 +34,32 @@ export function textoMinutos(minutos) {
 export function anchoBarra(valor, maximo) {
   if (!valor || !maximo) return 0
   return Math.max(2, Math.round((valor / maximo) * 100))
+}
+
+// HU-71 · Agrupaciones del reporte de ventas (mismos valores que el backend)
+export const AGRUPACIONES_VENTAS = [
+  { valor: 'producto', etiqueta: 'Producto' },
+  { valor: 'categoria', etiqueta: 'Categoría' },
+  { valor: 'sede', etiqueta: 'Sede' },
+  { valor: 'zona', etiqueta: 'Zona de entrega' },
+]
+
+// Por producto o categoría se cuentan unidades vendidas; por sede o zona, pedidos
+export function cuentaUnidades(agrupar) {
+  return agrupar === 'producto' || agrupar === 'categoria'
+}
+
+// Filas de "líneas − descuentos + domicilio = total facturado"; los ajustes solo si los hay
+export function filasConciliacion(conciliacion) {
+  if (!conciliacion) return []
+  const filas = [
+    { etiqueta: 'Ventas de productos', valor: conciliacion.lineas, signo: '' },
+    { etiqueta: 'Descuentos', valor: conciliacion.descuentos, signo: '−' },
+    { etiqueta: 'Domicilios', valor: conciliacion.domicilio, signo: '+' },
+  ]
+  if (Number(conciliacion.ajustes) !== 0) {
+    filas.push({ etiqueta: 'Ajustes de facturas', valor: conciliacion.ajustes, signo: '+' })
+  }
+  filas.push({ etiqueta: 'Total facturado', valor: conciliacion.total, signo: '=', total: true })
+  return filas
 }
