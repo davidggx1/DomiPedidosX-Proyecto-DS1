@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { listarEmpleados } from '../../api/usuarios.js'
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
+import { claseEstadoCuenta, textoSede } from '../../utils/personal.js'
 
 export default function PersonalDashboard() {
   const [empleados, setEmpleados] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('TODOS')
+  const [filtroEstado, setFiltroEstado] = useState('TODOS')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -42,7 +44,10 @@ export default function PersonalDashboard() {
     const coincideRol =
       filtroRol === 'TODOS' || (emp.rol || emp.grupo_nombre)?.toUpperCase() === filtroRol
 
-    return coincideNombre && coincideRol
+    const coincideEstado =
+      filtroEstado === 'TODOS' || (filtroEstado === 'ACTIVAS') === Boolean(emp.is_active)
+
+    return coincideNombre && coincideRol && coincideEstado
   })
 
   return (
@@ -63,7 +68,7 @@ export default function PersonalDashboard() {
       {error && <Alerta tipo="error" titulo={error} />}
 
       {/* Filtros de Búsqueda */}
-      <div className="grid grid-cols-1 gap-4 rounded-xl border border-borde bg-superficie p-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-borde bg-superficie p-4 md:grid-cols-4">
         <div className="md:col-span-2">
           <label className="block text-xs font-semibold uppercase mb-1">Buscar</label>
           <input
@@ -88,6 +93,18 @@ export default function PersonalDashboard() {
             <option value="ADMINISTRADOR">Administrador</option>
           </select>
         </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase mb-1">Estado</label>
+          <select
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className="w-full rounded-lg border border-borde bg-fondo p-2.5 text-sm text-texto"
+          >
+            <option value="TODOS">Todas</option>
+            <option value="ACTIVAS">Activas</option>
+            <option value="DESACTIVADAS">Desactivadas</option>
+          </select>
+        </div>
       </div>
 
       {/* Tabla de Empleados */}
@@ -107,6 +124,8 @@ export default function PersonalDashboard() {
                 <th className="px-4 py-3">Contacto</th>
                 <th className="px-4 py-3">Rol</th>
                 <th className="px-4 py-3">Sede</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -131,9 +150,27 @@ export default function PersonalDashboard() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {emp.sede?.nombre || emp.sede_nombre || (
+                    {textoSede(emp) || (
                       <span className="text-texto-suave italic">Sin Sede (Admin)</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${claseEstadoCuenta(
+                        emp.is_active,
+                      )}`}
+                    >
+                      {emp.is_active ? 'Activa' : 'Desactivada'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      to={`/admin/personal/${emp.id}/editar`}
+                      className="text-marca-clara underline underline-offset-4"
+                      aria-label={`Editar a ${emp.nombres} ${emp.apellidos}`}
+                    >
+                      {emp.is_active ? 'Editar' : 'Editar / reactivar'}
+                    </Link>
                   </td>
                 </tr>
               ))}

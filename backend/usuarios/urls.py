@@ -7,6 +7,7 @@ from .repartidores import MiDisponibilidadView, RepartidoresView
 from .cuentas import CuentasView, CuentaView
 from .clientes import ClientesView, FichaClienteView
 from .contrasena import RestablecerContrasenaView, SolicitarRestablecimientoView
+from .personal import EmpleadoDetalleView
 
 router = SimpleRouter()
 router.register("direcciones", DireccionEntregaViewSet, basename="direccion")
@@ -16,6 +17,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("registro/", RegistroClienteView.as_view(), name="registro-cliente"),
     path("empleados/", EmpleadoManagementView.as_view(), name="gestion-empleados"),
+    path("empleados/<int:pk>/", EmpleadoDetalleView.as_view(), name="empleado-detalle"),
     path("login-personal/", LoginPersonalView.as_view(), name="login-personal"),
     path("perfil-personal/", PerfilPersonalView.as_view(), name="perfil-personal"),
     path("perfil/", PerfilClienteView.as_view(), name="perfil-cliente"),

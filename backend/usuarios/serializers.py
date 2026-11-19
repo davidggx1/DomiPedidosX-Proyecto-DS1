@@ -237,6 +237,8 @@ class EmpleadoListSerializer(serializers.ModelSerializer):
             "nombres",
             "apellidos",
             "email",
+            "tipo_documento",
+            "num_documento",
             "rol",
             "sede",
             "sede_id",
