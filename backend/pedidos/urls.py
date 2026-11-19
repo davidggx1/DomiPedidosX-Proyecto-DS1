@@ -11,7 +11,12 @@ from .views import (
     AprobarPedidoView, CrearPedidoOperadorView, EstimarTiempoEntregaView,
 )
 from .alternativas import AlternativasCapacidadView
-from .cancelacion import CancelarErrorCocinaView, CancelarPedidoView
+from .cancelacion import (
+    CancelarErrorCocinaView,
+    CancelarPedidoOperadorView,
+    CancelarPedidoView,
+    PedidosEnCursoView,
+)
 from .capacidad import EstadoCapacidadView
 from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
 from .historial import FichaPedidoView, HistorialPedidosView
@@ -25,6 +30,8 @@ urlpatterns = [
     path("<int:pk>/estado/", EstadoPedidoView.as_view(), name="pedido-estado"),
     path("<int:pk>/cancelar/", CancelarPedidoView.as_view(), name="pedido-cancelar"),
     path("<int:pk>/cancelar-cocina/", CancelarErrorCocinaView.as_view(), name="pedido-cancelar-cocina"),  # HU-33
+    path("<int:pk>/cancelar-operador/", CancelarPedidoOperadorView.as_view(), name="pedido-cancelar-operador"),  # HU-34
+    path("en-curso/", PedidosEnCursoView.as_view(), name="pedidos-en-curso"),  # HU-34
     path("<int:pk>/cocina/", ComandaCocinaView.as_view(), name="pedido-comanda"),
     path("cocina/tablero/", TableroCocinaView.as_view(), name="cocina-tablero"),
     path("<int:pk>/repartidor/", AsignacionRepartidorView.as_view(), name="pedido-repartidor"),
