@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react'
 import { crearPedidoOperador } from '../../api/pedidos.js'
-import { listarProductos } from '../../api/menu.js' // API de catálogo
+import { listarProductos, listarTamanosProducto } from '../../api/menu.js' // API de catálogo
 import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Casilla from '../../components/ui/Casilla.jsx'
+import Modal from '../../components/ui/Modal.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
+import {
+  agregarLinea,
+  itemsParaEnviar,
+  mensajeErrorPedido,
+  precioConTamano,
+  quitarLinea,
+} from '../../utils/pedidoOperador.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
 
@@ -17,6 +25,8 @@ export default function CrearPedidoOperador() {
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [confirmaSinFranja, setConfirmaSinFranja] = useState(false)
+  // Producto con tamaños esperando que el operador elija uno: { producto, tamanos }
+  const [eligiendoTamano, setEligiendoTamano] = useState(null)
 
   // HU-61: capacity of the operator's own sede
   const { estado: estadoCapacidad, refrescar: refrescarCapacidad } = useEstadoCapacidad()
@@ -26,16 +36,29 @@ export default function CrearPedidoOperador() {
     listarProductos().then(setProductos).catch(console.error)
   }, [])
 
-  const agregarAlCarrito = (prod) => {
-    setCarrito((prev) => {
-      const existe = prev.find((item) => item.producto_id === prod.id)
-      if (existe) {
-        return prev.map((item) =>
-          item.producto_id === prod.id ? { ...item, cantidad: item.cantidad + 1 } : item
-        )
+  const agregarAlCarrito = (prod, tamano = null) => {
+    setCarrito((prev) => agregarLinea(prev, prod, tamano))
+  }
+
+  // Si el producto tiene tamaños activos, el operador debe elegir uno (como en la web).
+  const alElegirProducto = async (prod) => {
+    try {
+      const tamanos = await listarTamanosProducto(prod.id)
+      if (tamanos.length > 0) {
+        setEligiendoTamano({ producto: prod, tamanos })
+        return
       }
-      return [...prev, { producto_id: prod.id, nombre: prod.nombre, precio: prod.precio_base, cantidad: 1 }]
-    })
+    } catch (err) {
+      console.error(err)
+      setMensaje({ tipo: 'error', texto: 'No se pudieron cargar los tamaños del producto.' })
+      return
+    }
+    agregarAlCarrito(prod)
+  }
+
+  const elegirTamano = (tamano) => {
+    agregarAlCarrito(eligiendoTamano.producto, tamano)
+    setEligiendoTamano(null)
   }
 
   const subtotal = carrito.reduce((sum, item) => sum + item.precio * item.cantidad, 0)
@@ -58,13 +81,7 @@ export default function CrearPedidoOperador() {
         direccion_id: null,
         observaciones: '',
         confirmar_sin_franja: capacidadInfo.requiereConfirmacion && confirmaSinFranja,
-        items: carrito.map((item) => ({
-          producto_id: item.producto_id,
-          cantidad: item.cantidad,
-          adiciones: [],
-          exclusiones: [],
-          observaciones: '',
-        })),
+        items: itemsParaEnviar(carrito),
       }
 
       const res = await crearPedidoOperador(payload)
@@ -79,10 +96,7 @@ export default function CrearPedidoOperador() {
         setMensaje({ tipo: 'error', texto: errorCap.detail })
         refrescarCapacidad()
       } else {
-        const detalleError = err.response?.data
-          ? JSON.stringify(err.response.data)
-          : 'Error al registrar el pedido.'
-        setMensaje({ tipo: 'error', texto: `Error: ${detalleError}` })
+        setMensaje({ tipo: 'error', texto: mensajeErrorPedido(err.response?.data) })
       }
     } finally {
       setCargando(false)
@@ -109,7 +123,7 @@ export default function CrearPedidoOperador() {
           {productosFiltrados.map((prod) => (
             <div
               key={prod.id}
-              onClick={() => agregarAlCarrito(prod)}
+              onClick={() => alElegirProducto(prod)}
               className="cursor-pointer rounded-xl border border-borde p-4 hover:border-marca"
             >
               <h3 className="font-semibold">{prod.nombre}</h3>
@@ -162,9 +176,19 @@ export default function CrearPedidoOperador() {
 
         <div className="space-y-2 border-t pt-3">
           {carrito.map((item) => (
-            <div key={item.producto_id} className="flex justify-between text-sm">
+            <div key={item.clave} className="flex items-center justify-between gap-2 text-sm">
               <span>{item.cantidad}x {item.nombre}</span>
-              <span>{formatearPrecio(item.precio * item.cantidad)}</span>
+              <span className="flex items-center gap-2">
+                {formatearPrecio(item.precio * item.cantidad)}
+                <button
+                  type="button"
+                  onClick={() => setCarrito((prev) => quitarLinea(prev, item.clave))}
+                  className="text-texto-suave hover:text-error"
+                  aria-label={`Quitar ${item.nombre}`}
+                >
+                  ✕
+                </button>
+              </span>
             </div>
           ))}
         </div>
@@ -200,6 +224,32 @@ export default function CrearPedidoOperador() {
           {cargando ? 'Procesando...' : 'Confirmar Pedido'}
         </Boton>
       </div>
+
+      {eligiendoTamano && (
+        <Modal
+          titulo={`Tamaño de ${eligiendoTamano.producto.nombre}`}
+          alCerrar={() => setEligiendoTamano(null)}
+          acciones={
+            <Boton variante="secundario" onClick={() => setEligiendoTamano(null)}>
+              Cancelar
+            </Boton>
+          }
+        >
+          <div className="grid gap-2">
+            {eligiendoTamano.tamanos.map((tamano) => (
+              <button
+                key={tamano.id}
+                type="button"
+                onClick={() => elegirTamano(tamano)}
+                className="flex justify-between rounded-xl border border-borde p-3 text-left hover:border-marca"
+              >
+                <span className="font-semibold">{tamano.nombre}</span>
+                <span>{formatearPrecio(precioConTamano(eligiendoTamano.producto, tamano))}</span>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

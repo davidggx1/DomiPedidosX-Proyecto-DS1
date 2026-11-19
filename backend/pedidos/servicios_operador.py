@@ -3,23 +3,28 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from menu.models import Producto, ProductoTamano, Adicion, Insumo
 from usuarios.models import Cliente, DireccionEntrega
 from . import capacidad
 from .correos import enviar_correo_confirmacion
 from .models import (
+    ConsumoCupoCombo,
     Pedido,
     DetallePedido,
     DetallePedidoAdicion,
     DetallePedidoExclusion,
     Factura,
     EstadoPedido,
+    HistorialEstadoPedido,
     OrigenPedido,
     EstadoFactura,
 )
+from .stock import descontar_stock
 
 
 def crear_pedido_operador(usuario_operador, datos):
+    # Lazy import: servicios -> eventos -> consumers -> views -> this module.
+    from .servicios import ErrorConfirmacion, _preparar_carrito
+
     empleado = getattr(usuario_operador, "empleado", None)
     if not empleado or not empleado.sede:
         raise ValidationError({"detail": "El operador no tiene una sede asignada."})
@@ -72,54 +77,50 @@ def crear_pedido_operador(usuario_operador, datos):
             pedido.asignar_direccion_entrega(direccion)
             pedido.save()
 
-        subtotal_pedido = Decimal("0.00")
+        # Same catalogue, price and stock rules as the web checkout: sizes add
+        # precio_adicional, line subtotals include add-ons and stock is locked,
+        # validated and decremented (so cancelling can restore it later).
+        lineas, consumos, errores, stock = _preparar_carrito(datos["items"], sede)
+        if errores:
+            raise ErrorConfirmacion("Algunos ítems no se pueden confirmar.", errores)
 
-        for item in datos["items"]:
-            producto_id = item.get("producto_id")
-            tamano_id = item.get("tamano_id")
-            cantidad = item["cantidad"]
-            obs_item = item.get("observaciones", "")
-
-            producto = Producto.objects.get(pk=producto_id)
-            tamano = ProductoTamano.objects.get(pk=tamano_id) if tamano_id else None
-
-            precio_base = tamano.precio if tamano else producto.precio_base
-            subtotal_linea = precio_base * cantidad
-
+        for l in lineas:
             detalle = DetallePedido.objects.create(
                 pedido=pedido,
-                producto=producto,
-                producto_tamano=tamano,
-                cantidad=cantidad,
-                precio_unitario=precio_base,
-                subtotal=subtotal_linea,
-                observaciones=obs_item,
+                producto=l["producto"],
+                combo=l["combo"],
+                producto_tamano=l["tamano"],
+                cantidad=l["cantidad"],
+                precio_unitario=l["precio_unitario"],
+                subtotal=l["subtotal"],
+                observaciones=l["observaciones"],
             )
-
-            # Procesar adiciones
-            for ad_item in item.get("adiciones", []):
-                adicion = Adicion.objects.get(pk=ad_item["adicion_id"])
-                cant_ad = ad_item.get("cantidad", 1)
-                precio_ad = adicion.precio * cant_ad
-                DetallePedidoAdicion.objects.create(
-                    detalle_pedido=detalle,
-                    adicion=adicion,
-                    cantidad=cant_ad,
-                    precio_unitario=adicion.precio,
+            DetallePedidoAdicion.objects.bulk_create([
+                DetallePedidoAdicion(
+                    detalle_pedido=detalle, adicion=a, cantidad=c, precio_unitario=a.precio
                 )
-                subtotal_linea += precio_ad
-
-            # Procesar exclusiones ("sin")
-            for insumo_id in item.get("exclusiones", []):
-                insumo = Insumo.objects.get(pk=insumo_id)
-                DetallePedidoExclusion.objects.create(
-                    detalle_pedido=detalle,
-                    insumo=insumo,
-                    nombre_insumo=insumo.nombre,
+                for a, c in l["adiciones"]
+            ])
+            DetallePedidoExclusion.objects.bulk_create([
+                DetallePedidoExclusion(
+                    detalle_pedido=detalle, insumo=i, nombre_insumo=i.nombre
                 )
+                for i in l["exclusiones"]
+            ])
 
-            subtotal_pedido += subtotal_linea
+        for cs, cantidad in consumos:
+            ConsumoCupoCombo.objects.create(combo_sede=cs, pedido=pedido, cantidad_usada=cantidad)
 
+        descontar_stock(**stock)
+
+        HistorialEstadoPedido.objects.create(
+            pedido=pedido,
+            usuario=usuario_operador,
+            estado=EstadoPedido.RECIBIDO,
+            observacion="Pedido creado por el operador.",
+        )
+
+        subtotal_pedido = sum((l["subtotal"] for l in lineas), Decimal("0.00"))
         iva = Decimal("0.00")
         total = subtotal_pedido + costo_domicilio
 
