@@ -31,6 +31,7 @@ import PanelIndicadores from './pages/admin/PanelIndicadores.jsx'
 import PedidosDelDia from './pages/admin/PedidosDelDia.jsx'
 import Reportes from './pages/admin/Reportes.jsx'
 import CrearPedidoOperador from './pages/operador/CrearPedidoOperador.jsx'
+import PedidosEnCurso from './pages/operador/PedidosEnCurso.jsx'
 import Despacho from './pages/operador/Despacho.jsx'
 import PedidosEntrantes from './pages/operador/PedidosEntrantes.jsx'
 import ProductosCocina from './pages/cocina/ProductosCocina.jsx'
@@ -73,6 +74,7 @@ export default function App() {
         <Route element={<RutaProtegida roles={[ROLES.OPERADOR]} />}>
           <Route path="operador" element={<PedidosEntrantes />} />
           <Route path="operador/crear-pedido" element={<CrearPedidoOperador />} />
+          <Route path="operador/en-curso" element={<PedidosEnCurso />} />
           <Route path="operador/menu" element={<CategoriasMenu />} />
           <Route path="operador/productos" element={<Productos />} />
           <Route path="operador/adiciones" element={<Adiciones />} />
