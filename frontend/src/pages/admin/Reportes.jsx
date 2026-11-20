@@ -2,45 +2,27 @@ import { useEffect, useState } from 'react'
 import api from '../../api/cliente.js'
 import { interpretarError } from '../../api/errores.js'
 import { obtenerReporteTiempos } from '../../api/pedidos.js'
+import Barra from '../../components/reportes/Barra.jsx'
+import Cifra from '../../components/reportes/Cifra.jsx'
+import ReporteVentas from '../../components/reportes/ReporteVentas.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
-import { anchoBarra, rangoPorDefecto, textoMinutos, validarRango } from '../../utils/reportes.js'
+import { rangoPorDefecto, textoMinutos, validarRango } from '../../utils/reportes.js'
 
-// Pestañas de la página de reportes. La HU-71 (ventas) se agrega aquí como otra entrada.
-const REPORTES = [{ valor: 'tiempos', etiqueta: 'Tiempos y desempeño' }]
+// Pestañas de la página de reportes
+const REPORTES = [
+  { valor: 'ventas', etiqueta: 'Ventas' }, // HU-71
+  { valor: 'tiempos', etiqueta: 'Tiempos y desempeño' }, // HU-72
+]
 
 const DESCRIPCION_FASE = {
   aprobacion: 'De pendiente de aprobación a recibido (solo pedidos web)',
   preparacion: 'De recibido a listo para despacho',
   despacho: 'De listo para despacho a en camino',
   entrega: 'De en camino a entregado',
-}
-
-function Cifra({ titulo, valor, detalle }) {
-  return (
-    <div className="rounded-2xl border border-borde bg-superficie p-4">
-      <p className="text-sm text-texto-suave">{titulo}</p>
-      <p className="mt-1 font-titulo text-3xl font-bold">{valor}</p>
-      {detalle && <p className="mt-1 text-sm text-texto-suave">{detalle}</p>}
-    </div>
-  )
-}
-
-// Barra horizontal de una sola serie: el valor va escrito al lado, el color solo acompaña
-function Barra({ etiqueta, valor, maximo, texto }) {
-  return (
-    <div
-      className="h-2.5 overflow-hidden rounded-full bg-superficie-alta"
-      role="img"
-      aria-label={`${etiqueta}: ${texto}`}
-      title={`${etiqueta}: ${texto}`}
-    >
-      <div className="h-full rounded-full bg-marca" style={{ width: `${anchoBarra(valor, maximo)}%` }} />
-    </div>
-  )
 }
 
 function TiemposPorFase({ fases }) {
@@ -266,6 +248,7 @@ export default function Reportes() {
         </div>
       )}
 
+      {reporte === 'ventas' && <ReporteVentas sedes={sedes} />}
       {reporte === 'tiempos' && <ReporteTiempos sedes={sedes} />}
     </div>
   )

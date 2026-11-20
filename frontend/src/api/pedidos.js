@@ -108,6 +108,14 @@ export async function obtenerReporteTiempos({ desde, hasta, sede = '' }) {
   return data
 }
 
+// HU-71: sales of non-cancelled orders grouped by producto, categoria, sede or zona
+export async function obtenerReporteVentas({ desde, hasta, agrupar = 'producto', sede = '' }) {
+  const params = { desde, hasta, agrupar }
+  if (sede) params.sede = sede
+  const { data } = await api.get('/pedidos/reportes/ventas/', { params })
+  return data
+}
+
 // HU-62: when the sede of the customer is blocked (saturated or without slot), the other
 // sedes that cover his address and have capacity, or the next slot of his sede.
 // `productos` are the ids of the cart, to know what each other sede does not have
