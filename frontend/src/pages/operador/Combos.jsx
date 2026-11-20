@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import { actualizarCombo, desactivarCombo, listarCombos } from '../../api/combos.js'
 import { interpretarError } from '../../api/errores.js'
 import { listarProductos } from '../../api/menu.js'
@@ -25,7 +26,7 @@ export default function Combos() {
   const [errorCarga, setErrorCarga] = useState(null)
   const [filtro, setFiltro] = useState('todos')
   const [editando, setEditando] = useState(null)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [recarga, setRecarga] = useState(0)
 
   useEffect(() => {
@@ -64,8 +65,8 @@ export default function Combos() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${combo.nombre}". Aplican a las compras que se hagan desde ahora.`
-        : `Se creó el combo "${combo.nombre}".`,
+        ? `Se guardaron los cambios de ${combo.nombre}. Aplican a las compras que se hagan desde ahora.`
+        : `Se creó el combo ${combo.nombre}.`,
     })
     setEditando(null)
     recargar()
@@ -73,13 +74,13 @@ export default function Combos() {
 
   async function desactivar(combo) {
     const confirmado = window.confirm(
-      `¿Desactivar el combo "${combo.nombre}"? Dejará de ofrecerse, pero se conserva su historial.`,
+      `¿Desactivar el combo ${combo.nombre}? Dejará de ofrecerse, pero se conserva su historial.`,
     )
     if (!confirmado) return
     try {
       await desactivarCombo(combo.id)
       if (editando?.id === combo.id) setEditando(null)
-      setMensaje({ tipo: 'exito', texto: `Se desactivó el combo "${combo.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se desactivó el combo ${combo.nombre}.` })
       recargar()
     } catch (error) {
       setMensaje({ tipo: 'error', texto: interpretarError(error).general })
@@ -89,7 +90,7 @@ export default function Combos() {
   async function reactivar(combo) {
     try {
       await actualizarCombo(combo.id, { activo: true })
-      setMensaje({ tipo: 'exito', texto: `Se reactivó el combo "${combo.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se reactivó el combo ${combo.nombre}.` })
       recargar()
     } catch (error) {
       setMensaje({ tipo: 'error', texto: interpretarError(error).general })

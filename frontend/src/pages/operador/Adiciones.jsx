@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import {
   actualizarAdicion,
   eliminarAdicion,
@@ -26,7 +27,7 @@ export default function Adiciones() {
   const [mostrarEliminadas, setMostrarEliminadas] = useState(false)
   const [recarga, setRecarga] = useState(0)
   const [editando, setEditando] = useState(null)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [productoId, setProductoId] = useState('')
 
   // Catálogo de adiciones: se recarga al cambiar el filtro o después de guardar.
@@ -74,8 +75,8 @@ export default function Adiciones() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${adicion.nombre}". Los pedidos anteriores conservan su precio.`
-        : `Se creó la adición "${adicion.nombre}".`,
+        ? `Se guardaron los cambios de ${adicion.nombre}. Los pedidos anteriores conservan su precio.`
+        : `Se creó la adición ${adicion.nombre}.`,
     })
     setEditando(null)
     recargar()
@@ -83,13 +84,13 @@ export default function Adiciones() {
 
   async function eliminar(adicion) {
     const confirmado = window.confirm(
-      `¿Eliminar la adición "${adicion.nombre}"? Los clientes dejarán de verla; los pedidos anteriores no cambian.`,
+      `¿Eliminar la adición ${adicion.nombre}? Los clientes dejarán de verla; los pedidos anteriores no cambian.`,
     )
     if (!confirmado) return
     try {
       await eliminarAdicion(adicion.id)
       if (editando?.id === adicion.id) setEditando(null)
-      setMensaje({ tipo: 'exito', texto: `Se eliminó la adición "${adicion.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se eliminó la adición ${adicion.nombre}.` })
       recargar()
     } catch (err) {
       setMensaje({ tipo: 'error', texto: interpretarError(err).general })
@@ -99,7 +100,7 @@ export default function Adiciones() {
   async function restaurar(adicion) {
     try {
       await actualizarAdicion(adicion.id, { activa: true })
-      setMensaje({ tipo: 'exito', texto: `Se restauró la adición "${adicion.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se restauró la adición ${adicion.nombre}.` })
       recargar()
     } catch (err) {
       const { general, campos } = interpretarError(err)

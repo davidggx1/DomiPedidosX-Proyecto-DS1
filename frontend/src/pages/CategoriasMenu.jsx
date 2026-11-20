@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMensajeTemporal } from '../components/ui/useMensajeTemporal.js'
 import api from '../api/cliente.js'
 import { interpretarError } from '../api/errores.js'
 import { eliminarCategoria } from '../api/menu.js'
@@ -22,7 +23,7 @@ export default function CategoriasMenu() {
   const [formulario, setFormulario] = useState(FORMULARIO_VACIO)
   const [editando, setEditando] = useState(null) // the category being edited, null = creating
   const [errores, setErrores] = useState(SIN_ERRORES)
-  const [exito, setExito] = useState(null)
+  const [exito, setExito] = useMensajeTemporal()
   const [guardando, setGuardando] = useState(false)
   const campoNombre = useRef(null)
 
@@ -92,7 +93,7 @@ export default function CategoriasMenu() {
     setErrorEliminar(null)
     try {
       await eliminarCategoria(porEliminar.id)
-      setExito(`La categoría "${porEliminar.nombre}" se eliminó correctamente.`)
+      setExito(`La categoría ${porEliminar.nombre} se eliminó correctamente.`)
       if (editando?.id === porEliminar.id) cancelarEdicion()
       setPorEliminar(null)
       setRecarga((numero) => numero + 1)
@@ -126,10 +127,10 @@ export default function CategoriasMenu() {
     try {
       if (editando) {
         await api.patch(`/menu/categorias/${editando.id}/`, datos)
-        setExito(`La categoría "${nombre}" se actualizó correctamente.`)
+        setExito(`La categoría ${nombre} se actualizó correctamente.`)
       } else {
         await api.post('/menu/categorias/', datos)
-        setExito(`La categoría "${nombre}" se creó correctamente.`)
+        setExito(`La categoría ${nombre} se creó correctamente.`)
       }
       setEditando(null)
       setFormulario(FORMULARIO_VACIO)

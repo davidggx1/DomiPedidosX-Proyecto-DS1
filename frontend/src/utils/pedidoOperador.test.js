@@ -77,9 +77,9 @@ describe('mensajeErrorPedido', () => {
 
   it('entiende los errores de campo por ítem y les pone el nombre de la línea', () => {
     const carrito = agregarLinea([], hamburguesa, grande)
-    const datos = { items: { 0: { cantidad: ['Ensure this value is less than or equal to 50.'] } } }
+    const datos = { items: { 0: { cantidad: ['Asegúrese de que este valor es menor o igual a 50.'] } } }
     expect(mensajeErrorPedido(datos, carrito)).toBe(
-      'Hamburguesa (Grande): Ensure this value is less than or equal to 50.',
+      'Hamburguesa (Grande): Asegúrese de que este valor es menor o igual a 50.',
     )
     expect(mensajeErrorPedido({ items: [{ cantidad: ['Muy alto.'] }, {}] })).toBe('Muy alto.')
   })

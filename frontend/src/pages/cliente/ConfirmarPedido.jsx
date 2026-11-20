@@ -59,13 +59,13 @@ export default function ConfirmarPedido() {
   const [coberturaInfo, setCoberturaInfo] = useState(null)
   const [validandoCobertura, setValidandoCobertura] = useState(false)
   // HU-48: Tiempo estimado de entrega dinámico
-  const [estimacionTiempo, setEstimacionTiempo] = useState(null)
+  const [estimacion, setEstimacion] = useState(null)
+  const puedeEstimar = Boolean(coberturaInfo?.cubierto && sedeActual && direccionId && lineas.length > 0)
+  // Derived instead of reset inside the effect: without a covered address there is no estimate
+  const estimacionTiempo = puedeEstimar ? estimacion : null
 
   useEffect(() => {
-    if (!coberturaInfo?.cubierto || !sedeActual || !direccionId || lineas.length === 0) {
-      setEstimacionTiempo(null)
-      return undefined
-    }
+    if (!puedeEstimar) return undefined
     let vigente = true
     const items = lineas.map((linea) =>
       linea.combo || linea.combo_id
@@ -85,16 +85,16 @@ export default function ConfirmarPedido() {
       items,
     })
       .then((res) => {
-        if (vigente) setEstimacionTiempo(res)
+        if (vigente) setEstimacion(res)
       })
       .catch(() => {
-        if (vigente) setEstimacionTiempo(null)
+        if (vigente) setEstimacion(null)
       })
 
     return () => {
       vigente = false
     }
-  }, [coberturaInfo, sedeActual, direccionId, lineas])
+  }, [puedeEstimar, sedeActual, direccionId, lineas])
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [erroresItems, setErroresItems] = useState([])
