@@ -27,3 +27,7 @@ yarn-error.log*
 next-env.d.ts
 __pycache__/
 *.pyc
+
+# Django (SCRUM-143): salida de collectstatic y archivo de Celery beat
+backend/staticfiles/
+celerybeat-schedule*

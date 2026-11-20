@@ -20,3 +20,8 @@ celery[redis]>=5.5,<6.0
 pytest>=8.0
 pytest-django>=4.8
 pytest-asyncio>=0.24
+
+# Despliegue (SCRUM-143)
+whitenoise>=6.9,<7.0  # archivos estáticos del admin sin Nginx
+django-storages[s3]>=1.14,<2.0  # imágenes en Supabase Storage (compatible con S3)
+django-anymail[brevo]>=13.0,<15.0  # correo por API HTTP (Render gratis bloquea SMTP)
