@@ -120,6 +120,11 @@ class EstadoPedidoView(APIView):
                 from .cancelacion import cancelar_por_error_cocina  # cancelacion importa este módulo
 
                 cancelar_por_error_cocina(pedido, request.user, datos.validated_data.get("motivo", ""))
+            elif rol in (OPERADOR, ADMINISTRADOR) and datos.validated_data["estado"] == EstadoPedido.CANCELADO:
+                # HU-34: por aquí también se devuelve el stock y se libera al domiciliario.
+                from .cancelacion import cancelar_pedido_operador  # cancelacion importa este módulo
+
+                cancelar_pedido_operador(pedido, request.user, rol, datos.validated_data.get("motivo", ""))
             else:
                 cambiar_estado(
                     pedido,

@@ -52,6 +52,18 @@ export async function obtenerResumenDia() {
   return data
 }
 
+// HU-34: orders of the sede that are not delivered or cancelled
+export async function obtenerPedidosEnCurso() {
+  const { data } = await api.get('/pedidos/en-curso/')
+  return data
+}
+
+// HU-34: the operator cancels an order that was not delivered, with a reason
+export async function cancelarPedidoOperador(id, motivo) {
+  const { data } = await api.post(`/pedidos/${id}/cancelar-operador/`, { motivo })
+  return data
+}
+
 // HU-25: the customer cancels his order before the kitchen starts it
 export async function cancelarPedido(id) {
   const { data } = await api.post(`/pedidos/${id}/cancelar/`)

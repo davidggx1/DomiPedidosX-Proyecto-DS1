@@ -27,6 +27,7 @@ export const ENLACES_POR_ROL = {
   [ROLES.OPERADOR]: [
     { ruta: '/operador', texto: 'Pedidos entrantes' },
     { ruta: '/operador/crear-pedido', texto: 'Crear pedido' },
+    { ruta: '/operador/en-curso', texto: 'Pedidos en curso' },
     { ruta: '/operador/menu', texto: 'Categorias' },
     { ruta: '/operador/productos', texto: 'Productos' },
     { ruta: '/operador/adiciones', texto: 'Adiciones' },

@@ -212,6 +212,31 @@ class PedidoDespachoSerializer(serializers.ModelSerializer):
     def get_resumen(self, pedido) -> list[str]:
         return [f"{d.cantidad}x {nombre_linea(d)}" for d in pedido.detalles.all()]
 
+class PedidoEnCursoSerializer(serializers.ModelSerializer):
+    """Pedido activo en la lista "Pedidos en curso" del operador (HU-34)."""
+
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    sede_nombre = serializers.CharField(source="sede.nombre", read_only=True)
+    cliente = serializers.SerializerMethodField()
+    resumen = serializers.SerializerMethodField()
+    repartidor = RepartidorAsignadoSerializer(read_only=True, allow_null=True)
+
+    class Meta:
+        model = Pedido
+        fields = [
+            "id", "numero_pedido", "estado", "estado_display", "origen", "fecha_creacion",
+            "sede_nombre", "cliente", "resumen", "repartidor",
+        ]
+
+    def get_cliente(self, pedido) -> str | None:
+        if pedido.cliente is None:
+            return None
+        return f"{pedido.cliente.nombres} {pedido.cliente.apellidos}"
+
+    def get_resumen(self, pedido) -> list[str]:
+        return [f"{d.cantidad}x {nombre_linea(d)}" for d in pedido.detalles.all()]
+
+
 def pedidos_con_detalle():
     return Pedido.objects.select_related("cliente", "factura").prefetch_related(
         "detalles__producto",

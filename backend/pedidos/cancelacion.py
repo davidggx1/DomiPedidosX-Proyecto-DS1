@@ -18,12 +18,23 @@ HU-33 · Cocina cancela un pedido por un error de cocina.
 - Avisa al cliente (notificación, su seguimiento en vivo y el correo de HU-50,
   que incluye el motivo) y al operador de la sede con un aviso en pantalla por
   WebSocket (criterio 3).
+
+HU-34 · El operador (o el administrador) cancela un pedido no entregado con motivo.
+
+- Cualquier estado no final; Entregado y Cancelado se rechazan (estados.py, código
+  "pedido_cerrado"). El motivo es obligatorio (criterio 1 y 2).
+- En la misma transacción devuelve el stock y desasigna al domiciliario; la
+  capacidad de cocina y los cupos de promociones y combos se liberan solos porque
+  ya no cuentan los pedidos cancelados (criterio 3).
+- El historial guarda usuario, motivo y fecha y hora (criterio 4); si había
+  domiciliario, su nombre queda en la observación para no perder la traza.
 """
 import logging
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -31,15 +42,22 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from usuarios.permissions import EsCliente, EsCocina
-from usuarios.roles import COCINA, nombre_para_mostrar
+from usuarios.permissions import EsCliente, EsCocina, rol_requerido
+from usuarios.roles import ADMINISTRADOR, COCINA, OPERADOR, nombre_para_mostrar
 
-from .estados import CLIENTE, ESTADOS_FINALES, TransicionInvalida, cambiar_estado, siguientes_estados
-from .models import EstadoPedido, Notificacion, TipoNotificacion
-from .serializers import EstadoPedidoSerializer
+from .estados import (
+    CLIENTE,
+    ESTADOS_FINALES,
+    TransicionInvalida,
+    cambiar_estado,
+    siguientes_estados,
+    validar_transicion,
+)
+from .models import DetallePedido, EstadoPedido, HistorialEstadoPedido, Notificacion, Pedido, TipoNotificacion
+from .serializers import EstadoPedidoSerializer, PedidoEnCursoSerializer
 from .stock import reintegrar_stock
 from .consumers import grupo_sede
-from .views import pedidos_visibles
+from .views import pedidos_visibles, rol_de
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +188,86 @@ class CancelarErrorCocinaView(APIView):
             return Response({campo: error.mensaje, "codigo": error.codigo}, status=status.HTTP_400_BAD_REQUEST)
         pedido.refresh_from_db()
         return Response(EstadoPedidoSerializer(pedido, context={"rol": COCINA}).data)
+
+
+# --- HU-34 · Cancelación por el operador -------------------------------------------
+
+ROLES_CANCELAN_CON_MOTIVO = (OPERADOR, ADMINISTRADOR)
+
+
+def cancelar_pedido_operador(pedido, usuario, rol, motivo):
+    """Cancela un pedido no entregado, devuelve el stock y libera al domiciliario.
+
+    Lanza TransicionInvalida si el pedido ya está cerrado o el motivo no sirve.
+    """
+    # Primero el estado (cerrado, rol) y que haya motivo; luego su longitud.
+    validar_transicion(pedido.estado, EstadoPedido.CANCELADO, rol, str(motivo or ""))
+    motivo = limpiar_justificacion(motivo)
+
+    with transaction.atomic():
+        pedido = cambiar_estado(pedido, EstadoPedido.CANCELADO, usuario=usuario, rol=rol, motivo=motivo)
+        reintegrar_stock(pedido)
+
+        if pedido.repartidor_id is not None:
+            # Por queryset y no sobre `pedido`: el on_commit de cambiar_estado conserva
+            # repartidor_id y así le llega el aviso "fue cancelado" (HU-40) y se
+            # refresca el tablero de repartidores (HU-37).
+            Pedido.objects.filter(pk=pedido.pk).update(repartidor=None, asignacion_automatica=False)
+            nombre = nombre_para_mostrar(pedido.repartidor.empleado.usuario)
+            HistorialEstadoPedido.objects.filter(pedido=pedido, estado=EstadoPedido.CANCELADO).update(
+                observacion=f"{motivo} (domiciliario asignado: {nombre})"
+            )
+
+        cliente = pedido.cliente
+        if cliente is not None:
+            # El correo con el motivo lo envía HU-50 (pedidos/correos.py) al cambiar el estado.
+            Notificacion.objects.create(
+                usuario=cliente.usuario,
+                pedido=pedido,
+                mensaje=f"Tu pedido {pedido.numero_pedido} fue cancelado por la sede: {motivo}",
+                tipo=TipoNotificacion.PEDIDO_CANCELADO,
+            )
+    # Instancia nueva: la de cambiar_estado la usan los avisos on_commit y debe
+    # conservar el repartidor aunque quien llama haga refresh_from_db().
+    return Pedido.objects.get(pk=pedido.pk)
+
+
+class CancelarPedidoOperadorView(APIView):
+    """POST /api/pedidos/<id>/cancelar-operador/  {"motivo": "..."} · HU-34."""
+
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+
+    @extend_schema(
+        request=inline_serializer("CancelarPedidoOperador", {"motivo": serializers.CharField()}),
+        responses=EstadoPedidoSerializer,
+    )
+    def post(self, request, pk):
+        rol = rol_de(request.user)
+        pedido = get_object_or_404(
+            pedidos_visibles(request.user, rol).select_related("cliente__usuario", "sede"), pk=pk
+        )
+        try:
+            pedido = cancelar_pedido_operador(pedido, request.user, rol, request.data.get("motivo"))
+        except TransicionInvalida as error:
+            campo = "motivo" if error.codigo in ("motivo_obligatorio", "motivo_muy_largo") else "detail"
+            return Response({campo: error.mensaje, "codigo": error.codigo}, status=status.HTTP_400_BAD_REQUEST)
+        pedido.refresh_from_db()
+        return Response(EstadoPedidoSerializer(pedido, context={"rol": rol}).data)
+
+
+class PedidosEnCursoView(APIView):
+    """GET /api/pedidos/en-curso/ · Pedidos no entregados ni cancelados de la sede (HU-34)."""
+
+    permission_classes = [rol_requerido(OPERADOR, ADMINISTRADOR)]
+
+    @extend_schema(responses=PedidoEnCursoSerializer(many=True))
+    def get(self, request):
+        detalles = DetallePedido.objects.select_related("producto", "combo", "producto_tamano")
+        pedidos = (
+            pedidos_visibles(request.user, rol_de(request.user))
+            .exclude(estado__in=ESTADOS_FINALES)
+            .select_related("cliente", "sede", "repartidor__empleado")
+            .prefetch_related(Prefetch("detalles", detalles))
+            .order_by("fecha_creacion", "id")
+        )
+        return Response(PedidoEnCursoSerializer(pedidos, many=True).data)
