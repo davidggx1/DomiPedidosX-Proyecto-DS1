@@ -45,8 +45,10 @@ export function textoStock(tipo, fila, cantidad) {
     : formatearCantidad(cantidad, fila.unidad_medida)
 }
 
-// An empty stock hides the product from the menu only when it is controlled by units
+// A product is sold out when it is marked unavailable in the sede (e.g. the kitchen
+// reported it, HU-17) or, if it is controlled by units, when its stock is empty
 export function estaAgotado(tipo, fila) {
+  if (tipo === 'productos' && fila.disponible === false) return true
   const sinStock = Number(fila.stock_actual) === 0
   return sinStock && (tipo === 'insumos' || fila.tipo_control_stock === 'PRODUCTO')
 }
