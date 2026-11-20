@@ -5,16 +5,77 @@ import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Casilla from '../../components/ui/Casilla.jsx'
 import Modal from '../../components/ui/Modal.jsx'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import { formatearPrecio } from '../../utils/formato.js'
 import {
+  MAXIMO_POR_LINEA,
   agregarLinea,
+  cambiarCantidad,
   itemsParaEnviar,
+  lineaLlena,
   mensajeErrorPedido,
+  normalizarCantidad,
   precioConTamano,
   quitarLinea,
 } from '../../utils/pedidoOperador.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { errorDeCapacidad, interpretarCapacidad } from '../../utils/capacidad.js'
+
+// Digits the quantity field accepts: enough for MAXIMO_POR_LINEA (50)
+const DIGITOS_CANTIDAD = String(MAXIMO_POR_LINEA).length
+
+// − [n] + for one cart line. The typed text is kept while editing and applied on
+// blur or Enter, so the operator can clear the field and type "25".
+function CantidadLinea({ item, alCambiar }) {
+  const [texto, setTexto] = useState(String(item.cantidad))
+  const [anterior, setAnterior] = useState(item.cantidad)
+  if (anterior !== item.cantidad) {
+    setAnterior(item.cantidad)
+    setTexto(String(item.cantidad))
+  }
+
+  // Always show the value that really applies (e.g. 50 after typing 80, even if it was already 50)
+  function aplicar() {
+    const cantidad = normalizarCantidad(texto) ?? item.cantidad
+    setTexto(String(cantidad))
+    if (cantidad !== item.cantidad) alCambiar(cantidad)
+  }
+
+  const boton = 'h-7 w-7 rounded-md border border-borde text-base leading-none hover:border-marca disabled:opacity-40'
+  return (
+    <span className="flex items-center gap-1">
+      <button
+        type="button"
+        className={boton}
+        onClick={() => alCambiar(item.cantidad - 1)}
+        disabled={item.cantidad <= 1}
+        aria-label={`Una ${item.nombre} menos`}
+      >
+        −
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        maxLength={DIGITOS_CANTIDAD}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value.replace(/\D/g, '').slice(0, DIGITOS_CANTIDAD))}
+        onBlur={aplicar}
+        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), aplicar())}
+        className="h-7 w-12 rounded-md border border-borde bg-fondo text-center tabular-nums"
+        aria-label={`Cantidad de ${item.nombre}`}
+      />
+      <button
+        type="button"
+        className={boton}
+        onClick={() => alCambiar(item.cantidad + 1)}
+        disabled={item.cantidad >= MAXIMO_POR_LINEA}
+        aria-label={`Una ${item.nombre} más`}
+      >
+        +
+      </button>
+    </span>
+  )
+}
 
 export default function CrearPedidoOperador() {
   const [origen, setOrigen] = useState('mostrador') // 'mostrador' o 'telefonico'
@@ -23,7 +84,7 @@ export default function CrearPedidoOperador() {
   const [busqueda, setBusqueda] = useState('')
   const [carrito, setCarrito] = useState([])
   const [cargando, setCargando] = useState(false)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [confirmaSinFranja, setConfirmaSinFranja] = useState(false)
   // Producto con tamaños esperando que el operador elija uno: { producto, tamanos }
   const [eligiendoTamano, setEligiendoTamano] = useState(null)
@@ -37,6 +98,11 @@ export default function CrearPedidoOperador() {
   }, [])
 
   const agregarAlCarrito = (prod, tamano = null) => {
+    if (lineaLlena(carrito, prod, tamano)) {
+      const nombre = tamano ? `${prod.nombre} (${tamano.nombre})` : prod.nombre
+      setMensaje({ tipo: 'error', texto: `Máximo ${MAXIMO_POR_LINEA} unidades de ${nombre} por pedido.` })
+      return
+    }
     setCarrito((prev) => agregarLinea(prev, prod, tamano))
   }
 
@@ -96,7 +162,7 @@ export default function CrearPedidoOperador() {
         setMensaje({ tipo: 'error', texto: errorCap.detail })
         refrescarCapacidad()
       } else {
-        setMensaje({ tipo: 'error', texto: mensajeErrorPedido(err.response?.data) })
+        setMensaje({ tipo: 'error', texto: mensajeErrorPedido(err.response?.data, carrito) })
       }
     } finally {
       setCargando(false)
@@ -176,8 +242,12 @@ export default function CrearPedidoOperador() {
 
         <div className="space-y-2 border-t pt-3">
           {carrito.map((item) => (
-            <div key={item.clave} className="flex items-center justify-between gap-2 text-sm">
-              <span>{item.cantidad}x {item.nombre}</span>
+            <div key={item.clave} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="min-w-0 flex-1">{item.nombre}</span>
+              <CantidadLinea
+                item={item}
+                alCambiar={(cantidad) => setCarrito((prev) => cambiarCantidad(prev, item.clave, cantidad))}
+              />
               <span className="flex items-center gap-2">
                 {formatearPrecio(item.precio * item.cantidad)}
                 <button

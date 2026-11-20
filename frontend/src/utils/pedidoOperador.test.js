@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MAXIMO_POR_LINEA,
   agregarLinea,
+  cambiarCantidad,
   itemsParaEnviar,
+  lineaLlena,
   mensajeErrorPedido,
+  normalizarCantidad,
   precioConTamano,
   quitarLinea,
 } from './pedidoOperador.js'
@@ -23,6 +27,29 @@ describe('carrito del operador', () => {
 
     expect(carrito).toHaveLength(2)
     expect(carrito[1]).toMatchObject({ nombre: 'Hamburguesa (Grande)', precio: 25000, cantidad: 2 })
+  })
+
+  it('no deja pasar del tope de unidades por línea', () => {
+    let carrito = []
+    for (let i = 0; i < MAXIMO_POR_LINEA + 3; i++) carrito = agregarLinea(carrito, hamburguesa)
+    expect(carrito[0].cantidad).toBe(MAXIMO_POR_LINEA)
+    expect(lineaLlena(carrito, hamburguesa)).toBe(true)
+    expect(lineaLlena(carrito, hamburguesa, grande)).toBe(false)
+  })
+
+  it('cambia la cantidad de una línea dentro de 1 y el tope', () => {
+    const carrito = agregarLinea([], hamburguesa)
+    const clave = carrito[0].clave
+    expect(cambiarCantidad(carrito, clave, '12')[0].cantidad).toBe(12)
+    expect(cambiarCantidad(carrito, clave, 0)[0].cantidad).toBe(1)
+    expect(cambiarCantidad(carrito, clave, 80)[0].cantidad).toBe(MAXIMO_POR_LINEA)
+    expect(cambiarCantidad(carrito, clave, '')).toBe(carrito)
+  })
+
+  it('normaliza lo que escribe el operador', () => {
+    expect(normalizarCantidad('7.9')).toBe(7)
+    expect(normalizarCantidad('abc')).toBeNull()
+    expect(normalizarCantidad('  ')).toBeNull()
   })
 
   it('quita una línea por su clave', () => {
@@ -46,6 +73,20 @@ describe('mensajeErrorPedido', () => {
       items: [{ indice: 0, nombre: 'Hamburguesa', motivo: 'Solo quedan 2 unidades.' }],
     }
     expect(mensajeErrorPedido(datos)).toBe('Hamburguesa: Solo quedan 2 unidades.')
+  })
+
+  it('entiende los errores de campo por ítem y les pone el nombre de la línea', () => {
+    const carrito = agregarLinea([], hamburguesa, grande)
+    const datos = { items: { 0: { cantidad: ['Ensure this value is less than or equal to 50.'] } } }
+    expect(mensajeErrorPedido(datos, carrito)).toBe(
+      'Hamburguesa (Grande): Ensure this value is less than or equal to 50.',
+    )
+    expect(mensajeErrorPedido({ items: [{ cantidad: ['Muy alto.'] }, {}] })).toBe('Muy alto.')
+  })
+
+  it('nunca muestra [object Object]', () => {
+    expect(mensajeErrorPedido({ algo: { anidado: { mas: ['Texto real.'] } } })).toBe('Texto real.')
+    expect(mensajeErrorPedido({ raro: {} })).toBe('Error al registrar el pedido.')
   })
 
   it('usa detail o el primer error de campo', () => {

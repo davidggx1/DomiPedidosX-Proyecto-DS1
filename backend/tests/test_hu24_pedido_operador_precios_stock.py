@@ -112,3 +112,38 @@ def test_queda_el_primer_registro_del_historial(m):
     historial = HistorialEstadoPedido.objects.get(pedido_id=resp.data["id"])
     assert historial.estado == EstadoPedido.RECIBIDO
     assert historial.usuario == m.usuario
+
+
+def test_producto_sin_control_marcado_agotado_por_cocina_se_rechaza(m):
+    """'Sin control' no descuenta stock, pero si cocina lo reportó agotado no se puede pedir."""
+    limonada = Producto.objects.create(
+        categoria=m.producto.categoria, nombre="Limonada", precio_base=Decimal("6000"),
+        tiempo_preparacion=2,  # tipo_control_stock por defecto: NINGUNO
+    )
+    InventarioProducto.objects.create(
+        sede=m.inventario.sede, producto=limonada, stock_actual=50, disponible=False
+    )
+    body = _body(m, cantidad=1, tamano_id=m.grande.pk)
+    body["items"].append({"producto_id": limonada.pk, "cantidad": 1})
+
+    resp = m.http.post(URL, body, format="json")
+
+    assert resp.status_code == 400
+    assert resp.data["items"] == [{"indice": 1, "nombre": "Limonada", "motivo": "Producto agotado."}]
+    assert not Pedido.objects.exists()
+
+
+def test_producto_sin_control_disponible_se_pide_sin_tocar_stock(m):
+    limonada = Producto.objects.create(
+        categoria=m.producto.categoria, nombre="Limonada", precio_base=Decimal("6000"),
+        tiempo_preparacion=2,
+    )
+    inventario = InventarioProducto.objects.create(
+        sede=m.inventario.sede, producto=limonada, stock_actual=50
+    )
+
+    resp = m.http.post(URL, {**_body(m), "items": [{"producto_id": limonada.pk, "cantidad": 3}]}, format="json")
+
+    assert resp.status_code == 201, resp.data
+    inventario.refresh_from_db()
+    assert inventario.stock_actual == 50
