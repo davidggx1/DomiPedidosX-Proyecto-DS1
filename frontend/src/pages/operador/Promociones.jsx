@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import { interpretarError } from '../../api/errores.js'
 import {
   actualizarPromocion,
@@ -34,7 +35,7 @@ export default function Promociones() {
   const [errorCarga, setErrorCarga] = useState(null)
   const [filtro, setFiltro] = useState('todas')
   const [editando, setEditando] = useState(null)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [recarga, setRecarga] = useState(0)
 
   useEffect(() => {
@@ -61,8 +62,8 @@ export default function Promociones() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${promocion.nombre}". Aplican a las compras que se hagan desde ahora.`
-        : `Se creó la promoción "${promocion.nombre}".`,
+        ? `Se guardaron los cambios de ${promocion.nombre}. Aplican a las compras que se hagan desde ahora.`
+        : `Se creó la promoción ${promocion.nombre}.`,
     })
     setEditando(null)
     recargar()
@@ -70,13 +71,13 @@ export default function Promociones() {
 
   async function desactivar(promocion) {
     const confirmado = window.confirm(
-      `¿Desactivar la promoción "${promocion.nombre}"? Dejará de poder usarse, pero se conserva su historial.`,
+      `¿Desactivar la promoción ${promocion.nombre}? Dejará de poder usarse, pero se conserva su historial.`,
     )
     if (!confirmado) return
     try {
       await desactivarPromocion(promocion.id)
       if (editando?.id === promocion.id) setEditando(null)
-      setMensaje({ tipo: 'exito', texto: `Se desactivó la promoción "${promocion.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se desactivó la promoción ${promocion.nombre}.` })
       recargar()
     } catch (error) {
       setMensaje({ tipo: 'error', texto: interpretarError(error).general })
@@ -90,9 +91,9 @@ export default function Promociones() {
         actualizada.estado === 'vencida'
           ? {
               tipo: 'aviso',
-              texto: `Se reactivó "${promocion.nombre}", pero sigue vencida. Cambia su fecha de fin para poder usarla.`,
+              texto: `Se reactivó ${promocion.nombre}, pero sigue vencida. Cambia su fecha de fin para poder usarla.`,
             }
-          : { tipo: 'exito', texto: `Se reactivó la promoción "${promocion.nombre}".` },
+          : { tipo: 'exito', texto: `Se reactivó la promoción ${promocion.nombre}.` },
       )
       recargar()
     } catch (error) {

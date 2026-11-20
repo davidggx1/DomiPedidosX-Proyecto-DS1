@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import {
   actualizarInsumo,
   eliminarInsumo,
@@ -26,7 +27,7 @@ export default function Ingredientes() {
   const [mostrarEliminados, setMostrarEliminados] = useState(false)
   const [recarga, setRecarga] = useState(0)
   const [editando, setEditando] = useState(null)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [productoId, setProductoId] = useState('')
 
   // Catálogo de ingredientes: se recarga al cambiar el filtro o después de guardar.
@@ -72,8 +73,8 @@ export default function Ingredientes() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${insumo.nombre}". El menú ya muestra la información nueva.`
-        : `Se registró el ingrediente "${insumo.nombre}".`,
+        ? `Se guardaron los cambios de ${insumo.nombre}. El menú ya muestra la información nueva.`
+        : `Se registró el ingrediente ${insumo.nombre}.`,
     })
     setEditando(null)
     recargar()
@@ -81,13 +82,13 @@ export default function Ingredientes() {
 
   async function eliminar(insumo) {
     const confirmado = window.confirm(
-      `¿Eliminar el ingrediente "${insumo.nombre}"? Ya no se podrá agregar a productos; los pedidos anteriores no cambian.`,
+      `¿Eliminar el ingrediente ${insumo.nombre}? Ya no se podrá agregar a productos; los pedidos anteriores no cambian.`,
     )
     if (!confirmado) return
     try {
       await eliminarInsumo(insumo.id)
       if (editando?.id === insumo.id) setEditando(null)
-      setMensaje({ tipo: 'exito', texto: `Se eliminó el ingrediente "${insumo.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se eliminó el ingrediente ${insumo.nombre}.` })
       recargar()
     } catch (err) {
       setMensaje({ tipo: 'error', texto: interpretarError(err).general })
@@ -97,7 +98,7 @@ export default function Ingredientes() {
   async function restaurar(insumo) {
     try {
       await actualizarInsumo(insumo.id, { activo: true })
-      setMensaje({ tipo: 'exito', texto: `Se restauró el ingrediente "${insumo.nombre}".` })
+      setMensaje({ tipo: 'exito', texto: `Se restauró el ingrediente ${insumo.nombre}.` })
       recargar()
     } catch (err) {
       const { general, campos } = interpretarError(err)

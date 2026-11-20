@@ -123,7 +123,7 @@ export default function Menu() {
       if (!valido) {
         setAviso({
           tipo: 'aviso',
-          texto: `"${producto.nombre}" acaba de quedar no disponible en esta sede y no se puede agregar.`,
+          texto: `${producto.nombre} acaba de quedar no disponible en esta sede y no se puede agregar.`,
         })
         setRecargaMenu((valor) => valor + 1)
         return
@@ -139,7 +139,7 @@ export default function Menu() {
     if (!combo.disponible) {
       setAviso({
         tipo: 'aviso',
-        texto: combo.motivo_no_disponible || `"${combo.nombre}" no está disponible.`,
+        texto: combo.motivo_no_disponible || `${combo.nombre} no está disponible.`,
       })
       return
     }
@@ -147,7 +147,7 @@ export default function Menu() {
     if (combo.cupo_restante !== null && yaEnCarrito + 1 > combo.cupo_restante) {
       setAviso({
         tipo: 'aviso',
-        texto: `Solo quedan ${combo.cupo_restante} unidades disponibles hoy de "${combo.nombre}".`,
+        texto: `Solo quedan ${combo.cupo_restante} unidades disponibles hoy de ${combo.nombre}.`,
       })
       return
     }
@@ -163,7 +163,7 @@ export default function Menu() {
     })
     setAviso({
       tipo: 'exito',
-      texto: `Agregaste 1 × "${combo.nombre}" a tu carrito.`,
+      texto: `Agregaste 1 × ${combo.nombre} a tu carrito.`,
     })
   }
 
@@ -402,7 +402,7 @@ export default function Menu() {
           alAgregar={(linea) =>
             setAviso({
               tipo: 'exito',
-              texto: `Agregaste ${linea.cantidad} × "${linea.producto.nombre}" a tu carrito.`,
+              texto: `Agregaste ${linea.cantidad} × ${linea.producto.nombre} a tu carrito.`,
             })
           }
         />

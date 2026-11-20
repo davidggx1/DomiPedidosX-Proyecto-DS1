@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import { eliminarDireccion, listarDirecciones } from '../../api/direcciones.js'
 import { interpretarError } from '../../api/errores.js'
 import FormularioDireccion from '../../components/direcciones/FormularioDireccion.jsx'
@@ -15,7 +16,7 @@ export default function Direcciones() {
   const [editando, setEditando] = useState(null)
   // Cambia después de crear para dejar el formulario de "nueva" en blanco.
   const [formulario, setFormulario] = useState(0)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
 
   useEffect(() => {
     let vigente = true
@@ -44,8 +45,8 @@ export default function Direcciones() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${direccion.alias}". Los pedidos anteriores conservan su dirección.`
-        : `Se guardó la dirección "${direccion.alias}".`,
+        ? `Se guardaron los cambios de ${direccion.alias}. Los pedidos anteriores conservan su dirección.`
+        : `Se guardó la dirección ${direccion.alias}.`,
     })
     setEditando(null)
     setFormulario((valor) => valor + 1)
@@ -54,13 +55,13 @@ export default function Direcciones() {
 
   async function eliminar(direccion) {
     const confirmado = window.confirm(
-      `¿Eliminar la dirección "${direccion.alias}"? Los pedidos que ya hiciste a esta dirección no cambian.`,
+      `¿Eliminar la dirección ${direccion.alias}? Los pedidos que ya hiciste a esta dirección no cambian.`,
     )
     if (!confirmado) return
     try {
       await eliminarDireccion(direccion.id)
       if (editando?.id === direccion.id) setEditando(null)
-      setMensaje({ tipo: 'exito', texto: `Se eliminó la dirección "${direccion.alias}".` })
+      setMensaje({ tipo: 'exito', texto: `Se eliminó la dirección ${direccion.alias}.` })
       recargar()
     } catch (err) {
       setMensaje({ tipo: 'error', texto: interpretarError(err).general })

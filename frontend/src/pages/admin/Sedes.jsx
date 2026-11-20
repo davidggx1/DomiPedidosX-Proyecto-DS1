@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/cliente.js'
 import Alerta from '../../components/ui/Alerta.jsx'
@@ -14,7 +15,7 @@ export default function Sedes() {
   const [ciudades, setCiudades] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [mensajeExito, setMensajeExito] = useState(null)
+  const [mensajeExito, setMensajeExito] = useMensajeTemporal()
 
   // Estado del Modal de Creación / Edición (HU-81)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -119,10 +120,10 @@ export default function Sedes() {
     try {
       if (sedeEditando) {
         await api.put(`/sedes/${sedeEditando.id}/`, formData)
-        setMensajeExito(`Sede "${formData.nombre}" actualizada con éxito.`)
+        setMensajeExito(`Sede ${formData.nombre} actualizada con éxito.`)
       } else {
         await api.post('/sedes/', formData)
-        setMensajeExito(`Sede "${formData.nombre}" creada con éxito.`)
+        setMensajeExito(`Sede ${formData.nombre} creada con éxito.`)
       }
       setModalAbierto(false)
       cargarDatos()
@@ -147,7 +148,7 @@ export default function Sedes() {
 
       await api.put(`/sedes/${sede.id}/`, payload)
       setAdvertenciaDesactivar(null)
-      setMensajeExito(`Sede "${sede.nombre}" ${nuevoEstado ? 'activada' : 'desactivada'} correctamente.`)
+      setMensajeExito(`Sede ${sede.nombre} ${nuevoEstado ? 'activada' : 'desactivada'} correctamente.`)
       cargarDatos()
     } catch (err) {
       const data = err.response?.data
