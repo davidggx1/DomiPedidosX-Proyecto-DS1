@@ -174,6 +174,10 @@ def _preparar_carrito(items, sede):
 
     def pedir_producto(idx, producto, cantidad, excluidos=frozenset()):
         control = producto.tipo_control_stock
+        if control != Producto.TipoControlStock.PRODUCTO:
+            # Sin stock propio, lo que lo bloquea es que esté marcado como agotado
+            # en la sede (p. ej. cocina lo reportó, HU-17), igual que en el menú.
+            quien[("d", producto.pk)].add(idx)
         if control == Producto.TipoControlStock.PRODUCTO:
             cant_producto[producto.pk] += cantidad
             quien[("p", producto.pk)].add(idx)
@@ -289,6 +293,14 @@ def _preparar_carrito(items, sede):
     def error_para(clave, motivo):
         for idx in sorted(quien[clave]):
             _err(errores, idx, nombres_item.get(idx, ""), motivo)
+
+    # Productos sin stock propio marcados como agotados en la sede.
+    agotados = InventarioProducto.objects.filter(
+        sede=sede, disponible=False,
+        producto_id__in=[pid for tipo, pid in list(quien) if tipo == "d"],
+    ).values_list("producto_id", flat=True)
+    for pid in agotados:
+        error_para(("d", pid), "Producto agotado.")
 
     # Existencias de productos terminados.
     inv_producto = {

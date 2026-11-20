@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useMensajeTemporal } from '../../components/ui/useMensajeTemporal.js'
 import {
   eliminarProducto,
   listarCategorias,
@@ -25,7 +26,7 @@ export default function Productos() {
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [recarga, setRecarga] = useState(0)
   const [editando, setEditando] = useState(null)
-  const [mensaje, setMensaje] = useState(null)
+  const [mensaje, setMensaje] = useMensajeTemporal()
   const [conDisponibilidad, setConDisponibilidad] = useState(null)
   const [porEliminar, setPorEliminar] = useState(null) // HU-79: product in the confirmation modal
   const [eliminando, setEliminando] = useState(false)
@@ -72,8 +73,8 @@ export default function Productos() {
     setMensaje({
       tipo: 'exito',
       texto: fueEdicion
-        ? `Se guardaron los cambios de "${producto.nombre}". Los clientes ya ven la versión nueva; los pedidos anteriores conservan su precio.`
-        : `Se creó el producto "${producto.nombre}".`,
+        ? `Se guardaron los cambios de ${producto.nombre}. Los clientes ya ven la versión nueva; los pedidos anteriores conservan su precio.`
+        : `Se creó el producto ${producto.nombre}.`,
     })
     setEditando(null)
     setRecarga((valor) => valor + 1)
@@ -98,7 +99,7 @@ export default function Productos() {
       await eliminarProducto(porEliminar.id)
       setMensaje({
         tipo: 'exito',
-        texto: `Se eliminó "${porEliminar.nombre}" del menú. Los pedidos anteriores lo conservan.`,
+        texto: `Se eliminó ${porEliminar.nombre} del menú. Los pedidos anteriores lo conservan.`,
       })
       if (editando?.id === porEliminar.id) setEditando(null)
       setPorEliminar(null)
