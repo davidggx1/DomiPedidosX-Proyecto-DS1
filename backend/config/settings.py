@@ -27,7 +27,22 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+def _lista(nombre, por_defecto=""):
+    """Variable de entorno separada por comas -> lista sin vacíos."""
+    return [valor.strip() for valor in os.getenv(nombre, por_defecto).split(",") if valor.strip()]
+
+
+# SCRUM-143: en producción se agregan los dominios del backend (DJANGO_ALLOWED_HOSTS).
+# Render publica el suyo en RENDER_EXTERNAL_HOSTNAME y se agrega solo.
+ALLOWED_HOSTS = _lista("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Orígenes https desde los que se envían formularios con cookie (el admin de Django).
+CSRF_TRUSTED_ORIGINS = _lista("CSRF_TRUSTED_ORIGINS")
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
 
 # Application definition
@@ -41,6 +56,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'storages',
+    'anymail',
     'channels',
     'rest_framework',
     'corsheaders',
@@ -56,6 +73,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # Sirve los archivos estáticos (admin de Django) en producción, sin Nginx
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -101,9 +120,7 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:5173"
-).split(",")
+CORS_ALLOWED_ORIGINS = _lista("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
 
 ROOT_URLCONF = 'config.urls'
 
@@ -151,6 +168,10 @@ DATABASES = {
         "HOST": os.environ["DB_HOST"],
         "PORT": os.getenv("DB_PORT", "5432"),
         "CONN_MAX_AGE": 0,
+        # Supabase exige SSL: DB_SSLMODE=require. Vacío en desarrollo local.
+        "OPTIONS": {"sslmode": os.environ["DB_SSLMODE"]} if os.getenv("DB_SSLMODE") else {},
+        # Solo si se usa el pooler de Supabase en modo transacción (puerto 6543)
+        "DISABLE_SERVER_SIDE_CURSORS": os.getenv("DB_DISABLE_SERVER_SIDE_CURSORS", "False") == "True",
     }
 }
 
@@ -194,10 +215,36 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic deja aquí los archivos (SCRUM-143)
 
 # Media uploaded by the users (Images)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# SCRUM-143: en desarrollo las imágenes van a la carpeta media/. En producción el disco
+# del servidor se borra en cada despliegue, así que van a un bucket compatible con S3
+# (Supabase Storage). Se activa al definir STORAGE_BUCKET. Ver docs/despliegue.md.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+if os.getenv("STORAGE_BUCKET"):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.environ["STORAGE_BUCKET"],
+            "endpoint_url": os.environ["STORAGE_ENDPOINT_URL"],
+            "region_name": os.getenv("STORAGE_REGION", ""),
+            "access_key": os.environ["STORAGE_ACCESS_KEY_ID"],
+            "secret_key": os.environ["STORAGE_SECRET_ACCESS_KEY"],
+            "addressing_style": "path",
+            # Bucket público: URL fija sin firma, p. ej.
+            # <proyecto>.supabase.co/storage/v1/object/public/<bucket>
+            "custom_domain": os.getenv("STORAGE_PUBLIC_DOMAIN") or None,
+            "querystring_auth": False,
+            "file_overwrite": False,
+        },
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -208,9 +255,11 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 
 ASGI_APPLICATION = "config.asgi.application"
 
-# Correo (HU-25, HU-05). En desarrollo se imprime en la consola de Django;
-# en producción se cambia EMAIL_BACKEND a smtp y se configuran EMAIL_HOST, etc.
+# Correo (HU-25, HU-05). En desarrollo se imprime en la consola de Django.
+# En producción: Render gratis bloquea SMTP, así que se usa la API HTTP de Brevo
+# (EMAIL_BACKEND=anymail.backends.brevo.EmailBackend y BREVO_API_KEY). Ver docs/despliegue.md.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+ANYMAIL = {"BREVO_API_KEY": os.getenv("BREVO_API_KEY", "")}
 EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -238,3 +287,19 @@ PEDIDO_PENDIENTE_MINUTOS = int(os.getenv("PEDIDO_PENDIENTE_MINUTOS", "20"))
 
 # URL del frontend, para los enlaces que van en los correos.
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+# --- Producción (SCRUM-143) ------------------------------------------------------
+if not DEBUG:
+    # Render atiende el HTTPS y pasa la petición al backend por http interno
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
+
+# Los errores del servidor salen en los logs de Render
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"consola": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["consola"], "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING")},
+}

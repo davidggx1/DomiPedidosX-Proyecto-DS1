@@ -1,0 +1,2 @@
+# Los scripts de Render deben tener finales de línea de Linux (SCRUM-143)
+*.sh text eol=lf

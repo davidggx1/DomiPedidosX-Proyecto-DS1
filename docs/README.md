@@ -35,5 +35,6 @@ Las relaciones entre apps se escriben como texto (`"sedes.Sede"`) y al usuario s
 
 - [Documentación de la API](api.md): Swagger, Postman y cómo autenticarse.
 - [Tareas asíncronas](tareas-asincronas.md): Celery, Redis, correos y vencimiento de pedidos (SCRUM-119).
+- [Despliegue en la nube](despliegue.md): Vercel, Render, Supabase y Brevo, paso a paso (SCRUM-143).
 
 Agrega aquí los documentos del proyecto (diagrama ER, decisiones técnicas, manual de instalación).
