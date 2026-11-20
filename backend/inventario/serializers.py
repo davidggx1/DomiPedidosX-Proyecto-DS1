@@ -115,6 +115,8 @@ class InventarioProductoSerializer(InventarioBaseSerializer):
     )
     producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
     categoria_nombre = serializers.CharField(source="producto.categoria.nombre", read_only=True)
+    # Para mostrar cómo se controla su stock (y si "Agotado" aplica por cantidad)
+    tipo_control_stock = serializers.CharField(source="producto.tipo_control_stock", read_only=True)
     stock_actual = serializers.IntegerField(
         min_value=0, max_value=ENTERO_MAX, error_messages=_mensajes_entero("El stock actual")
     )
@@ -130,7 +132,7 @@ class InventarioProductoSerializer(InventarioBaseSerializer):
         model = InventarioProducto
         fields = [
             "id", "sede", "sede_nombre", "producto", "producto_nombre", "categoria_nombre",
-            "stock_actual", "stock_minimo", "disponible", "demanda_diaria",
+            "tipo_control_stock", "stock_actual", "stock_minimo", "disponible", "demanda_diaria",
             "fecha_actualizacion",
         ]
         read_only_fields = ["disponible", "demanda_diaria", "fecha_actualizacion"]
