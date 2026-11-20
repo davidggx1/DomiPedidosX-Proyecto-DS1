@@ -44,7 +44,9 @@ function TablaVentas({ datos }) {
                 <td className="py-2.5 pr-3 text-right tabular-nums">{formatearPrecio(g.ventas)}</td>
                 <td className="py-2.5">
                   <div className="flex items-center gap-3">
-                    <span className="w-12 text-right tabular-nums">{g.porcentaje.replace('.', ',')} %</span>
+                    <span className="w-16 shrink-0 whitespace-nowrap text-right tabular-nums">
+                      {g.porcentaje.replace('.', ',')} %
+                    </span>
                     <div className="flex-1">
                       <Barra
                         etiqueta={g.nombre}
