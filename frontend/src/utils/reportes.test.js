@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { anchoBarra, rangoPorDefecto, textoMinutos, validarRango } from './reportes.js'
+import {
+  anchoBarra,
+  cuentaUnidades,
+  filasConciliacion,
+  rangoPorDefecto,
+  textoMinutos,
+  validarRango,
+} from './reportes.js'
 
 describe('reportes (HU-72)', () => {
   it('el rango por defecto son los últimos 7 días contando hoy', () => {
@@ -26,5 +33,33 @@ describe('reportes (HU-72)', () => {
     expect(anchoBarra(5, 0)).toBe(0)
     expect(anchoBarra(5, 10)).toBe(50)
     expect(anchoBarra(0.1, 100)).toBe(2)
+  })
+})
+
+describe('reportes de ventas (HU-71)', () => {
+  const conciliacion = {
+    lineas: '106000.00', descuentos: '4400.00', domicilio: '3000.00', ajustes: '0.00', total: '104600.00',
+  }
+
+  it('la conciliación termina en el total facturado y oculta ajustes en cero', () => {
+    const filas = filasConciliacion(conciliacion)
+    expect(filas.map((f) => f.etiqueta)).toEqual([
+      'Ventas de productos', 'Descuentos', 'Domicilios', 'Total facturado',
+    ])
+    expect(filas.at(-1)).toMatchObject({ valor: '104600.00', total: true })
+  })
+
+  it('muestra los ajustes cuando las facturas no cuadran con las líneas', () => {
+    const filas = filasConciliacion({ ...conciliacion, ajustes: '60000.00' })
+    expect(filas.map((f) => f.etiqueta)).toContain('Ajustes de facturas')
+  })
+
+  it('sin conciliación (por sede o zona) no hay filas', () => {
+    expect(filasConciliacion(null)).toEqual([])
+  })
+
+  it('cuenta unidades solo por producto o categoría', () => {
+    expect(cuentaUnidades('producto')).toBe(true)
+    expect(cuentaUnidades('zona')).toBe(false)
   })
 })
