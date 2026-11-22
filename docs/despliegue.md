@@ -4,7 +4,7 @@ Guía para publicar DomiPedidosX con servicios gratuitos. Sirve también como
 **manual de despliegue** de la documentación final (SCRUM-144).
 
 ```
-Navegador ──► Vercel (frontend React)
+Navegador ──► Render: domipedidosx (Static Site: frontend React)
    │
    └──► Render: domipedidosx-api ── Daphne: API REST + WebSockets
                                   └ Celery worker + beat (correos, vencer pedidos)
@@ -16,7 +16,7 @@ Navegador ──► Vercel (frontend React)
 
 | Pieza | Servicio | Por qué |
 |---|---|---|
-| Frontend | **Vercel** | Sugerido en el enunciado; compila Vite y sirve la app con HTTPS. |
+| Frontend | **Render Static Site** (gratis) | El enunciado sugiere Vercel, pero el plan gratis de Vercel es de una sola persona y solo el dueño del repositorio puede conectarlo. En Render todo el despliegue queda en una cuenta del equipo. Compila Vite y sirve la app con HTTPS; no se duerme. |
 | Backend | **Render** (web service gratis) | Sugerido en el enunciado; soporta WebSockets (Daphne). |
 | Base de datos | **Supabase** (PostgreSQL) | Sugerido en el enunciado. |
 | Fotos de productos | **Supabase Storage** | El disco de Render se borra en cada despliegue. Supabase Storage es compatible con S3 y ya tenemos la cuenta (el enunciado sugiere Cloudinary, pero así usamos un proveedor menos). |
@@ -28,10 +28,13 @@ Archivos del repositorio que usa el despliegue:
 - `render.yaml`: Blueprint de Render (crea el backend y Redis).
 - `backend/build.sh`: instala dependencias, `collectstatic`, `migrate` y, si se pide, `seed_datos`.
 - `backend/start.sh`: arranca Celery (worker + beat) en segundo plano y Daphne.
-- `frontend/vercel.json`: hace que las rutas de React (`/admin`, `/cocina`...) funcionen al recargar.
 - `backend/config/settings.py`: lee todo de variables de entorno (sección "Producción").
 
-> Nunca subas claves al repositorio: van solo en los paneles de Render y Vercel.
+> Nunca subas claves al repositorio: van solo en el panel de Render.
+
+> **Acceso al repositorio:** Render solo ve repositorios cuyo dueño instaló su app de GitHub.
+> El dueño del repo entra a https://github.com/apps/render → **Configure** → elige el
+> repositorio. Después cualquier colaborador lo ve en su cuenta de Render.
 
 ---
 
@@ -85,24 +88,37 @@ Archivos del repositorio que usa el despliegue:
 5. Abre `https://domipedidosx-api.onrender.com/api/docs/` (o la URL que asigne Render):
    debe verse Swagger. El admin de Django queda en `/admin/`.
 
-## 4. Vercel: frontend
+## 4. Render: frontend (Static Site)
 
-1. En [vercel.com](https://vercel.com) entra con GitHub → **Add New → Project** → importa el repositorio.
-2. **Root Directory:** `frontend`. Vercel detecta Vite (build `npm run build`, salida `dist`).
-3. **Environment Variables:** `VITE_API_URL` = `https://<tu-backend>.onrender.com/api`
-   (con `/api` al final y sin `/` final). La app arma la dirección `wss://` de los WebSockets con esta misma URL.
-4. **Deploy.** Anota la URL, p. ej. `https://domipedidosx.vercel.app`.
+1. En Render: **New → Static Site** → el mismo repositorio.
+2. Configuración:
 
-> `VITE_API_URL` se fija al compilar: si cambia, hay que volver a desplegar en Vercel.
+   | Campo | Valor |
+   |---|---|
+   | Name | `domipedidosx` (queda en `https://domipedidosx.onrender.com`) |
+   | Branch | la misma del backend (`develop` o `main`) |
+   | Root Directory | `frontend` |
+   | Build Command | `npm ci && npm run build` |
+   | Publish Directory | `dist` |
+
+3. **Environment Variables:**
+   - `VITE_API_URL` = `https://domipedidosx-api.onrender.com/api` (con `/api`, sin `/` final).
+     La app arma la dirección `wss://` de los WebSockets con esta misma URL.
+   - `NODE_VERSION` = `22` (Vite 8 necesita Node 20.19 o superior).
+4. **Deploy Static Site.**
+5. **Redirects/Rewrites → Add Rule:** Source `/*`, Destination `/index.html`, Action **Rewrite**.
+   Sin esta regla, recargar en una ruta interna (`/admin/reportes`) da 404.
+
+> `VITE_API_URL` se fija al compilar: si cambia, hay que volver a desplegar el frontend.
 
 ## 5. Conectar los dos
 
 En Render → `domipedidosx-api` → **Environment**:
 
-- `CORS_ALLOWED_ORIGINS` = `https://domipedidosx.vercel.app` (varias, separadas por comas, sin `/` final)
-- `FRONTEND_URL` = `https://domipedidosx.vercel.app` (enlaces de los correos)
+- `CORS_ALLOWED_ORIGINS` = `https://domipedidosx.onrender.com` (varias, separadas por comas, sin `/` final)
+- `FRONTEND_URL` = `https://domipedidosx.onrender.com` (enlaces de los correos)
 
-Guarda; Render vuelve a desplegar solo.
+Guarda con **Save, rebuild, and deploy**.
 
 ## 6. Comprobar que todo funciona
 
@@ -133,9 +149,10 @@ Guarda; Render vuelve a desplegar solo.
 |---|---|
 | Build falla en `migrate` con *Network is unreachable* | Se usó la conexión directa de Supabase. Usa el **Session pooler** (paso 1.2). |
 | `DisallowedHost` / 400 Bad Request | Dominio extra del backend: agrégalo en `DJANGO_ALLOWED_HOSTS`. |
-| En el navegador: error de **CORS** | `CORS_ALLOWED_ORIGINS` no tiene la URL exacta de Vercel (con `https://`, sin `/` final). |
-| La app llama a `127.0.0.1` | Falta `VITE_API_URL` en Vercel o no se volvió a desplegar después de ponerla. |
-| 404 al recargar una página | Falta `frontend/vercel.json` o el Root Directory no es `frontend`. |
+| En el navegador: error de **CORS** | `CORS_ALLOWED_ORIGINS` no tiene la URL exacta del frontend (con `https://`, sin `/` final). |
+| La app llama a `127.0.0.1` | Falta `VITE_API_URL` en el Static Site o no se volvió a desplegar después de ponerla. |
+| 404 al recargar una página | Falta la regla de Rewrite `/*` → `/index.html` del Static Site. |
+| El login tarda mucho la primera vez | El backend estaba dormido; la app avisa y espera hasta 70 s. |
 | Fotos con error 403 / no se ven | El bucket `productos` no es público o `STORAGE_PUBLIC_DOMAIN` está mal. |
 | No llegan correos | Remitente de `DEFAULT_FROM_EMAIL` sin verificar en Brevo, o `BREVO_API_KEY` mal. Revisa los logs de Render. |
 | CSRF en `/admin/` con otro dominio | Agrégalo con `https://` en `CSRF_TRUSTED_ORIGINS`. |
@@ -144,5 +161,5 @@ Los errores del backend salen en Render → `domipedidosx-api` → **Logs**.
 
 ## 9. Actualizar la app desplegada
 
-Render y Vercel vuelven a desplegar solos con cada cambio en la rama conectada (cada PR
+Los dos servicios de Render vuelven a desplegar solos con cada cambio en la rama conectada (cada PR
 integrado). Las migraciones nuevas se aplican en el build.
