@@ -11,7 +11,7 @@ El proyecto utiliza una arquitectura con frontend y backend separados:
 
 > **Estado actual:** el backend tiene los 30 modelos del diseño repartidos en 6 apps de Django (`sedes`, `usuarios`, `menu`, `inventario`, `promociones` y `pedidos`), con sus migraciones, pruebas y CI. El frontend tiene su estructura inicial. Las funcionalidades del sistema se desarrollan durante los sprints.
 
-Documentación técnica del backend: [`docs/README.md`](docs/README.md). Despliegue en la nube (Vercel, Render y Supabase): [`docs/despliegue.md`](docs/despliegue.md). Normas de contribución: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Documentación técnica del backend: [`docs/README.md`](docs/README.md). Despliegue en la nube (Render y Supabase): [`docs/despliegue.md`](docs/despliegue.md). Normas de contribución: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
@@ -524,4 +524,4 @@ Si la política de ejecución de PowerShell impide activar el entorno, puedes ut
 - Implementar los endpoints de la API por historia de usuario.
 - Conectar React con Django mediante Axios.
 - Ampliar las pruebas conforme avance cada sprint.
-- Configurar el despliegue (Supabase, Vercel y el servicio de hosting del backend).
+- Configurar el despliegue (Render y Supabase, ver docs/despliegue.md).

@@ -1,5 +1,6 @@
 # SCRUM-143 · Blueprint de Render: backend (Django + Daphne) y Redis.
-# La base de datos y las imágenes van en Supabase; el frontend en Vercel.
+# La base de datos y las imágenes van en Supabase. El frontend es un Static Site de Render
+# creado aparte (docs/despliegue.md, paso 4).
 # Paso a paso en docs/despliegue.md.
 services:
   # Redis: canal de los WebSockets y cola de Celery. Solo accesible desde Render.
@@ -47,7 +48,7 @@ services:
         sync: false
       - key: DB_SSLMODE
         value: require
-      # URL del frontend en Vercel (CORS y enlaces de los correos)
+      # URL del frontend (CORS y enlaces de los correos)
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: FRONTEND_URL
