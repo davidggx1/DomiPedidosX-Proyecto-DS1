@@ -29,6 +29,13 @@ export async function listarMisPedidos() {
   return data
 }
 
+// HU-26: líneas del carrito para repetir un pedido, validadas con el menú y precios de hoy
+// { sede: { id, nombre }, lineas: [...], no_disponibles: [{ nombre, motivo }] }
+export async function repetirPedido(pedidoId) {
+  const { data } = await api.post(`/pedidos/mios/${pedidoId}/repetir/`)
+  return data
+}
+
 export async function crearPedidoOperador(datosPedido) {
   const { data } = await api.post('/pedidos/operador/crear/', datosPedido)
   return data
