@@ -84,6 +84,7 @@ export default function UbicacionRepartidor({ pedidoId, estado }) {
   const activo = estado === 'en_camino'
   const [datos, setDatos] = useState(null)
   const [ahora, setAhora] = useState(null)
+  const [fallo, setFallo] = useState(false)
 
   useEffect(() => {
     if (!activo) return undefined
@@ -94,9 +95,12 @@ export default function UbicacionRepartidor({ pedidoId, estado }) {
           if (!vigente) return
           setDatos(respuesta)
           setAhora(Date.now())
+          setFallo(false)
         })
-        // un fallo puntual no se muestra: el siguiente intento lo corrige
-        .catch(() => {})
+        // se avisa, pero se sigue intentando: el siguiente intento suele corregirlo
+        .catch(() => {
+          if (vigente) setFallo(true)
+        })
     }
     cargar()
     const temporizador = setInterval(cargar, INTERVALO_UBICACION_MS)
@@ -106,16 +110,27 @@ export default function UbicacionRepartidor({ pedidoId, estado }) {
     }
   }, [pedidoId, activo])
 
-  if (!activo || !datos?.rastreando) return null
-  const hayPuntos = datos.ubicacion || datos.destino
+  if (!activo) return null
+  if (!fallo && !datos?.rastreando) return null
+  const rastreando = Boolean(datos?.rastreando)
+  const hayPuntos = rastreando && (datos.ubicacion || datos.destino)
 
   return (
     <Tarjeta titulo="¿Dónde va tu pedido?">
       <div className="flex flex-col gap-3">
         {hayPuntos && <Mapa datos={datos} />}
-        <p aria-live="polite" className={`text-sm ${datos.sin_senal ? 'text-aviso' : 'text-texto-suave'}`}>
-          {textoUbicacionCliente(datos, ahora)}
-        </p>
+        {rastreando && (
+          <p aria-live="polite" className={`text-sm ${datos.sin_senal ? 'text-aviso' : 'text-texto-suave'}`}>
+            {textoUbicacionCliente(datos, ahora)}
+          </p>
+        )}
+        {fallo && (
+          <p role="status" className="text-sm text-aviso">
+            {rastreando
+              ? 'No pudimos actualizar la ubicación. Te mostramos la última conocida y lo intentamos de nuevo en unos segundos.'
+              : 'No pudimos cargar la ubicación del repartidor. Lo intentamos de nuevo en unos segundos; tu pedido sigue en camino.'}
+          </p>
+        )}
       </div>
     </Tarjeta>
   )
