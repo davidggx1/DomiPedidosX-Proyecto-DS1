@@ -8,6 +8,7 @@ from .models import (
     EstadoPedido,
     HistorialEstadoPedido,
     MetodoPago,
+    OrigenPedido,
     Pedido,
 )
 
@@ -88,6 +89,10 @@ class TarjetaCocinaSerializer(serializers.ModelSerializer):
     tiene_notas = serializers.SerializerMethodField()
     tiene_cambios = serializers.SerializerMethodField()
     siguientes_estados = serializers.SerializerMethodField()
+    # HU-39: quién recoge el pedido y si ya llegó a la sede
+    lleva_domicilio = serializers.SerializerMethodField()
+    repartidor = serializers.SerializerMethodField()
+    repartidor_llego_en = serializers.DateTimeField(read_only=True, allow_null=True)
 
     class Meta:
         model = Pedido
@@ -101,6 +106,9 @@ class TarjetaCocinaSerializer(serializers.ModelSerializer):
             "tiene_notas",
             "tiene_cambios",
             "siguientes_estados",
+            "lleva_domicilio",
+            "repartidor",
+            "repartidor_llego_en",
         ]
 
     def get_resumen(self, pedido) -> list[str]:
@@ -115,6 +123,16 @@ class TarjetaCocinaSerializer(serializers.ModelSerializer):
 
     def get_siguientes_estados(self, pedido) -> list[str]:
         return siguientes_estados(pedido.estado, self.context.get("rol"))
+
+    def get_lleva_domicilio(self, pedido) -> bool:
+        """False en pedidos de mostrador: los recoge el cliente, no un repartidor."""
+        return pedido.origen != OrigenPedido.MOSTRADOR
+
+    def get_repartidor(self, pedido) -> str | None:
+        if pedido.repartidor_id is None:
+            return None
+        empleado = pedido.repartidor.empleado
+        return f"{empleado.nombres} {empleado.apellidos}".strip()
 
 
 class AdicionComandaSerializer(serializers.ModelSerializer):
@@ -340,7 +358,9 @@ class TarjetaEntregaSerializer(serializers.ModelSerializer):
             "metodo_pago_nombre",
             "cobrar_en_efectivo",
             "siguientes_estados",
+            "repartidor_llego_en",  # HU-39
         ]
+        read_only_fields = ["repartidor_llego_en"]
 
     def get_cobrar_en_efectivo(self, pedido) -> bool:
         return cobrar_en_efectivo(pedido)

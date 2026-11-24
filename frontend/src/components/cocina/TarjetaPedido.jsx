@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { obtenerComanda } from '../../api/cocina.js'
 import { interpretarError } from '../../api/errores.js'
-import { AVANCE_COCINA, estadoCronometroCocina } from '../../utils/cocina.js'
+import { AVANCE_COCINA, avisoRepartidor, estadoCronometroCocina } from '../../utils/cocina.js'
 import { horaCorta } from '../../utils/tiempo.js'
 import Alerta from '../ui/Alerta.jsx'
 import Boton from '../ui/Boton.jsx'
@@ -9,7 +9,14 @@ import DetalleComanda from './DetalleComanda.jsx'
 
 // Card of the kitchen board. It expands to show the full order (HU-30),
 // moves the order to the next column (HU-31), shows elapsed time (HU-32)
-// and cancels it because of a kitchen error (HU-33).
+// and cancels it because of a kitchen error (HU-33). Once it is ready it says
+// which courier takes it and when he arrives at the branch (HU-39).
+const TONO_REPARTIDOR = {
+  exito: 'border-exito bg-exito/15 text-exito font-semibold',
+  espera: 'border-borde bg-superficie-alta text-texto',
+  aviso: 'border-aviso text-aviso',
+}
+
 export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar, alReportarError }) {
   const [abierta, setAbierta] = useState(false)
   const [comanda, setComanda] = useState(null)
@@ -23,6 +30,7 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar, alRe
   const puedeReportarError = tarjeta.siguientes_estados.includes('cancelado')
   const idDetalle = `detalle-pedido-${tarjeta.id}`
   const cronometro = estadoCronometroCocina(tarjeta, ahora)
+  const repartidor = avisoRepartidor(tarjeta)
 
   async function alternarDetalle() {
     const abrir = !abierta
@@ -81,6 +89,13 @@ export default function TarjetaPedido({ tarjeta, ahora, ocupada, alAvanzar, alRe
             </span>
           )}
         </div>
+      )}
+
+      {repartidor && (
+        <p role="status" className={`rounded-lg border px-3 py-2 text-sm ${TONO_REPARTIDOR[repartidor.tono]}`}>
+          <span aria-hidden="true">🛵 </span>
+          {repartidor.texto}
+        </p>
       )}
 
       <ul className="flex flex-col gap-1 text-sm">

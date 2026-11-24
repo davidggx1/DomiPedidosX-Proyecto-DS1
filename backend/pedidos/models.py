@@ -103,6 +103,9 @@ class Pedido(models.Model):
         blank=True,
         related_name="pedidos_asignados",
     )
+    # HU-39: cuándo avisó el repartidor asignado que llegó a la sede a recoger.
+    # Se borra si cambia o se retira el repartidor.
+    repartidor_llego_en = models.DateTimeField(null=True, blank=True)
     # HU-36: True si el sistema eligió al repartidor; False si lo eligió el operador.
     asignacion_automatica = models.BooleanField(default=False)
     origen = models.CharField(

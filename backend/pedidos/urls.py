@@ -18,7 +18,7 @@ from .cancelacion import (
     PedidosEnCursoView,
 )
 from .capacidad import EstadoCapacidadView
-from .entregas import ActualizarEntregaView, DetalleEntregaView, MisEntregasView
+from .entregas import ActualizarEntregaView, DetalleEntregaView, LlegadaSedeView, MisEntregasView
 from .historial import FichaPedidoView, HistorialPedidosView
 from .indicadores import IndicadoresDiaView
 from .reportes_tiempos import ReporteTiemposView
@@ -47,6 +47,7 @@ urlpatterns = [
     path("mis-entregas/historial/", HistorialEntregasView.as_view(), name="mis-entregas-historial"),  # HU-46
     path("mis-entregas/<int:pk>/", DetalleEntregaView.as_view(), name="mis-entregas-detalle"),
     path("mis-entregas/<int:pk>/entrega/", ActualizarEntregaView.as_view(), name="mis-entregas-actualizar"),
+    path("mis-entregas/<int:pk>/llegada/", LlegadaSedeView.as_view(), name="mis-entregas-llegada"),  # HU-39
     path("capacidad/", EstadoCapacidadView.as_view(), name="pedidos-capacidad"),
     path(
         "alternativas-capacidad/",

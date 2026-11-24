@@ -170,6 +170,7 @@ def pedidos_para_cocina(usuario, rol):
             recibido_en=Coalesce(momento_del_estado(EstadoPedido.RECIBIDO), "fecha_creacion"),
             listo_en=momento_del_estado(EstadoPedido.LISTO_DESPACHO),
         )
+        .select_related("repartidor__empleado")
         .prefetch_related(
             "detalles__producto",
             "detalles__producto_tamano",

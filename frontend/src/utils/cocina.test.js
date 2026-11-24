@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtrarProductosCocina, productosReactivados, validarJustificacion } from './cocina.js'
+import { avisoRepartidor, filtrarProductosCocina, productosReactivados, validarJustificacion } from './cocina.js'
 
 const productos = [
   { id: 1, nombre: 'Clásica', categoria: 'Hamburguesas', disponible: false },
@@ -47,5 +47,25 @@ describe('productos que vuelven a estar disponibles (HU-17)', () => {
 
   it('no avisa nada en la primera carga', () => {
     expect(productosReactivados(null, antes)).toEqual([])
+  })
+})
+
+describe('avisoRepartidor (HU-39)', () => {
+  const base = { estado: 'listo_despacho', lleva_domicilio: true, repartidor: null, repartidor_llego_en: null }
+
+  it('no aplica fuera de "listo para despacho" ni en mostrador', () => {
+    expect(avisoRepartidor({ ...base, estado: 'en_preparacion' })).toBeNull()
+    expect(avisoRepartidor({ ...base, lleva_domicilio: false })).toBeNull()
+  })
+
+  it('sin repartidor, en camino y ya llegó', () => {
+    expect(avisoRepartidor(base)).toEqual({ tono: 'aviso', texto: 'Sin repartidor asignado todavía' })
+    expect(avisoRepartidor({ ...base, repartidor: 'Carlos Ruiz' })).toEqual({
+      tono: 'espera',
+      texto: 'Carlos Ruiz va en camino a la sede',
+    })
+    const llego = avisoRepartidor({ ...base, repartidor: 'Carlos Ruiz', repartidor_llego_en: '2026-11-24T17:30:00Z' })
+    expect(llego.tono).toBe('exito')
+    expect(llego.texto).toMatch(/^Carlos Ruiz llegó a las .+: entrégale el pedido$/)
   })
 })

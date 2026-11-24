@@ -99,3 +99,20 @@ export function productosReactivados(antes, despues) {
   const noDisponibles = new Set(antes.filter((p) => !p.disponible).map((p) => p.id))
   return despues.filter((p) => p.disponible && noDisponibles.has(p.id)).map((p) => p.nombre)
 }
+
+// HU-39 · Line about the courier on a "listo para despacho" card, or null when it does not apply.
+// tono: 'exito' (arrived: hand the order over), 'espera' (on the way) or 'aviso' (nobody assigned yet)
+export function avisoRepartidor(tarjeta) {
+  if (tarjeta.estado !== 'listo_despacho' || !tarjeta.lleva_domicilio) return null
+  if (!tarjeta.repartidor) {
+    return { tono: 'aviso', texto: 'Sin repartidor asignado todavía' }
+  }
+  if (tarjeta.repartidor_llego_en) {
+    const hora = new Date(tarjeta.repartidor_llego_en).toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    return { tono: 'exito', texto: `${tarjeta.repartidor} llegó a las ${hora}: entrégale el pedido` }
+  }
+  return { tono: 'espera', texto: `${tarjeta.repartidor} va en camino a la sede` }
+}

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { interpretarError } from '../../api/errores.js'
 import { conectarMisEntregas, obtenerEntrega } from '../../api/repartidores.js'
 import DetalleComanda from '../../components/cocina/DetalleComanda.jsx'
+import AvisoLlegada from '../../components/repartidor/AvisoLlegada.jsx'
 import ConfirmarPasoEntrega from '../../components/repartidor/ConfirmarPasoEntrega.jsx'
 import MapaEntrega from '../../components/repartidor/MapaEntrega.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
@@ -135,6 +136,8 @@ export default function DetalleEntrega() {
       {error && <Alerta tipo="error" titulo={error} />}
       {mensaje && <Alerta tipo="exito" titulo={mensaje} />}
       <BannerPago entrega={entrega} />
+      {/* HU-39: tell the kitchen he is at the branch, before picking up */}
+      <AvisoLlegada entrega={entrega} alAvisar={(datos) => setEntrega((actual) => ({ ...actual, ...datos }))} />
 
       {avance && (
         <Boton onClick={() => setConfirmando(true)} className="w-full text-lg">
