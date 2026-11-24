@@ -35,3 +35,9 @@ export async function actualizarEntrega(id, estado, montoRecaudado = null) {
   const { data } = await api.patch(`/pedidos/mis-entregas/${id}/entrega/`, cuerpo)
   return data
 }
+
+// HU-46: entregas hechas en un rango de días (por defecto hoy) y el dinero cobrado
+export async function obtenerHistorialEntregas({ desde, hasta }) {
+  const { data } = await api.get('/pedidos/mis-entregas/historial/', { params: { desde, hasta } })
+  return data
+}

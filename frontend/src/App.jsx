@@ -17,6 +17,7 @@ import Ingredientes from './pages/operador/Ingredientes.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
 import Productos from './pages/operador/Productos.jsx'
 import DetalleEntrega from './pages/repartidor/DetalleEntrega.jsx'
+import HistorialEntregas from './pages/repartidor/HistorialEntregas.jsx'
 import MisEntregas from './pages/repartidor/MisEntregas.jsx'
 import Direcciones from './pages/cliente/Direcciones.jsx'
 import Menu from './pages/cliente/Menu.jsx'
@@ -94,6 +95,7 @@ export default function App() {
 
         <Route element={<RutaProtegida roles={[ROLES.REPARTIDOR]} />}>
           <Route path="repartidor" element={<MisEntregas />} />
+          <Route path="repartidor/historial" element={<HistorialEntregas />} />
           <Route path="repartidor/entregas/:id" element={<DetalleEntrega />} />
         </Route>
 
