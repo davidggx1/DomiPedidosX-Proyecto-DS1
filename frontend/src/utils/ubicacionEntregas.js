@@ -32,3 +32,15 @@ export function puntosDelMapa(datos) {
   }
   return puntos
 }
+
+// HU-49 · Texto que ve el cliente bajo el mapa de su pedido
+export function textoUbicacionCliente(datos, ahora = Date.now()) {
+  const quien = datos?.repartidor ?? 'El repartidor'
+  if (!datos?.ubicacion_actualizada_en) return `${quien} ya salió con tu pedido. Esperando su ubicación…`
+  const segundos = (ahora - Date.parse(datos.ubicacion_actualizada_en)) / 1000
+  if (datos.sin_senal) {
+    const de = datos.repartidor ? `de ${datos.repartidor}` : 'del repartidor'
+    return `Perdimos la señal ${de} ${haceCuanto(segundos)}. Tu pedido sigue en camino.`
+  }
+  return `${quien} va en camino · ubicación de ${haceCuanto(segundos)}`
+}

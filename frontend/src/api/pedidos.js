@@ -151,3 +151,9 @@ export async function obtenerMapaEnCamino() {
   const { data } = await api.get('/pedidos/en-camino/mapa/')
   return data
 }
+
+// HU-49: dónde va el repartidor de mi pedido (solo con el pedido en camino)
+export async function obtenerUbicacionMiPedido(id) {
+  const { data } = await api.get(`/pedidos/mios/${id}/ubicacion/`)
+  return data
+}
