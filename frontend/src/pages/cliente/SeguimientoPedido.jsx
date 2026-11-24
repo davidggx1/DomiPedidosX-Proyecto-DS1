@@ -8,6 +8,7 @@ import Boton from '../../components/ui/Boton.jsx'
 import Modal from '../../components/ui/Modal.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
 import TimerEstimadoEntrega from '../../components/pedidos/TimerEstimadoEntrega.jsx'
+import UbicacionRepartidor from '../../components/pedidos/UbicacionRepartidor.jsx'
 import { datosEstado } from '../../utils/estadosPedido.js'
 import { PASOS_CLIENTE, aplicarEvento, pasosConProgreso, puedeCancelar } from '../../utils/seguimiento.js'
 
@@ -143,6 +144,8 @@ export default function SeguimientoPedido() {
             estadoPedido={seguimiento.estado}
             fechaCreacion={seguimiento.historial?.[0]?.fecha_hora}
           />
+
+          <UbicacionRepartidor pedidoId={id} estado={seguimiento.estado} />
 
           <Tarjeta>
             <div aria-live="polite" className="mb-4">
