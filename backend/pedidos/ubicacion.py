@@ -12,6 +12,11 @@ cada repartidor; la pantalla se actualiza sola cada 30 segundos.
 
     GET /api/pedidos/en-camino/mapa/              operador (su sede) o administrador (?sede=)
 
+HU-49 · El cliente ve en un mapa dónde va el repartidor de SU pedido, solo mientras está
+"En camino" (antes o después no se expone la ubicación de nadie).
+
+    GET /api/pedidos/mios/<id>/ubicacion/         cliente dueño del pedido
+
 Una ubicación de hace más de UMBRAL_SIN_SENAL se marca como "sin señal" (el celular
 perdió el GPS, la conexión o cerró la app): el punto se sigue mostrando, pero atenuado.
 """
@@ -26,9 +31,10 @@ from rest_framework.views import APIView
 
 from sedes.models import Sede
 from usuarios.models import Repartidor
-from usuarios.permissions import EsRepartidor, rol_requerido
+from usuarios.permissions import EsCliente, EsRepartidor, rol_requerido
 from usuarios.roles import ADMINISTRADOR, OPERADOR, REPARTIDOR, obtener_rol, obtener_sede
 
+from .estados import CLIENTE
 from .models import EstadoPedido
 from .views import pedidos_visibles
 
@@ -166,3 +172,52 @@ class MapaEnCaminoView(APIView):
             "intervalo_segundos": INTERVALO_SEGUNDOS,
             "entregas": entregas_en_camino(pedidos, timezone.now()),
         }).data)
+
+
+# --- HU-49 · El cliente ve al repartidor de su pedido ----------------------------------
+
+
+class UbicacionPedidoClienteSerializer(serializers.Serializer):
+    estado = serializers.CharField()
+    rastreando = serializers.BooleanField(help_text="True solo con el pedido en camino.")
+    intervalo_segundos = serializers.IntegerField()
+    repartidor = serializers.CharField(allow_null=True, help_text="Solo el primer nombre.")
+    ubicacion = PuntoSerializer(allow_null=True)
+    ubicacion_actualizada_en = serializers.DateTimeField(allow_null=True)
+    sin_senal = serializers.BooleanField()
+    destino = PuntoSerializer(allow_null=True)
+
+
+def ubicacion_para_cliente(pedido, ahora):
+    rastreando = pedido.estado == EstadoPedido.EN_CAMINO
+    repartidor = pedido.repartidor if rastreando else None
+    actualizada = repartidor.ubicacion_actualizada_en if repartidor else None
+    return {
+        "estado": pedido.estado,
+        "rastreando": rastreando,
+        "intervalo_segundos": INTERVALO_SEGUNDOS,
+        "repartidor": repartidor.empleado.nombres.split()[0] if repartidor and repartidor.empleado.nombres else None,
+        "ubicacion": _punto(repartidor.latitud, repartidor.longitud) if actualizada else None,
+        "ubicacion_actualizada_en": actualizada,
+        "sin_senal": rastreando and (actualizada is None or ahora - actualizada > UMBRAL_SIN_SENAL),
+        "destino": _punto(pedido.entrega_latitud, pedido.entrega_longitud) if rastreando else None,
+    }
+
+
+class UbicacionPedidoClienteView(APIView):
+    permission_classes = [EsCliente]
+
+    @extend_schema(
+        tags=["Pedidos"],
+        summary="Ubicación del repartidor de mi pedido (HU-49)",
+        description=(
+            "Mientras el pedido está \"En camino\" devuelve la última ubicación del repartidor y el "
+            "destino. En cualquier otro estado `rastreando` es false y no se envía ninguna ubicación."
+        ),
+        responses={200: UbicacionPedidoClienteSerializer, 404: OpenApiResponse(description="No es tu pedido.")},
+    )
+    def get(self, request, pk):
+        pedido = get_object_or_404(
+            pedidos_visibles(request.user, CLIENTE).select_related("repartidor__empleado"), pk=pk
+        )
+        return Response(UbicacionPedidoClienteSerializer(ubicacion_para_cliente(pedido, timezone.now())).data)
