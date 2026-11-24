@@ -15,6 +15,7 @@ import RestablecerContrasena from './pages/RestablecerContrasena.jsx'
 import Adiciones from './pages/operador/Adiciones.jsx'
 import Ingredientes from './pages/operador/Ingredientes.jsx'
 import Inventario from './pages/operador/Inventario.jsx'
+import MapaEntregas from './pages/operador/MapaEntregas.jsx'
 import Productos from './pages/operador/Productos.jsx'
 import DetalleEntrega from './pages/repartidor/DetalleEntrega.jsx'
 import HistorialEntregas from './pages/repartidor/HistorialEntregas.jsx'
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="operador" element={<PedidosEntrantes />} />
           <Route path="operador/crear-pedido" element={<CrearPedidoOperador />} />
           <Route path="operador/en-curso" element={<PedidosEnCurso />} />
+          <Route path="operador/mapa" element={<MapaEntregas />} />
           <Route path="operador/menu" element={<CategoriasMenu />} />
           <Route path="operador/productos" element={<Productos />} />
           <Route path="operador/adiciones" element={<Adiciones />} />

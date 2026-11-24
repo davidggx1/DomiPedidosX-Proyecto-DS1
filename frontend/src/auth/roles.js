@@ -28,6 +28,7 @@ export const ENLACES_POR_ROL = {
     { ruta: '/operador', texto: 'Pedidos entrantes' },
     { ruta: '/operador/crear-pedido', texto: 'Crear pedido' },
     { ruta: '/operador/en-curso', texto: 'Pedidos en curso' },
+    { ruta: '/operador/mapa', texto: 'Mapa de entregas' },
     { ruta: '/operador/menu', texto: 'Categorias' },
     { ruta: '/operador/productos', texto: 'Productos' },
     { ruta: '/operador/adiciones', texto: 'Adiciones' },
