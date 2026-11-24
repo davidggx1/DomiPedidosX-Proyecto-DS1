@@ -130,6 +130,17 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
 
   const vaciar = useCallback(() => actualizar(() => VACIO), [actualizar])
 
+  // HU-26: reemplaza el carrito por las líneas de un pedido anterior (ya validadas por el backend)
+  const cargarPedido = useCallback(
+    (nuevaSedeId, lineas) =>
+      actualizar(() => ({
+        sedeId: nuevaSedeId,
+        lineas: lineas.reduce((acumuladas, linea) => agregarLinea(acumuladas, { ...linea, id: nuevoId() }), []),
+        promocion: null,
+      })),
+    [actualizar],
+  )
+
   const subtotal = useMemo(() => subtotalCarrito(carrito.lineas), [carrito.lineas])
   const descuento = useMemo(
     () => calcularDescuentoPromocion(subtotal, carrito.promocion),
@@ -160,6 +171,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       quitarPromocion,
       trasladarASede,
       vaciar,
+      cargarPedido,
     }),
     [
       carrito,
@@ -176,6 +188,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       quitarPromocion,
       trasladarASede,
       vaciar,
+      cargarPedido,
     ],
   )
 

@@ -24,6 +24,7 @@ from .indicadores import IndicadoresDiaView
 from .reportes_tiempos import ReporteTiemposView
 from .reportes_ventas import ReporteVentasView
 from .resumen import ResumenDiaView
+from .repetir import RepetirPedidoView
 from .seguimiento import MisPedidosView
 from .repartidores_estado import EstadoRepartidoresView
 
@@ -57,6 +58,7 @@ urlpatterns = [
     path("historial/", HistorialPedidosView.as_view(), name="historial-pedidos"),
     path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
+    path("mios/<int:pk>/repetir/", RepetirPedidoView.as_view(), name="repetir-pedido"),  # HU-26
     path("repartidores/estado/", EstadoRepartidoresView.as_view(), name="repartidores-estado"),
     path("estimar-tiempo/", EstimarTiempoEntregaView.as_view(), name="estimar-tiempo"),
 ]

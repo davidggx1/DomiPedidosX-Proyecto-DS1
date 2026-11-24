@@ -9,27 +9,10 @@ import Boton from '../../components/ui/Boton.jsx'
 import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
+import { guardarSede, leerSedeGuardada } from '../../utils/sedeElegida.js'
 
-const CLAVE_SEDE = 'domipedidosx.sede'
 const TODAS = 'todas'
 const CATEGORIA_COMBOS = 'combos'
-
-// La sede elegida se recuerda en este navegador para la próxima visita.
-function leerSedeGuardada() {
-  try {
-    return localStorage.getItem(CLAVE_SEDE) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function guardarSede(sedeId) {
-  try {
-    localStorage.setItem(CLAVE_SEDE, sedeId)
-  } catch {
-    // Sin almacenamiento disponible: se vuelve a elegir en la próxima visita.
-  }
-}
 
 // HU-18 & HU-19 · Consultar el menú por categorías y buscar productos por nombre.
 export default function Menu() {
