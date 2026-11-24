@@ -105,7 +105,8 @@ def asignar(pedido, repartidor, usuario=None, automatica=False):
         validar_asignacion(pedido, repartidor)
         pedido.repartidor = repartidor
         pedido.asignacion_automatica = automatica
-        pedido.save(update_fields=["repartidor", "asignacion_automatica"])
+        pedido.repartidor_llego_en = None  # HU-39: la llegada es de cada repartidor
+        pedido.save(update_fields=["repartidor", "asignacion_automatica", "repartidor_llego_en"])
         _avisar(pedido, repartidor, usuario)
     return pedido
 
@@ -124,6 +125,7 @@ def retirar(pedido, usuario=None):
         anterior = pedido.repartidor
         pedido.repartidor = None
         pedido.asignacion_automatica = False
-        pedido.save(update_fields=["repartidor", "asignacion_automatica"])
+        pedido.repartidor_llego_en = None
+        pedido.save(update_fields=["repartidor", "asignacion_automatica", "repartidor_llego_en"])
         _avisar(pedido, None, usuario, repartidor_anterior=anterior)
     return pedido

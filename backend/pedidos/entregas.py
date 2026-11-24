@@ -1,5 +1,5 @@
 """
-Entregas del repartidor (HU-42, HU-43 y HU-45).
+Entregas del repartidor (HU-42, HU-43, HU-45 y HU-39).
 
 - El repartidor solo ve los pedidos asignados a él (pedidos_visibles).
 - Solo aparecen los que están en curso (por recoger, recogidos o en camino):
@@ -7,6 +7,7 @@ Entregas del repartidor (HU-42, HU-43 y HU-45).
 - Avanza la entrega en orden estricto: recogido → en camino → entregado
   (la secuencia la valida pedidos/estados.py). Si el cliente paga en efectivo,
   al entregar registra cuánto recibió y la factura queda pagada (HU-45).
+- Al llegar a la sede avisa "Llegué" y cocina lo ve en la comanda (HU-39).
 """
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -168,3 +169,34 @@ class ActualizarEntregaView(APIView):
 
         pedido = entregas_del_repartidor(request.user).get(pk=pk)
         return Response(DetalleEntregaSerializer(pedido, context={"rol": REPARTIDOR}).data)
+
+
+class LlegadaSedeView(APIView):
+    """
+    POST /api/pedidos/mis-entregas/<id>/llegada/
+
+    HU-39: el repartidor avisa que llegó a la sede a recoger. Solo con el pedido en
+    "Listo para despacho" (antes de recogerlo). Repetir el aviso no cambia la hora.
+    Cocina lo ve en la comanda del tablero (se actualiza cada pocos segundos).
+    """
+
+    permission_classes = [EsRepartidor]
+
+    @extend_schema(
+        tags=["Entregas"],
+        summary="Avisar que el repartidor llegó a la sede (HU-39)",
+        request=None,
+        responses={200: TarjetaEntregaSerializer},
+    )
+    def post(self, request, pk):
+        with transaction.atomic():
+            pedido = get_object_or_404(entregas_en_curso(request.user).select_for_update(of=("self",)), pk=pk)
+            if pedido.estado != EstadoPedido.LISTO_DESPACHO:
+                return Response(
+                    {"detail": "Solo puedes avisar tu llegada antes de recoger el pedido."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            if pedido.repartidor_llego_en is None:
+                pedido.repartidor_llego_en = timezone.now()
+                pedido.save(update_fields=["repartidor_llego_en"])
+        return Response(TarjetaEntregaSerializer(pedido, context={"rol": REPARTIDOR}).data)
