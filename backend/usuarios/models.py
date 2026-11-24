@@ -118,6 +118,8 @@ class Repartidor(models.Model):
     # La ubicación en el mapa es opcional.
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
+    # HU-38: cuándo llegó la última ubicación (el celular la envía cada 30 s en una entrega)
+    ubicacion_actualizada_en = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Repartidor: {self.empleado.nombres} {self.empleado.apellidos}"
