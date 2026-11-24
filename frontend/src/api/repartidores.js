@@ -41,3 +41,9 @@ export async function obtenerHistorialEntregas({ desde, hasta }) {
   const { data } = await api.get('/pedidos/mis-entregas/historial/', { params: { desde, hasta } })
   return data
 }
+
+// HU-39: el repartidor avisa que llegó a la sede a recoger (cocina lo ve en la comanda)
+export async function avisarLlegada(pedidoId) {
+  const { data } = await api.post(`/pedidos/mis-entregas/${pedidoId}/llegada/`)
+  return data
+}
