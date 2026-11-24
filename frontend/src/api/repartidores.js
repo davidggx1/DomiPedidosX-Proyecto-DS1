@@ -47,3 +47,8 @@ export async function avisarLlegada(pedidoId) {
   const { data } = await api.post(`/pedidos/mis-entregas/${pedidoId}/llegada/`)
   return data
 }
+
+// HU-38: el celular envía la ubicación cada 30 s mientras el repartidor lleva un pedido
+export async function enviarUbicacion({ latitud, longitud }) {
+  await api.post('/pedidos/mis-entregas/ubicacion/', { latitud, longitud })
+}

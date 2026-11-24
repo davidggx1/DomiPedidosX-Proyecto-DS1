@@ -6,6 +6,7 @@ import DisponibilidadRepartidor from '../../components/repartidor/Disponibilidad
 import TarjetaEntrega from '../../components/repartidor/TarjetaEntrega.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Tarjeta from '../../components/ui/Tarjeta.jsx'
+import CompartirUbicacion from '../../components/repartidor/CompartirUbicacion.jsx'
 
 // Home of the repartidor. The availability switch (HU-41) lives in the header
 // and below are his orders in progress (HU-42), kept up to date by WebSocket
@@ -62,6 +63,8 @@ export default function MisEntregas() {
       </header>
 
       {mensaje && <Alerta tipo="exito" titulo={mensaje} />}
+      {/* HU-38: the branch sees the courier on its map while he carries an order */}
+      <CompartirUbicacion entregas={entregas} />
 
       <Tarjeta>
         <p className="text-sm text-texto-suave">

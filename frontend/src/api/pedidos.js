@@ -145,3 +145,9 @@ export async function estimarTiempoEntrega({ sedeId, direccionId, items }) {
   return data
 }
 
+
+// HU-38: pedidos "En camino" de la sede con la última ubicación de cada repartidor
+export async function obtenerMapaEnCamino() {
+  const { data } = await api.get('/pedidos/en-camino/mapa/')
+  return data
+}
