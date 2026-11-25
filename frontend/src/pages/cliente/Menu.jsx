@@ -10,6 +10,7 @@ import CampoTexto from '../../components/ui/CampoTexto.jsx'
 import Selector from '../../components/ui/Selector.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { guardarSede, leerSedeGuardada } from '../../utils/sedeElegida.js'
+import IconoCategoria from '../../components/menu/IconoCategoria.jsx'
 
 const TODAS = 'todas'
 const CATEGORIA_COMBOS = 'combos'
@@ -276,12 +277,12 @@ export default function Menu() {
 
           {mostrarCombos && (
             <section aria-labelledby="categoria-combos">
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="categoria-combos" className="text-xl font-bold">
-                  Combos y promociones
-                </h2>
-                <span className="text-xs text-texto-suave">Precio especial por paquete</span>
-              </div>
+                <div className="flex items-center gap-3">
+                  <IconoCategoria nombre="combo" className="size-9 text-texto" />
+                  <h2 id="categoria-combos" className="text-2xl font-bold">
+                    Combos y promociones
+                  </h2>
+                </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {combos.map((combo) => (
                   <article
@@ -356,9 +357,15 @@ export default function Menu() {
 
           {filtradas.map((categoria) => (
             <section key={categoria.id} aria-labelledby={`categoria-${categoria.id}`}>
-              <h2 id={`categoria-${categoria.id}`} className="mb-3 text-xl font-bold">
-                {categoria.nombre}
-              </h2>
+              <div className="mb-5 flex items-center gap-3">
+                <IconoCategoria nombre={categoria.nombre} className="size-9 text-texto" />
+                <div className="w-fit">
+                  <h2 id={`categoria-${categoria.id}`} className="text-2xl font-bold">
+                    {categoria.nombre}
+                  </h2>
+                  <span aria-hidden="true" className="mt-1 block h-0.5 w-full rounded-full bg-[#e11d2e]" />
+                </div>
+              </div>
               {categoria.productos.length === 0 ? (
                 <Alerta tipo="info">
                   {hayBusqueda
@@ -366,7 +373,7 @@ export default function Menu() {
                     : 'Esta categoría todavía no tiene productos.'}
                 </Alerta>
               ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-x-5 gap-y-12 md:grid-cols-2">
                   {categoria.productos.map((producto) => (
                     <TarjetaProducto key={producto.id} producto={producto} alAgregar={agregar} />
                   ))}
