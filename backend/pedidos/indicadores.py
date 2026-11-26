@@ -16,6 +16,8 @@ Un día sin pedidos devuelve todo en 0, sin errores (criterio 4).
 from collections import defaultdict
 from decimal import Decimal
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -127,6 +129,7 @@ class IndicadoresDiaSerializer(serializers.Serializer):
     sedes = IndicadoresSedeSerializer(many=True)
 
 
+@method_decorator(never_cache, name="dispatch")
 class IndicadoresDiaView(APIView):
     permission_classes = [rol_requerido(ADMINISTRADOR)]
 

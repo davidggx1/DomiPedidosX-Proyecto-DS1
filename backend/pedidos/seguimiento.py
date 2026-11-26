@@ -6,6 +6,8 @@ Seguimiento del pedido por el cliente (HU-47).
 - El estado actual y el historial de un pedido salen de GET /api/pedidos/<id>/estado/.
 - Los cambios llegan en tiempo real por ws/pedidos/<id>/estado/ (EstadoPedidoConsumer).
 """
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import Case, IntegerField, Value, When
 from rest_framework import generics, serializers
 
@@ -35,6 +37,7 @@ class PedidoClienteSerializer(serializers.ModelSerializer):
         return [f"{d.cantidad}x {nombre_linea(d)}" for d in pedido.detalles.all()]
 
 
+@method_decorator(never_cache, name="dispatch")
 class MisPedidosView(generics.ListAPIView):
     """GET /api/pedidos/mios/"""
 

@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import OuterRef, Prefetch, Subquery
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -369,6 +371,7 @@ class EsCliente(BasePermission):
         return bool(usuario and usuario.is_authenticated and hasattr(usuario, "cliente"))
 
 
+@method_decorator(never_cache, name="dispatch")
 class ConfirmarPedidoView(APIView):
     """HU-23: el carrito viaja en el cuerpo; el servidor recalcula los precios."""
 
@@ -432,6 +435,7 @@ class AprobarPedidoView(APIView):
             }
         )
 
+@method_decorator(never_cache, name="dispatch")
 class CrearPedidoOperadorView(APIView):
     """HU-24: El operador crea un pedido a nombre de un cliente (mostrador o telefónico)."""
 

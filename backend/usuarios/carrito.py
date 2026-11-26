@@ -14,6 +14,8 @@ cada uno ve únicamente su propio carrito (se busca por request.user, no por id)
 """
 import json
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -57,6 +59,7 @@ def carrito_a_datos(carrito):
     }
 
 
+@method_decorator(never_cache, name="dispatch")
 class CarritoGuardadoView(APIView):
     permission_classes = [EsCliente]
 
