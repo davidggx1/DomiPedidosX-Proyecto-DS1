@@ -28,6 +28,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .intentos_login import ProtegidaContraFuerzaBruta
 from .models import Usuario
 from .tasks import encolar_correo
 
@@ -99,7 +100,7 @@ class RestablecerContrasenaSerializer(serializers.Serializer):
         return usuario
 
 
-class SolicitarRestablecimientoView(APIView):
+class SolicitarRestablecimientoView(ProtegidaContraFuerzaBruta, APIView):
     """POST /api/usuarios/contrasena/solicitar/ · Envía el enlace para restablecer la contraseña."""
 
     # Públicas: quien olvidó la contraseña no tiene sesión.
@@ -116,7 +117,7 @@ class SolicitarRestablecimientoView(APIView):
         return Response({"detail": MENSAJE_SOLICITUD})
 
 
-class RestablecerContrasenaView(APIView):
+class RestablecerContrasenaView(ProtegidaContraFuerzaBruta, APIView):
     """POST /api/usuarios/contrasena/restablecer/ · Guarda la nueva contraseña si el enlace es válido."""
 
     permission_classes = [AllowAny]

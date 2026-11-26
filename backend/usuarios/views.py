@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from sedes.views import EsAdministradorPermission
+from .intentos_login import ProtegidaContraFuerzaBruta
 from .models import DireccionEntrega, Empleado
 
 from .serializers import LoginSerializer, RegistroClienteSerializer, RegistroEmpleadoSerializer, EmpleadoListSerializer
@@ -63,10 +64,10 @@ class EmpleadoManagementView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-class LoginView(TokenObtainPairView):
+class LoginView(ProtegidaContraFuerzaBruta, TokenObtainPairView):
     serializer_class = LoginSerializer
 
-class LoginPersonalView(TokenObtainPairView):
+class LoginPersonalView(ProtegidaContraFuerzaBruta, TokenObtainPairView):
     serializer_class = LoginPersonalSerializer
 
 

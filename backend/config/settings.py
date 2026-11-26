@@ -92,7 +92,15 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Fuerza bruta: límite de peticiones por IP al login y al restablecimiento
+    # (ScopedRateThrottle, throttle_scope="login"). Ver docs/seguridad.md.
+    "DEFAULT_THROTTLE_RATES": {"login": os.getenv("LOGIN_RATE_LIMIT", "5/min")},
 }
+
+# Fuerza bruta por cuenta: tras LOGIN_FAILS_LIMIT contraseñas malas para un mismo
+# correo, ese correo queda bloqueado LOGIN_FAILS_TIMEOUT segundos (usuarios/intentos_login.py).
+LOGIN_FAILS_LIMIT = int(os.getenv("LOGIN_FAILS_LIMIT", "5"))
+LOGIN_FAILS_TIMEOUT = int(os.getenv("LOGIN_FAILS_TIMEOUT", "300"))
 
 
 SIMPLE_JWT = {
@@ -153,6 +161,22 @@ if os.getenv('REDIS_URL'):
 else:
     CHANNEL_LAYERS = {
         'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}
+    }
+
+
+# Caché: guarda los contadores del límite de peticiones y de los intentos fallidos.
+# Con Redis lo comparten todos los procesos; LocMemCache es de un solo proceso
+# (desarrollo y pruebas).
+if os.getenv('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.environ['REDIS_URL'],
+        }
+    }
+else:
+    CACHES = {
+        'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
     }
 
 
