@@ -9,7 +9,7 @@ from sedes.notificaciones import avisar_cancelacion
 
 from .asignacion import asignacion_cambiada
 from .consumers import grupo_repartidor
-from .correos import enviar_correo_estado
+from .correos import enviar_correo_asignacion, enviar_correo_estado
 from .estados import estado_pedido_cambiado
 from .models import EstadoPedido
 from .repartidores_estado import avisar_estado_repartidores
@@ -89,6 +89,13 @@ def avisar_asignacion(sender, pedido, repartidor, usuario, repartidor_anterior=N
         avisar_repartidor(repartidor.pk, pedido.pk, aviso_asignado(pedido))
     if repartidor_anterior is not None:
         avisar_repartidor(repartidor_anterior.pk, pedido.pk, aviso_retirado(pedido, 'reasignado'))
+
+
+@receiver(asignacion_cambiada)
+def avisar_asignacion_por_correo(sender, pedido, repartidor, **kwargs):
+    """HU-40 (ampliación): además del aviso en la app, un correo al nuevo repartidor."""
+    if repartidor is not None:
+        enviar_correo_asignacion(pedido, repartidor)
 
 
 @receiver(estado_pedido_cambiado)

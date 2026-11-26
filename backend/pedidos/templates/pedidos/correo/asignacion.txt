@@ -1,0 +1,11 @@
+{% autoescape off %}Hola {{ cliente }},
+
+Se te asignó el pedido {{ numero }}.
+
+Recógelo en: {{ sede }} ({{ sede_direccion }})
+Entrégalo en: {{ direccion }}{% if barrio %}, {{ barrio }}{% endif %}
+{% if total %}Total: {{ total }} · {{ metodo_pago }}{% if cobrar %} (cóbralo al entregar){% else %} (ya está pagado){% endif %}
+{% endif %}
+Ver la entrega: {{ enlace }}
+
+DomiPedidosX{% endautoescape %}
