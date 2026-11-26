@@ -5,6 +5,7 @@ import { obtenerReporteTiempos } from '../../api/pedidos.js'
 import Barra from '../../components/reportes/Barra.jsx'
 import BotonExportar from '../../components/reportes/BotonExportar.jsx'
 import Cifra from '../../components/reportes/Cifra.jsx'
+import ReportePatrones from '../../components/reportes/ReportePatrones.jsx'
 import ReporteVentas from '../../components/reportes/ReporteVentas.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
@@ -17,6 +18,7 @@ import { rangoPorDefecto, textoMinutos, validarRango } from '../../utils/reporte
 const REPORTES = [
   { valor: 'ventas', etiqueta: 'Ventas' }, // HU-71
   { valor: 'tiempos', etiqueta: 'Tiempos y desempeño' }, // HU-72
+  { valor: 'demanda', etiqueta: 'Patrones de demanda' }, // HU-74
 ]
 
 const DESCRIPCION_FASE = {
@@ -277,6 +279,7 @@ export default function Reportes() {
 
       {reporte === 'ventas' && <ReporteVentas sedes={sedes} />}
       {reporte === 'tiempos' && <ReporteTiempos sedes={sedes} />}
+      {reporte === 'demanda' && <ReportePatrones sedes={sedes} />}
     </div>
   )
 }

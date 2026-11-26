@@ -3,7 +3,10 @@ import {
   anchoBarra,
   cuentaUnidades,
   filasConciliacion,
+  intensidadCelda,
   rangoPorDefecto,
+  textoFechasCortas,
+  textoHora,
   textoMinutos,
   validarRango,
 } from './reportes.js'
@@ -61,5 +64,43 @@ describe('reportes de ventas (HU-71)', () => {
   it('cuenta unidades solo por producto o categoría', () => {
     expect(cuentaUnidades('producto')).toBe(true)
     expect(cuentaUnidades('zona')).toBe(false)
+  })
+})
+
+describe('patrones de demanda (HU-74)', () => {
+  it('escribe la franja de una hora', () => {
+    expect(textoHora(0)).toBe('00:00–01:00')
+    expect(textoHora(18)).toBe('18:00–19:00')
+    expect(textoHora(23)).toBe('23:00–24:00')
+  })
+
+  it('la intensidad va de 0 a 1 según el máximo', () => {
+    expect(intensidadCelda(10, 10)).toBe(1)
+    expect(intensidadCelda(5, 10)).toBe(0.5)
+    expect(intensidadCelda('30000.00', 60000)).toBe(0.5)
+  })
+
+  it('una celda vacía es 0 y una con poca demanda no baja de 0,15', () => {
+    expect(intensidadCelda(0, 10)).toBe(0)
+    expect(intensidadCelda(5, 0)).toBe(0)
+    expect(intensidadCelda(1, 100)).toBe(0.15)
+  })
+})
+
+describe('fechas de una celda (HU-74)', () => {
+  it('escribe las fechas en corto', () => {
+    expect(textoFechasCortas(['2026-11-06'])).toBe('6 nov')
+    expect(textoFechasCortas(['2026-11-06', '2026-12-13'])).toBe('6 nov, 13 dic')
+  })
+
+  it('con muchas fechas muestra las primeras y cuántas faltan', () => {
+    expect(textoFechasCortas(['2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30'])).toBe(
+      '2 nov, 9 nov, 16 nov y 2 más',
+    )
+  })
+
+  it('sin fechas no escribe nada', () => {
+    expect(textoFechasCortas([])).toBe('')
+    expect(textoFechasCortas()).toBe('')
   })
 })
