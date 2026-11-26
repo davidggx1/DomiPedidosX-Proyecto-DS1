@@ -3,6 +3,7 @@ import api from '../../api/cliente.js'
 import { interpretarError } from '../../api/errores.js'
 import { obtenerReporteTiempos } from '../../api/pedidos.js'
 import Barra from '../../components/reportes/Barra.jsx'
+import BotonExportar from '../../components/reportes/BotonExportar.jsx'
 import Cifra from '../../components/reportes/Cifra.jsx'
 import ReporteVentas from '../../components/reportes/ReporteVentas.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
@@ -25,10 +26,28 @@ const DESCRIPCION_FASE = {
   entrega: 'De en camino a entregado',
 }
 
-function TiemposPorFase({ fases }) {
+// HU-73 · Columnas de los CSV de tiempos: minutos como número (vacío si no hay dato)
+const COLUMNAS_CSV_FASES = [
+  { titulo: 'Fase', valor: (f) => f.nombre },
+  { titulo: 'Descripción', valor: (f) => DESCRIPCION_FASE[f.fase] },
+  { titulo: 'Promedio (min)', valor: (f) => f.promedio_minutos },
+  { titulo: 'Pedidos', valor: (f) => f.pedidos },
+]
+
+const COLUMNAS_CSV_REPARTIDORES = [
+  { titulo: 'Repartidor', valor: (r) => r.nombre },
+  { titulo: 'Pedidos entregados', valor: (r) => r.pedidos_entregados },
+  { titulo: 'Ciclo promedio (min)', valor: (r) => r.ciclo_promedio_minutos },
+  { titulo: 'Reparto promedio (min)', valor: (r) => r.reparto_promedio_minutos },
+]
+
+function TiemposPorFase({ fases, datos }) {
   const maximo = Math.max(0, ...fases.map((f) => f.promedio_minutos ?? 0))
   return (
     <Tarjeta titulo="Tiempo promedio por fase">
+      <div className="mb-3 flex justify-end">
+        <BotonExportar tipo="tiempos-fases" datos={datos} columnas={COLUMNAS_CSV_FASES} filas={fases} />
+      </div>
       <ul className="flex flex-col gap-4">
         {fases.map((fase) => (
           <li key={fase.fase} className="flex flex-col gap-1.5">
@@ -52,10 +71,18 @@ function TiemposPorFase({ fases }) {
   )
 }
 
-function DesempenoRepartidores({ repartidores }) {
+function DesempenoRepartidores({ repartidores, datos }) {
   const maximo = Math.max(0, ...repartidores.map((r) => r.pedidos_entregados))
   return (
     <Tarjeta titulo="Desempeño de los repartidores">
+      <div className="mb-3 flex justify-end">
+        <BotonExportar
+          tipo="desempeno-repartidores"
+          datos={datos}
+          columnas={COLUMNAS_CSV_REPARTIDORES}
+          filas={repartidores}
+        />
+      </div>
       {repartidores.length === 0 ? (
         <p className="text-texto-suave">Los pedidos entregados del rango no tienen repartidor asignado.</p>
       ) : (
@@ -202,8 +229,8 @@ function ReporteTiempos({ sedes }) {
             />
           </section>
           <div className="grid gap-4 lg:grid-cols-[2fr_3fr] [&>*]:min-w-0">
-            <TiemposPorFase fases={datos.fases} />
-            <DesempenoRepartidores repartidores={datos.repartidores} />
+            <TiemposPorFase fases={datos.fases} datos={datos} />
+            <DesempenoRepartidores repartidores={datos.repartidores} datos={datos} />
           </div>
         </>
       )}
