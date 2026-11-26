@@ -63,3 +63,38 @@ export function filasConciliacion(conciliacion) {
   filas.push({ etiqueta: 'Total facturado', valor: conciliacion.total, signo: '=', total: true })
   return filas
 }
+
+// HU-74 · Patrones de demanda: el backend numera los días como ISO (1 = lunes ... 7 = domingo)
+export const DIAS_CORTOS = { 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom' }
+
+export const MEDIDAS_DEMANDA = [
+  { valor: 'pedidos', etiqueta: 'Pedidos' },
+  { valor: 'ventas', etiqueta: 'Ventas' },
+]
+
+// 18 -> "18:00–19:00"; 23 -> "23:00–24:00"
+export function textoHora(hora) {
+  const dos = (n) => String(n).padStart(2, '0')
+  return `${dos(hora)}:00–${dos(hora + 1)}:00`
+}
+
+// Qué tan fuerte se pinta una celda del mapa de calor, de 0 a 1. Una celda con algo de
+// demanda nunca baja de 0,15 para que no se confunda con una vacía.
+export function intensidadCelda(valor, maximo) {
+  const numero = Number(valor)
+  if (!numero || !maximo) return 0
+  return Math.max(0.15, Math.round((numero / maximo) * 100) / 100)
+}
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+// Fechas de una celda del mapa de calor (AAAA-MM-DD) en corto: ["2026-11-06", "2026-11-13"] -> "6 nov, 13 nov".
+// Con muchas fechas muestra las 3 primeras y cuántas faltan, para que el texto no sea eterno
+export function textoFechasCortas(fechas = [], maximo = 3) {
+  const cortas = fechas.slice(0, maximo).map((fecha) => {
+    const [, mes, dia] = fecha.split('-').map(Number)
+    return `${dia} ${MESES_CORTOS[mes - 1]}`
+  })
+  const resto = fechas.length - cortas.length
+  return resto > 0 ? `${cortas.join(', ')} y ${resto} más` : cortas.join(', ')
+}

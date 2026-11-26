@@ -115,6 +115,14 @@ export async function obtenerReporteTiempos({ desde, hasta, sede = '' }) {
   return data
 }
 
+// HU-74 · Pedidos y ventas por día de la semana y hora (mapa de calor y horas pico)
+export async function obtenerReporteDemanda({ desde, hasta, sede = '' }) {
+  const params = { desde, hasta }
+  if (sede) params.sede = sede
+  const { data } = await api.get('/pedidos/reportes/demanda/', { params })
+  return data
+}
+
 // HU-71: sales of non-cancelled orders grouped by producto, categoria, sede or zona
 export async function obtenerReporteVentas({ desde, hasta, agrupar = 'producto', sede = '' }) {
   const params = { desde, hasta, agrupar }

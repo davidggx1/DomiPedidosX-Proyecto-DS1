@@ -23,6 +23,7 @@ from .historial import FichaPedidoView, HistorialPedidosView
 from .indicadores import IndicadoresDiaView
 from .reportes_tiempos import ReporteTiemposView
 from .reportes_ventas import ReporteVentasView
+from .reportes_demanda import ReporteDemandaView
 from .resumen import ResumenDiaView
 from .historial_entregas import HistorialEntregasView
 from .repetir import RepetirPedidoView
@@ -61,6 +62,7 @@ urlpatterns = [
     path("indicadores/", IndicadoresDiaView.as_view(), name="indicadores-dia"),
     path("reportes/tiempos/", ReporteTiemposView.as_view(), name="reporte-tiempos"),  # HU-72
     path("reportes/ventas/", ReporteVentasView.as_view(), name="reporte-ventas"),  # HU-71
+    path("reportes/demanda/", ReporteDemandaView.as_view(), name="reporte-demanda"),  # HU-74
     path("historial/", HistorialPedidosView.as_view(), name="historial-pedidos"),
     path("historial/<int:pk>/", FichaPedidoView.as_view(), name="ficha-pedido"),
     path("mios/", MisPedidosView.as_view(), name="mis-pedidos"),
