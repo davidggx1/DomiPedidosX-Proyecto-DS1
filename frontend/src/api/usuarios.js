@@ -38,3 +38,13 @@ export async function actualizarEmpleado(id, datos) {
   const { data } = await api.patch(`/usuarios/empleados/${id}/`, datos)
   return data
 }
+// HU-21 (producto final): carrito guardado en el servidor, el mismo en cualquier dispositivo
+export async function obtenerCarritoGuardado() {
+  const { data } = await api.get('/usuarios/carrito/')
+  return data
+}
+
+export async function guardarCarritoServidor({ sedeId, lineas, promocion }) {
+  const { data } = await api.put('/usuarios/carrito/', { sedeId, lineas, promocion })
+  return data
+}

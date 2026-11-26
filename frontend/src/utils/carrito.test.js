@@ -8,6 +8,7 @@ import {
   claveVariante,
   domicilioCarrito,
   domicilioDeZona,
+  elegirCarritoInicial,
   eliminarLinea,
   lineaParaValidar,
   precioUnitario,
@@ -257,3 +258,28 @@ describe('limpieza del carrito con productos eliminados (HU-79)', () => {
   })
 })
 
+
+describe('elegirCarritoInicial (HU-21)', () => {
+  const linea = { id: 'a', producto: { id: 1 }, cantidad: 1 }
+  const vacio = { sedeId: null, lineas: [], promocion: null }
+
+  it('usa el carrito del servidor si tiene productos', () => {
+    const local = { sedeId: 2, lineas: [{ ...linea, id: 'b' }], promocion: null }
+    const servidor = { sedeId: 1, lineas: [linea], promocion: { codigo: 'X' }, actualizado_en: '2026-11-26' }
+
+    expect(elegirCarritoInicial(local, servidor)).toEqual({
+      carrito: { sedeId: 1, lineas: [linea], promocion: { codigo: 'X' } },
+      subirLocal: false,
+    })
+  })
+
+  it('si el servidor está vacío, conserva el del navegador y lo sube', () => {
+    const local = { sedeId: 2, lineas: [linea], promocion: null }
+
+    expect(elegirCarritoInicial(local, { ...vacio, actualizado_en: null })).toEqual({ carrito: local, subirLocal: true })
+  })
+
+  it('si los dos están vacíos no sube nada', () => {
+    expect(elegirCarritoInicial(vacio, vacio)).toEqual({ carrito: vacio, subirLocal: false })
+  })
+})
