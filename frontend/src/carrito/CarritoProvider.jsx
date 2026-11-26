@@ -67,6 +67,10 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
   const sincronizado = useRef(null) // clave del cliente cuyo carrito ya se cargó del servidor
   const cambioPendiente = useRef(false) // el cliente cambió el carrito antes de que cargara
   const carritoRef = useRef(carrito)
+  // Para la pantalla: mientras llega la respuesta del servidor, el carrito puede estar
+  // "vacío" solo porque aún no carga (p. ej. en un dispositivo nuevo)
+  const [claveCargada, setClaveCargada] = useState(null)
+  const cargando = Boolean(clave) && claveCargada !== clave
   useEffect(() => {
     carritoRef.current = carrito
   }, [carrito])
@@ -97,9 +101,11 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
         guardarCarrito(clave, elegido)
         setEstado((actual) => (actual.clave === clave ? { ...actual, carrito: elegido } : actual))
         sincronizado.current = clave
+        setClaveCargada(clave)
         if (subirLocal) subirAlServidor(elegido)
       })
       .catch(() => {
+        if (vigente) setClaveCargada(clave)
         // Si no se pudo leer, no se sube nada para no borrar el carrito guardado desde
         // otro dispositivo: el carrito queda solo en el navegador hasta la próxima visita.
       })
@@ -220,6 +226,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
       costoDomicilio,
       total,
       articulos: cantidadArticulos(carrito.lineas),
+      cargando,
       agregar,
       reemplazar,
       cambiarCantidad,
@@ -233,6 +240,7 @@ export default function CarritoProvider({ children, tarifaSede = TARIFA_DOMICILI
     }),
     [
       carrito,
+      cargando,
       subtotal,
       descuento,
       costoDomicilio,
