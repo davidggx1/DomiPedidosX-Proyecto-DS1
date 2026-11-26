@@ -6,6 +6,7 @@ import { useCarrito } from '../../carrito/useCarrito.js'
 import { useLimpiarCarrito } from '../../carrito/useLimpiarCarrito.js'
 import Contador from '../../components/carrito/Contador.jsx'
 import PersonalizarProducto from '../../components/carrito/PersonalizarProducto.jsx'
+import SedeDelCarrito from '../../components/carrito/SedeDelCarrito.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import Boton from '../../components/ui/Boton.jsx'
 import {
@@ -33,6 +34,7 @@ function describirVariantes(linea) {
 export default function Carrito() {
   const {
     sedeId,
+    cargando,
     lineas,
     promocion,
     subtotal,
@@ -154,6 +156,18 @@ export default function Carrito() {
     setMensajeCupon(null)
   }
 
+  // HU-21: el carrito viene del servidor; mientras llega no se dice que está vacío
+  if (lineas.length === 0 && cargando) {
+    return (
+      <div className="flex flex-col items-start gap-4">
+        <h1 className="text-2xl font-bold">Tu carrito</h1>
+        <p className="text-texto-suave" role="status">
+          Cargando tu carrito…
+        </p>
+      </div>
+    )
+  }
+
   if (lineas.length === 0) {
     return (
       <div className="flex flex-col items-start gap-4">
@@ -172,7 +186,10 @@ export default function Carrito() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Tu carrito</h1>
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold">Tu carrito</h1>
+        <SedeDelCarrito sedeId={sedeId} />
+      </header>
 
       {avisoLimpieza && <Alerta tipo="aviso" titulo={avisoLimpieza} />}
       {aviso && <Alerta tipo={aviso.tipo} titulo={aviso.texto} />}

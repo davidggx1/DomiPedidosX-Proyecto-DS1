@@ -15,6 +15,7 @@ import Boton from '../../components/ui/Boton.jsx'
 import Alerta from '../../components/ui/Alerta.jsx'
 import ModalAlternativas from '../../components/pedidos/ModalAlternativas.jsx'
 import TimerEstimadoEntrega from '../../components/pedidos/TimerEstimadoEntrega.jsx'
+import SedeDelCarrito from '../../components/carrito/SedeDelCarrito.jsx'
 import { formatearPrecio } from '../../utils/formato.js'
 import { domicilioDeZona, subtotalLinea, totalCarritoConDescuento } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
@@ -482,6 +483,7 @@ export default function ConfirmarPedido() {
         {/* Resumen de Ítems */}
         <div className="space-y-2 rounded-lg border border-borde bg-fondo p-4">
           <h3 className="text-sm font-semibold">Resumen de Ítems ({lineas.length})</h3>
+          <SedeDelCarrito sedeId={sedeActual} variante="resumen" />
           <ul className="divide-y divide-borde text-sm">
             {lineas.map((linea) => (
               <li key={linea.id} className="flex justify-between py-2">
