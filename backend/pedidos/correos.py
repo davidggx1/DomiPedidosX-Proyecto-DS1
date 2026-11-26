@@ -13,8 +13,13 @@ HU-50 · Correos de estado del pedido al cliente.
 - Un fallo aquí (plantilla, base de datos, SMTP) nunca rompe el pedido ni el cambio
   de estado: solo queda en el log (criterio 5).
 
+HU-40 (ampliación) · Correo al repartidor cuando se le asigna un pedido, manual o
+automáticamente, con la sede donde recogerlo y la dirección de entrega. Así se cumple
+la sección 4.7 del proyecto: el repartidor recibe la asignación y el cliente, la salida
+"En camino" (ese correo ahora dice quién lleva el pedido, solo con su primer nombre).
+
 Se llaman después del commit: `servicios.confirmar_pedido` y los receivers de
-`estados.estado_pedido_cambiado` (pedidos/signals.py).
+`estados.estado_pedido_cambiado` y `asignacion.asignacion_cambiada` (pedidos/signals.py).
 """
 import logging
 
@@ -140,6 +145,9 @@ def enviar_correo_estado(pedido):
             return
         asunto, titular, mensaje = aviso
         datos = {"numero": pedido.numero_pedido, "sede": pedido.sede.nombre}
+        if pedido.estado == EstadoPedido.EN_CAMINO and _primer_nombre(pedido.repartidor):
+            mensaje = "{repartidor} salió de {sede} con tu pedido y va hacia tu dirección."
+            datos["repartidor"] = _primer_nombre(pedido.repartidor)
         contexto = _contexto(pedido)
         contexto.update({
             "titular": titular,
@@ -150,3 +158,35 @@ def enviar_correo_estado(pedido):
         _enviar("estado", asunto.format(**datos), contexto, destinatario)
     except Exception:
         logger.exception("No se pudo enviar el correo de estado del pedido %s", pedido.pk)
+
+
+def _primer_nombre(repartidor):
+    if repartidor is None:
+        return None
+    nombres = (repartidor.empleado.nombres or "").split()
+    return nombres[0] if nombres else None
+
+
+def enviar_correo_asignacion(pedido, repartidor):
+    """Correo al repartidor con el pedido que se le asignó. Nunca lanza."""
+    try:
+        destinatario = repartidor.empleado.usuario.email
+        if not destinatario:
+            return
+        factura = getattr(pedido, "factura", None)
+        contexto = {
+            "cliente": _primer_nombre(repartidor) or "repartidor",
+            "numero": pedido.numero_pedido,
+            "sede": pedido.sede.nombre,
+            "sede_direccion": pedido.sede.direccion,
+            "direccion": pedido.entrega_direccion,
+            "barrio": pedido.entrega_barrio,
+            "total": _pesos(factura.total) if factura else "",
+            "metodo_pago": factura.get_metodo_pago_display() if factura else "",
+            "cobrar": bool(factura) and factura.estado_factura != EstadoFactura.PAGADA,
+            "enlace": f"{settings.FRONTEND_URL}/repartidor/entregas/{pedido.pk}",
+            "boton": "Ver la entrega",
+        }
+        _enviar("asignacion", f"Se te asignó el pedido {pedido.numero_pedido}", contexto, destinatario)
+    except Exception:
+        logger.exception("No se pudo enviar el correo de asignación del pedido %s", pedido.pk)
