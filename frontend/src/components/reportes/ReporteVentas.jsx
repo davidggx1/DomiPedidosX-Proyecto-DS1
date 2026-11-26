@@ -15,15 +15,27 @@ import CampoTexto from '../ui/CampoTexto.jsx'
 import Selector from '../ui/Selector.jsx'
 import Tarjeta from '../ui/Tarjeta.jsx'
 import Barra from './Barra.jsx'
+import BotonExportar from './BotonExportar.jsx'
 import Cifra from './Cifra.jsx'
 
 function TablaVentas({ datos }) {
   const etiquetaGrupo = AGRUPACIONES_VENTAS.find((a) => a.valor === datos.agrupar)?.etiqueta ?? 'Grupo'
   const conUnidades = cuentaUnidades(datos.agrupar)
   const maximo = Math.max(0, ...datos.grupos.map((g) => Number(g.ventas)))
+  // HU-73 · Columnas del CSV: números sin formato de moneda (como llegan del backend, ej. 12500.00)
+  const columnasCsv = [
+    { titulo: etiquetaGrupo, valor: (g) => g.nombre },
+    { titulo: 'Pedidos', valor: (g) => g.pedidos },
+    ...(conUnidades ? [{ titulo: 'Unidades', valor: (g) => g.unidades }] : []),
+    { titulo: 'Ventas', valor: (g) => g.ventas },
+    { titulo: 'Participación (%)', valor: (g) => g.porcentaje },
+  ]
 
   return (
     <Tarjeta titulo={`Ventas por ${etiquetaGrupo.toLowerCase()}`}>
+      <div className="mb-3 flex justify-end">
+        <BotonExportar tipo={`ventas-${datos.agrupar}`} datos={datos} columnas={columnasCsv} filas={datos.grupos} />
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead className="text-texto-suave">
