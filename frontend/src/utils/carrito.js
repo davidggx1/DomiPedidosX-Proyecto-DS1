@@ -16,6 +16,19 @@ export function claveCarrito(usuario) {
   return `domipedidosx.carrito.${usuario.email.toLowerCase()}`
 }
 
+// HU-21: al iniciar sesión, qué carrito se usa. Si el servidor tiene productos, gana el
+// del servidor (es el último que se guardó desde cualquier dispositivo). Si está vacío,
+// se conserva el del navegador y hay que subirlo para que quede guardado.
+export function elegirCarritoInicial(local, servidor) {
+  if (servidor?.lineas?.length > 0) {
+    return {
+      carrito: { sedeId: servidor.sedeId ?? null, lineas: servidor.lineas, promocion: servidor.promocion ?? null },
+      subirLocal: false,
+    }
+  }
+  return { carrito: local, subirLocal: local.lineas.length > 0 }
+}
+
 // Precio de una unidad: base + tamaño + Σ(adición × cantidad). Sirve para la vista previa.
 export function precioUnitario({ producto, tamano, adiciones = [] }) {
   const base = Number(producto.precio_base) + Number(tamano?.precio_adicional ?? 0)

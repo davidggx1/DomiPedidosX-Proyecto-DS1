@@ -8,6 +8,7 @@ from .cuentas import CuentasView, CuentaView
 from .clientes import ClientesView, FichaClienteView
 from .contrasena import RestablecerContrasenaView, SolicitarRestablecimientoView
 from .personal import EmpleadoDetalleView
+from .carrito import CarritoGuardadoView
 
 router = SimpleRouter()
 router.register("direcciones", DireccionEntregaViewSet, basename="direccion")
@@ -29,5 +30,6 @@ urlpatterns = [
     path("clientes/<int:pk>/", FichaClienteView.as_view(), name="cliente-ficha"),
     path("contrasena/solicitar/", SolicitarRestablecimientoView.as_view(), name="contrasena-solicitar"),
     path("contrasena/restablecer/", RestablecerContrasenaView.as_view(), name="contrasena-restablecer"),
+    path("carrito/", CarritoGuardadoView.as_view(), name="carrito-guardado"),  # HU-21
     path("", include(router.urls)),
 ]

@@ -170,3 +170,23 @@ class DireccionEntrega(models.Model):
 
     def __str__(self):
         return self.direccion
+
+
+class CarritoGuardado(models.Model):
+    """
+    HU-21 (producto final): copia del carrito del cliente en el servidor, para verlo
+    igual desde cualquier dispositivo. Guarda el mismo JSON que el frontend tenía en
+    localStorage ({sedeId, lineas, promocion}); los precios y la disponibilidad se
+    vuelven a validar al crear el pedido (menu/carrito.py y HU-23).
+    """
+
+    cliente = models.OneToOneField(
+        Cliente,
+        on_delete=models.CASCADE,
+        related_name="carrito",
+    )
+    contenido = models.JSONField(default=dict)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Carrito de {self.cliente}"
