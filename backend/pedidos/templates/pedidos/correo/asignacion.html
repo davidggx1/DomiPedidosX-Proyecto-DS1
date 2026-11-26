@@ -1,0 +1,7 @@
+{% extends "pedidos/correo/base.html" %}
+{% block titular %}Se te asignó el pedido {{ numero }}{% endblock %}
+{% block contenido %}
+<p style="margin:0 0 8px;"><strong>Recógelo en:</strong> {{ sede }} ({{ sede_direccion }})</p>
+<p style="margin:0 0 8px;"><strong>Entrégalo en:</strong> {{ direccion }}{% if barrio %}, {{ barrio }}{% endif %}</p>
+{% if total %}<p style="margin:0 0 12px;"><strong>Total:</strong> {{ total }} · {{ metodo_pago }}{% if cobrar %} (cóbralo al entregar){% else %} (ya está pagado){% endif %}</p>{% endif %}
+{% endblock %}
