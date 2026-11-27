@@ -267,6 +267,11 @@ class LoginSerializer(TokenObtainPairSerializer):
         # revelar a un extraño qué correos existen.
         if usuario and not usuario.is_active and usuario.check_password(password):
             raise AuthenticationFailed("La cuenta está inactiva.", "cuenta_inactiva")
+        # El correo se guarda en minúsculas, pero authenticate() lo compara exacto:
+        # "ANA@Correo.com" no entraba aunque la contraseña fuera correcta (SCRUM-142,
+        # escenario "Correo escrito con mayúsculas" de tests/features/iniciar_sesion.feature).
+        if usuario:
+            attrs[self.username_field] = usuario.email
         try:
             data = super().validate(attrs)
         except exceptions.AuthenticationFailed:
