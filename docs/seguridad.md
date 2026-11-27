@@ -133,6 +133,7 @@ En cualquier entorno:
 
 - **`manage.py check --deploy --tag security --fail-level WARNING`**: el checklist de despliegue de Django. Falla el CI si aparece cualquier aviso de seguridad.
   - Se usa `--tag security` porque `check --deploy` también ejecuta las comprobaciones de `drf_spectacular`, que hoy dan 35 avisos sobre tipos sin anotar en la documentación Swagger. No son de seguridad.
+  - Ese paso usa un `DJANGO_SECRET_KEY` aleatorio de 50+ caracteres generado en cada corrida. La clave fija del CI es corta y haría fallar `security.W009`, que se deja activo porque protege la clave real de Render.
   - Se silencia `security.W021` (`SECURE_HSTS_PRELOAD`). La lista de precarga de los navegadores solo acepta dominios propios, y el backend vive en un subdominio de `onrender.com`. Se revisa si el proyecto pasa a un dominio propio.
 - **`pip-audit -r requirements.txt`**: busca vulnerabilidades conocidas en las dependencias.
   - Reportó 42 en Pillow 12.3.0, todas corregidas en 13.0.0, así que `requirements.txt` ahora pide `Pillow>=13.0,<14.0`.

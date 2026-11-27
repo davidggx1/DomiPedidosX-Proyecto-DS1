@@ -45,7 +45,11 @@ jobs:
       - run: .venv/bin/python manage.py check
       # Checklist de producción de Django (docs/seguridad.md). Solo las comprobaciones
       # de seguridad: los avisos de drf_spectacular son de la documentación Swagger.
-      - run: .venv/bin/python manage.py check --deploy --tag security --fail-level WARNING
+      # La clave corta de arriba hace fallar security.W009 (pide 50+ caracteres). Aquí se
+      # usa una aleatoria y larga, como la que debe tener Render.
+      - run: |
+          DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+            .venv/bin/python manage.py check --deploy --tag security --fail-level WARNING
       # Dependencias con vulnerabilidades conocidas
       - run: .venv/bin/pip install pip-audit
       - run: .venv/bin/pip-audit -r requirements.txt
