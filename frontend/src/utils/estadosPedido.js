@@ -16,6 +16,11 @@ export function datosEstado(estado) {
   return ESTADOS_PEDIDO[estado] ?? { etiqueta: estado, clases: 'border-borde text-texto-suave' }
 }
 
+// Texto del total en la confirmación: en efectivo el cliente todavía no ha pagado (paga al recibir)
+export function etiquetaTotalPedido(metodoPago) {
+  return metodoPago === 'efectivo' ? 'Total a pagar al recibir:' : 'Total pagado:'
+}
+
 // Phases of the flow, to group the counters of the daily summary (HU-67)
 export const FASES_PEDIDO = [
   { titulo: 'Por aprobar', estados: ['pendiente_aprobacion'] },

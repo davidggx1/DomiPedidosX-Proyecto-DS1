@@ -7,6 +7,7 @@ import Tarjeta from '../../components/ui/Tarjeta.jsx'
 import EstadoCapacidadSede from '../../components/pedidos/EstadoCapacidadSede.jsx'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
 import { capacidadDeEvento } from '../../utils/capacidad.js'
+import { datosEstado } from '../../utils/estadosPedido.js'
 
 export default function PedidosEntrantes() {
   const [pedidos, setPedidos] = useState([])
@@ -169,7 +170,7 @@ export default function PedidosEntrantes() {
         <div className="grid gap-4 md:grid-cols-2">
           {pedidos.map((pedido) => (
             <Tarjeta key={pedido.id} titulo={`Pedido #${pedido.numero_pedido ?? pedido.id}`}>
-              <p className="text-sm text-texto-suave">Estado: {pedido.estado}</p>
+              <p className="text-sm text-texto-suave">Estado: {datosEstado(pedido.estado).etiqueta}</p>
               {pedido.cliente && (
                 <p className="text-sm mt-1">
                   <strong>Cliente:</strong> {pedido.cliente}
