@@ -7,10 +7,11 @@ from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 
 from .models import Cliente, DireccionEntrega, TipoDocumento, Usuario, Empleado, Repartidor
 from sedes.models import Ciudad, Sede
+from .intentos_login import limpiar_fallos, registrar_fallo, verificar_bloqueo
 from .repartidores import poner_no_disponible
 from .roles import ADMINISTRADOR, REPARTIDOR, obtener_rol, obtener_sede
 
@@ -258,12 +259,21 @@ class LoginSerializer(TokenObtainPairSerializer):
         Usuario = get_user_model()
         email = attrs.get(self.username_field, "")
         password = attrs.get("password", "")
+        request = self.context.get("request")
+        # Fuerza bruta: un correo bloqueado no llega a revisar la contraseña (429).
+        verificar_bloqueo(email, request)
         usuario = Usuario.objects.filter(email__iexact=email).first()
         # Solo se avisa "inactiva" si la contraseña es correcta, para no
         # revelar a un extraño qué correos existen.
         if usuario and not usuario.is_active and usuario.check_password(password):
             raise AuthenticationFailed("La cuenta está inactiva.", "cuenta_inactiva")
-        return super().validate(attrs)
+        try:
+            data = super().validate(attrs)
+        except exceptions.AuthenticationFailed:
+            registrar_fallo(email, request)  # correo o contraseña incorrectos
+            raise
+        limpiar_fallos(email)
+        return data
 
 class LoginPersonalSerializer(LoginSerializer):
     def validate(self, attrs):
@@ -271,8 +281,11 @@ class LoginPersonalSerializer(LoginSerializer):
         rol = obtener_rol(self.user)
         sede = obtener_sede(self.user)
         # Un cliente, o un empleado sin sede, no entra por aquí (mensaje genérico).
+        # El código "no_es_personal" le dice al frontend que pruebe el login de cliente;
+        # solo lo ve quien ya escribió la contraseña correcta, así que no revela cuentas.
+        # No cuenta como intento fallido: la contraseña era la correcta.
         if rol is None or (rol != ADMINISTRADOR and sede is None):
-            raise AuthenticationFailed("Credenciales inválidas.", "no_active_account")
+            raise AuthenticationFailed("Credenciales inválidas.", "no_es_personal")
         if rol == REPARTIDOR:
             poner_no_disponible(self.user)  # HU-41: cada inicio de sesión arranca "No disponible"
         data["rol"] = rol

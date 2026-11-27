@@ -16,6 +16,8 @@ el hash de la contraseña, que cambia al restablecerla (criterio 3).
 """
 import logging
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.debug import sensitive_post_parameters
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -28,6 +30,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .intentos_login import ProtegidaContraFuerzaBruta
 from .models import Usuario
 from .tasks import encolar_correo
 
@@ -99,7 +102,7 @@ class RestablecerContrasenaSerializer(serializers.Serializer):
         return usuario
 
 
-class SolicitarRestablecimientoView(APIView):
+class SolicitarRestablecimientoView(ProtegidaContraFuerzaBruta, APIView):
     """POST /api/usuarios/contrasena/solicitar/ · Envía el enlace para restablecer la contraseña."""
 
     # Públicas: quien olvidó la contraseña no tiene sesión.
@@ -116,7 +119,8 @@ class SolicitarRestablecimientoView(APIView):
         return Response({"detail": MENSAJE_SOLICITUD})
 
 
-class RestablecerContrasenaView(APIView):
+@method_decorator(sensitive_post_parameters("password"), name="dispatch")
+class RestablecerContrasenaView(ProtegidaContraFuerzaBruta, APIView):
     """POST /api/usuarios/contrasena/restablecer/ · Guarda la nueva contraseña si el enlace es válido."""
 
     permission_classes = [AllowAny]

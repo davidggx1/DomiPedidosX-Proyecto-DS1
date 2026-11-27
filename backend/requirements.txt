@@ -1,7 +1,7 @@
 Django>=5.2,<5.3
 psycopg[binary]>=3.3,<4.0
 python-dotenv>=1.0,<2.0
-Pillow>=11.3,<13.0  # necessary for ImageField (Products pictures)
+Pillow>=13.0,<14.0  # necessary for ImageField (Products pictures)
 shapely==2.2.0
 
 # API

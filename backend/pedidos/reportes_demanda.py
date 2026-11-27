@@ -25,6 +25,8 @@ Inicio posterior al fin -> 400. Sin pedidos en el rango, `sin_datos` es true.
 """
 from decimal import Decimal
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import Count, Sum
 from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncDate
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -175,6 +177,7 @@ class ReporteDemandaSerializer(serializers.Serializer):
     mensaje = serializers.CharField(allow_null=True)
 
 
+@method_decorator(never_cache, name="dispatch")
 class ReporteDemandaView(APIView):
     permission_classes = [rol_requerido(ADMINISTRADOR)]
 

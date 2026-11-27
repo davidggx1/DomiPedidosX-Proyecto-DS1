@@ -1,3 +1,6 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+from django.views.decorators.debug import sensitive_post_parameters
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.permissions import AllowAny
@@ -5,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from sedes.views import EsAdministradorPermission
+from .intentos_login import ProtegidaContraFuerzaBruta
 from .models import DireccionEntrega, Empleado
 
 from .serializers import LoginSerializer, RegistroClienteSerializer, RegistroEmpleadoSerializer, EmpleadoListSerializer
@@ -13,6 +17,7 @@ from .roles import ROLES_PERSONAL, obtener_rol, obtener_sede
 from .serializers import DireccionEntregaSerializer, LoginPersonalSerializer, PerfilClienteSerializer
 
 
+@method_decorator(sensitive_post_parameters("password"), name="dispatch")
 class RegistroClienteView(APIView):
     # Público: el default del proyecto exige estar autenticado.
     permission_classes = [AllowAny]
@@ -28,6 +33,11 @@ class RegistroClienteView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+# Clase 10, diap. 38: si hay un error 500, el reporte de Django muestra "****" en vez
+# de la contraseña (sensitive_post_parameters). never_cache: la lista trae datos
+# personales y la respuesta del POST la contraseña inicial; ningún navegador o proxy la guarda.
+@method_decorator(sensitive_post_parameters("password"), name="dispatch")
+@method_decorator(never_cache, name="dispatch")
 class EmpleadoManagementView(APIView):
     permission_classes = [permissions.IsAuthenticated, EsAdministradorPermission]
 
@@ -63,13 +73,16 @@ class EmpleadoManagementView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-class LoginView(TokenObtainPairView):
+@method_decorator(sensitive_post_parameters("password"), name="dispatch")
+class LoginView(ProtegidaContraFuerzaBruta, TokenObtainPairView):
     serializer_class = LoginSerializer
 
-class LoginPersonalView(TokenObtainPairView):
+@method_decorator(sensitive_post_parameters("password"), name="dispatch")
+class LoginPersonalView(ProtegidaContraFuerzaBruta, TokenObtainPairView):
     serializer_class = LoginPersonalSerializer
 
 
+@method_decorator(never_cache, name="dispatch")
 class PerfilPersonalView(APIView):
     """Rol y sede del usuario autenticado; el frontend lo usa para armar el menú."""
 
@@ -87,6 +100,7 @@ class PerfilPersonalView(APIView):
         )
 
 
+@method_decorator(never_cache, name="dispatch")
 class PerfilClienteView(generics.RetrieveUpdateAPIView):
     """
     GET / PATCH /api/usuarios/perfil/
