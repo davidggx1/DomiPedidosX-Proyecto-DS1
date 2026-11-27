@@ -9,6 +9,8 @@ y cuántos hay en cada estado del flujo.
 """
 from datetime import datetime, time, timedelta
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import Count
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -53,6 +55,7 @@ def resumen_del_dia(sedes, fecha):
     ]
 
 
+@method_decorator(never_cache, name="dispatch")
 class ResumenDiaView(APIView):
     """
     GET /api/pedidos/resumen-dia/

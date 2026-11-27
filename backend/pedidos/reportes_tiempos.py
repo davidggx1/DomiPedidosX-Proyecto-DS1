@@ -22,6 +22,8 @@ Si no hay pedidos entregados en el rango, `sin_datos` es true y `mensaje` lo exp
 """
 from collections import defaultdict
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -168,6 +170,7 @@ class ReporteTiemposSerializer(serializers.Serializer):
     repartidores = DesempenoRepartidorSerializer(many=True)
 
 
+@method_decorator(never_cache, name="dispatch")
 class ReporteTiemposView(APIView):
     permission_classes = [rol_requerido(ADMINISTRADOR)]
 

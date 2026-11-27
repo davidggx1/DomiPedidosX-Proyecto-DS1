@@ -22,6 +22,8 @@ es true y `mensaje` lo explica, para avisar antes de pintar la tabla (criterio 4
 """
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.db.models import Count, Q, Sum
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import serializers, status
@@ -198,6 +200,7 @@ class ReporteVentasSerializer(serializers.Serializer):
     mensaje = serializers.CharField(allow_null=True)
 
 
+@method_decorator(never_cache, name="dispatch")
 class ReporteVentasView(APIView):
     permission_classes = [rol_requerido(ADMINISTRADOR)]
 
