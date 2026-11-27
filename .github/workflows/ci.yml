@@ -43,6 +43,12 @@ jobs:
       - run: python -m venv .venv
       - run: .venv/bin/pip install -r requirements.txt
       - run: .venv/bin/python manage.py check
+      # Checklist de producción de Django (docs/seguridad.md). Solo las comprobaciones
+      # de seguridad: los avisos de drf_spectacular son de la documentación Swagger.
+      - run: .venv/bin/python manage.py check --deploy --tag security --fail-level WARNING
+      # Dependencias con vulnerabilidades conocidas
+      - run: .venv/bin/pip install pip-audit
+      - run: .venv/bin/pip-audit -r requirements.txt
       - run: .venv/bin/python manage.py makemigrations --check --dry-run
       - run: .venv/bin/python manage.py migrate
       - run: .venv/bin/pytest
