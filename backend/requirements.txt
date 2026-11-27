@@ -20,6 +20,7 @@ celery[redis]>=5.5,<6.0
 pytest>=8.0
 pytest-django>=4.8
 pytest-asyncio>=0.24
+pytest-bdd>=8.0,<10.0  # criterios de aceptación en Gherkin (tests/features, Clase 11)
 
 # Despliegue (SCRUM-143)
 whitenoise>=6.9,<7.0  # archivos estáticos del admin sin Nginx

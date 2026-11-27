@@ -56,3 +56,22 @@ jobs:
       - run: .venv/bin/python manage.py makemigrations --check --dry-run
       - run: .venv/bin/python manage.py migrate
       - run: .venv/bin/pytest
+
+  # Frontend: lint, pruebas unitarias (Vitest) y build de producción (SCRUM-142).
+  # Antes solo corría el backend; así un PR que rompa el frontend también se ve en rojo.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"  # Vite 8 necesita Node 20.19 o superior (igual que en Render)
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
