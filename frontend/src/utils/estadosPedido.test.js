@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ESTADOS_PEDIDO, FASES_PEDIDO, datosEstado, pedidosActivos } from './estadosPedido.js'
+import { ESTADOS_PEDIDO, FASES_PEDIDO, datosEstado, pedidosActivos, etiquetaTotalPedido } from './estadosPedido.js'
 
 describe('estados del pedido', () => {
   it('tiene los 8 estados del backend', () => {
@@ -34,5 +34,16 @@ describe('fases del resumen del día', () => {
   it('los activos no cuentan entregados ni cancelados', () => {
     const porEstado = { pendiente_aprobacion: 1, en_preparacion: 2, en_camino: 1, entregado: 5, cancelado: 3 }
     expect(pedidosActivos(porEstado)).toBe(4)
+  })
+})
+
+describe('etiquetaTotalPedido', () => {
+  it('en efectivo el total todavía no está pagado', () => {
+    expect(etiquetaTotalPedido('efectivo')).toBe('Total a pagar al recibir:')
+  })
+
+  it('con tarjeta o transferencia (pago simulado) ya está pagado', () => {
+    expect(etiquetaTotalPedido('tarjeta')).toBe('Total pagado:')
+    expect(etiquetaTotalPedido('transferencia')).toBe('Total pagado:')
   })
 })

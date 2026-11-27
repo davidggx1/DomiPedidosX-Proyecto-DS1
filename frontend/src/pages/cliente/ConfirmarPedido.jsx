@@ -16,6 +16,7 @@ import Alerta from '../../components/ui/Alerta.jsx'
 import ModalAlternativas from '../../components/pedidos/ModalAlternativas.jsx'
 import TimerEstimadoEntrega from '../../components/pedidos/TimerEstimadoEntrega.jsx'
 import SedeDelCarrito from '../../components/carrito/SedeDelCarrito.jsx'
+import { datosEstado, etiquetaTotalPedido } from '../../utils/estadosPedido.js'
 import { formatearPrecio } from '../../utils/formato.js'
 import { domicilioDeZona, subtotalLinea, totalCarritoConDescuento } from '../../utils/carrito.js'
 import { useEstadoCapacidad } from '../../capacidad/useEstadoCapacidad.js'
@@ -331,7 +332,7 @@ export default function ConfirmarPedido() {
           Número de Pedido: <strong className="text-texto">#{resumenExito.numero_pedido}</strong>
         </p>
         <p className="text-sm">
-          Estado: <span className="font-semibold uppercase text-marca">{resumenExito.estado}</span>
+          Estado: <span className="font-semibold text-marca">{datosEstado(resumenExito.estado).etiqueta}</span>
         </p>
         {(resumenExito.tiempo_estimado_rango || resumenExito.tiempo_estimado_entrega) && (
           <p className="text-sm">
@@ -356,7 +357,7 @@ export default function ConfirmarPedido() {
               </div>
             )}
             <div className="flex justify-between border-t border-borde pt-2 text-base font-bold text-marca">
-              <span>Total pagado:</span>
+              <span>{etiquetaTotalPedido(metodoPago)}</span>
               <span>{formatearPrecio(resumenExito.factura.total)}</span>
             </div>
             {Number(resumenExito.factura.valor_descuento) > 0 && (
